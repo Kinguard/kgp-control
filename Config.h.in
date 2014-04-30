@@ -1,0 +1,13 @@
+/* This is a generated file do not edit */
+
+#ifndef OPI_CONTROL_CONFIG_H
+#define OPI_CONTROL_CONFIG_H
+
+#define OPI_CONTROL_VERSION_MAJOR @OPI_CONTROL_VERSION_MAJOR@
+#define OPI_CONTROL_VERSION_MINOR @OPI_CONTROL_VERSION_MINOR@
+#define OPI_CONTROL_APP_NAME "@OPI_CONTROL_APP_NAME@"
+
+#cmakedefine OPI_BUILD_PACKAGE
+#cmakedefine OPI_BUILD_LOCAL
+
+#endif

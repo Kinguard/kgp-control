@@ -5,7 +5,7 @@
 
 #include "WebServer.h"
 
-class ControlApp : public Utils::Application
+class ControlApp : public Utils::DaemonApplication
 {
 public:
 	ControlApp();

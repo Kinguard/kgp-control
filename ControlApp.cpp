@@ -1,4 +1,5 @@
 #include "ControlApp.h"
+#include "Config.h"
 
 #include "Secop.h"
 #include "WebServer.h"
@@ -11,7 +12,7 @@ using namespace Utils;
 using namespace std::placeholders;
 
 
-ControlApp::ControlApp() : Application("ControlApp")
+ControlApp::ControlApp() : DaemonApplication("ControlApp","/var/run","root","root")
 {
 }
 

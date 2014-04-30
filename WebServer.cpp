@@ -1,8 +1,25 @@
 #include "WebServer.h"
-
+#include "Config.h"
 #include "mongoose.h"
 
 #include <string>
+
+#ifdef OPI_BUILD_PACKAGE
+
+#define DOCUMENT_ROOT	"/usr/share/opi-control/web"
+#define SSL_CERT_PATH	"/etc/ssl/certs/opi.pem"
+#define SSL_KEY_PATH	"/etc/ssl/private/opi.key"
+#define LISTENING_PORT	"443"
+
+#else
+
+#define DOCUMENT_ROOT	"./static"
+#define SSL_CERT_PATH	"certificate.pem"
+#define SSL_KEY_PATH	"priv_key.pem"
+
+#define LISTENING_PORT	"8080"
+
+#endif
 
 std::function<void(std::string)> WebServer::callback;
 
@@ -22,12 +39,12 @@ void WebServer::Stop()
 void WebServer::PreRun()
 {
 	this->server = mg_create_server(NULL, WebServer::ev_handler);
-	mg_set_option(this->server, "document_root", "./static");
+	mg_set_option(this->server, "document_root", DOCUMENT_ROOT);
 
-	mg_set_option(this->server, "ssl_certificate","certificate.pem");
-	mg_set_option(this->server, "ssl_private_key","priv_key.pem");
+	mg_set_option(this->server, "ssl_certificate",SSL_CERT_PATH);
+	mg_set_option(this->server, "ssl_private_key",SSL_KEY_PATH);
 
-	mg_set_option(this->server, "listening_port","8080");
+	mg_set_option(this->server, "listening_port",LISTENING_PORT);
 }
 
 void WebServer::Run()
