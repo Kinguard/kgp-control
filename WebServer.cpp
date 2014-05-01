@@ -9,11 +9,11 @@
 #define DOCUMENT_ROOT	"/usr/share/opi-control/web"
 #define SSL_CERT_PATH	"/etc/ssl/certs/opi.pem"
 #define SSL_KEY_PATH	"/etc/ssl/private/opi.key"
-#define LISTENING_PORT	"443"
+#define LISTENING_PORT	"4443"
 
 #else
 
-#define DOCUMENT_ROOT	"./static"
+#define DOCUMENT_ROOT	"../opi-control/html"
 #define SSL_CERT_PATH	"certificate.pem"
 #define SSL_KEY_PATH	"priv_key.pem"
 
