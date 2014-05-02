@@ -3,7 +3,6 @@ Section: admin
 Priority: extra
 Maintainer: Tor Krill <tor@openproducts.se>
 Build-Depends: debhelper (>= 8.0.0), cmake,
-	secop,
 	libutils-dev,
 	libjsoncpp-dev,
 	libssl-dev
@@ -12,6 +11,6 @@ Homepage:http://www.openproducts.se
 
 Package: opi-control
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: secop,${shlibs:Depends}, ${misc:Depends}
 Description: OPI control application
  opi-control manages startup and unlocking of OPI 
