@@ -12,7 +12,7 @@ using namespace Utils;
 using namespace std::placeholders;
 
 
-ControlApp::ControlApp() : DaemonApplication("ControlApp","/var/run","root","root")
+ControlApp::ControlApp() : DaemonApplication("opi-control","/var/run","root","root")
 {
 }
 

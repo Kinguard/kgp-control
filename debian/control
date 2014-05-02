@@ -3,6 +3,7 @@ Section: admin
 Priority: extra
 Maintainer: Tor Krill <tor@openproducts.se>
 Build-Depends: debhelper (>= 8.0.0), cmake,
+	secop,
 	libutils-dev,
 	libjsoncpp-dev,
 	libssl-dev
