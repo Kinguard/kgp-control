@@ -1,3 +1,9 @@
+opi-control (0.9.1) testing; urgency=medium
+
+  * Minor builf fixes
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 01 May 2014 10:35:04 +0000
+
 opi-control (0.9) testing; urgency=low
 
   * Initial Release.
