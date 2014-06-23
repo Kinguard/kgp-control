@@ -5,6 +5,9 @@ include( FindPkgConfig )
 pkg_check_modules ( LIBUTILS REQUIRED libutils>=1.0 )
 pkg_check_modules ( LIBJSONCPP REQUIRED libjsoncpp>=1.0 )
 pkg_check_modules ( LIBSSL REQUIRED libssl )
+pkg_check_modules ( LIBUDEV REQUIRED libudev )
+pkg_check_modules ( LIBCRYPTSETUP REQUIRED libcryptsetup )
+pkg_check_modules ( LIBPARTED REQUIRED libparted>=2.3 )
 
 set (OPI_CONTROL_VERSION_MAJOR 1)
 set (OPI_CONTROL_VERSION_MINOR 0)
@@ -38,7 +41,15 @@ include_directories (
 add_definitions( -std=c++11 )
 add_executable(${PROJECT_NAME} ${SRC_LIST})
 
-target_link_libraries( ${PROJECT_NAME} -ljsoncpp ${LIBSSL_LDFLAGS} ${LIBJSONCPP_LDFLAGS} ${LIBUTILS_LDFLAGS} )
+target_link_libraries( ${PROJECT_NAME}
+	-ljsoncpp
+	${LIBSSL_LDFLAGS}
+	${LIBJSONCPP_LDFLAGS}
+	${LIBUTILS_LDFLAGS}
+	${LIBUDEV_LDFLAGS}
+	${LIBCRYPTSETUP_LDFLAGS}
+	${LIBPARTED_LDFLAGS}
+	)
 
 install( TARGETS opi-control DESTINATION sbin )
 install( DIRECTORY html/ DESTINATION  share/opi-control/web )

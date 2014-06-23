@@ -5,7 +5,10 @@ Maintainer: Tor Krill <tor@openproducts.se>
 Build-Depends: debhelper (>= 8.0.0), cmake,
 	libutils-dev,
 	libjsoncpp-dev,
-	libssl-dev
+	libssl-dev,
+	libcryptsetup-dev,
+	libparted0-dev,
+	libudev-dev
 Standards-Version: 3.9.4
 Homepage:http://www.openproducts.se
 
