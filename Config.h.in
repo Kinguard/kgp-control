@@ -10,4 +10,6 @@
 #cmakedefine OPI_BUILD_PACKAGE
 #cmakedefine OPI_BUILD_LOCAL
 
+#define OPI_MMC_DEVICE "@OPI_MMC_DEVICE@"
+
 #endif

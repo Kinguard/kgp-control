@@ -81,7 +81,7 @@ int WebServer::ev_handler(mg_connection *conn, mg_event ev)
 
 		if( conn->uri == std::string("/configure") && conn->request_method == std::string("POST") )
 		{
-			char buf[128];
+			char buf[513];
 			if( mg_get_var(conn, "password",buf,sizeof(buf)) > 0 )
 			{
 				if( WebServer::callback != nullptr ){

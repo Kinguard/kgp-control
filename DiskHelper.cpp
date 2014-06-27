@@ -1,5 +1,7 @@
 
 #include <libutils/Exceptions.h>
+#include <libutils/FileUtils.h>
+#include <libutils/String.h>
 
 #include <parted/parted.h>
 
@@ -7,6 +9,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <iostream>
+#include <map>
 #include <string>
 
 using namespace std;
@@ -133,6 +137,36 @@ void Umount(const string& device)
 	{
 		throw Utils::ErrnoException("Failed to umount "+device );
 	}
+}
+
+bool DeviceExists(const string &device)
+{
+	return do_stat(device, S_IFBLK );
+}
+
+size_t DeviceSize(const string &devicename)
+{
+	string size = Utils::File::GetContentAsString( "/sys/class/block/"+devicename+"/size");
+	return strtoull(size.c_str(), NULL, 0);
+}
+
+string IsMounted(const string &device)
+{
+	list<string> lines = Utils::File::GetContent( "/etc/mtab");
+	map<string,string> tab;
+	for( auto line: lines)
+	{
+		list<string> words = Utils::String::Split(line);
+		if( words.size() > 2 )
+		{
+			string device = words.front();
+			words.pop_front();
+			string mpoint = words.front();
+			tab[device] = mpoint;
+		}
+	}
+
+	return tab.find(device)==tab.end()?"":tab[device];
 }
 
 }

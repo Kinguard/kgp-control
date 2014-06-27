@@ -7,6 +7,16 @@ using namespace std;
 
 namespace DiskHelper {
 
+bool DeviceExists( const string& device);
+
+/*
+ * Note, devicename is block device name not path to device node
+ * I.e, its sdg not /dev/sdg
+ */
+size_t DeviceSize( const string& devicename);
+
+string IsMounted( const string& device);
+
 void PartitionDevice(const string& device);
 
 void FormatPartition(const string& device, const string& label );

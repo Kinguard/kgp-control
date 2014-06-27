@@ -6,6 +6,7 @@
 
 #include <iostream>
 using namespace std;
+using namespace Utils;
 
 Luks::Luks(const string &path): path(path), open(false)
 {
@@ -117,6 +118,11 @@ bool Luks::Open(const string &name, const string &password, bool discard)
 	this->open = true;
 
 	return true;
+}
+
+bool Luks::Active(const string &name)
+{
+	return crypt_status( this->cryptdevice, name.c_str() ) == CRYPT_ACTIVE;
 }
 
 void Luks::Close(const string mname)
