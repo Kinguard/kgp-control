@@ -2,7 +2,10 @@
 #include "Config.h"
 #include "mongoose.h"
 
+#include <libutils/Logger.h>
+
 #include <string>
+#include <map>
 
 #ifdef OPI_BUILD_PACKAGE
 
@@ -21,14 +24,24 @@
 
 #endif
 
-std::function<void(std::string)> WebServer::callback;
+using namespace Utils;
+using namespace std;
 
-WebServer::WebServer(std::function<void(std::string)> cb):
+std::map<std::pair<std::string,std::string>, std::function<int(mg_connection *)> > WebServer::routes;
+std::function<int(Json::Value)> WebServer::callback;
+
+WebServer::WebServer(std::function<int(Json::Value)> cb):
 	Utils::Thread(false),
 	doRun(true),
 	server(NULL)
 {
 	WebServer::callback = cb;
+
+	routes[std::make_pair("/configure","POST")] = WebServer::handle_configure;
+	routes[std::make_pair("/init","POST")] = WebServer::handle_configure;
+	routes[std::make_pair("/status","GET")] = WebServer::handle_status;
+	routes[std::make_pair("/user","POST")] = WebServer::handle_user;
+
 }
 
 void WebServer::Stop()
@@ -67,6 +80,59 @@ WebServer::~WebServer()
 
 }
 
+int WebServer::handle_configure(mg_connection *conn)
+{
+	char buf[513];
+	int ret=0;
+
+	logg << Logger::Debug << "Got request for init"<<lend;
+
+	string postdata(conn->content, conn->content_len);
+
+	Json::Value req;
+
+	if( ! Json::Reader().parse(postdata, req) )
+	{
+		mg_printf_data( conn, "Unable to parse input");
+		mg_send_status(conn, 400);
+
+		return MG_TRUE;
+	}
+
+	if( req.isMember("masterpassword") )
+	{
+		if( WebServer::callback != nullptr ){
+			Json::Value cmd;
+			cmd["cmd"]="init";
+			cmd["password"]=req["masterpassword"];
+			ret = WebServer::callback( cmd );
+		}
+		mg_send_header( conn, "Content-Type", "application/json");
+		mg_printf_data( conn, "{\"status\":%d}",ret);
+	}
+	else
+	{
+		mg_printf_data( conn, "Missing argument!");
+		mg_send_status(conn, 400);
+	}
+
+	return MG_TRUE;
+}
+
+int WebServer::handle_status(mg_connection *conn)
+{
+	mg_send_header( conn, "Content-Type", "application/json");
+	mg_printf_data(conn, "{\"status\":3}");
+	return MG_TRUE;
+}
+
+int WebServer::handle_user(mg_connection *conn)
+{
+	mg_send_header( conn, "Content-Type", "application/json");
+	mg_printf_data(conn, "{\"status\":5}");
+	return MG_TRUE;
+}
+
 int WebServer::ev_handler(mg_connection *conn, mg_event ev)
 {
 	int result = MG_FALSE;
@@ -79,21 +145,13 @@ int WebServer::ev_handler(mg_connection *conn, mg_event ev)
 		mg_printf_data(conn, "version  [%s]\n", conn->http_version);
 #endif
 
-		if( conn->uri == std::string("/configure") && conn->request_method == std::string("POST") )
+		auto val = std::make_pair(conn->uri, conn->request_method);
+
+		if( WebServer::routes.find(val) != WebServer::routes.end() )
 		{
-			char buf[513];
-			if( mg_get_var(conn, "password",buf,sizeof(buf)) > 0 )
-			{
-				if( WebServer::callback != nullptr ){
-					WebServer::callback(std::string(buf) );
-				}
-				mg_printf_data(conn, "Password: [%s]\n", buf);
-			}
-			mg_printf_data(conn, "Querystr [%s]\n", conn->query_string);
-			mg_printf_data(conn, "Method   [%s]\n", conn->request_method);
-			mg_printf_data(conn, "version  [%s]\n", conn->http_version);
-			result = MG_TRUE;
+			result = WebServer::routes[val](conn);
 		}
+
 	}else if (ev == MG_AUTH) {
 		result = MG_TRUE;
 	}

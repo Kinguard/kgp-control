@@ -46,7 +46,7 @@ void ControlApp::Main()
 
 
 	logg << Logger::Debug << "Checking device: "<< STORAGE_DEV <<lend;
-
+#if 0
 	if( ! DiskHelper::DeviceExists( STORAGE_DEV ) )
 	{
 		logg << Logger::Error << "Device not present"<<lend;
@@ -93,7 +93,7 @@ void ControlApp::Main()
 		}
 		DiskHelper::Mount("/dev/mapper/opi","/var/opi");
 	}
-
+#endif
 	if( ! ServiceHelper::IsRunning("secop") )
 	{
 		logg << Logger::Debug << "Starting Secop server"<<lend;
@@ -101,13 +101,18 @@ void ControlApp::Main()
 		{
 			logg << Logger::Notice << "Failed to start secop"<<lend;
 		}
+		else
+		{
+			// Give daemon time to start.
+			sleep(1);
+		}
 	}
 
 	if ( ! this->SecopUnlocked() )
 	{
 		logg << Logger::Debug << "Secop not unlocked"<<lend;
 
-		this->ws = WebServerPtr( new WebServer( std::bind(&ControlApp::Unlock,this, _1)) );
+		this->ws = WebServerPtr( new WebServer( std::bind(&ControlApp::WebCallback,this, _1)) );
 
 		this->ws->Start();
 
@@ -119,8 +124,10 @@ void ControlApp::Main()
 void ControlApp::ShutDown()
 {
 	ServiceHelper::Stop("secop");
+#if 0
 	DiskHelper::Umount("/var/opi");
 	Luks( STORAGE_PART).Close("opi");
+#endif
 	logg << Logger::Debug << "Shutting down"<< lend;
 }
 
@@ -144,14 +151,41 @@ ControlApp::~ControlApp()
 
 }
 
-void ControlApp::Unlock(string pwd)
+int ControlApp::WebCallback(Json::Value v)
 {
-	Secop s;
+	int ret = 0;
 
-	if( s.Init(pwd) && this->ws != nullptr )
+	logg << Logger::Debug << "Got call from webserver\n"<<v.toStyledString()<<lend;
+
+	if( v.isMember("cmd") )
 	{
-		this->ws->Stop();
+		string cmd = v["cmd"].asString();
+		if( cmd == "init" )
+		{
+			if( this->Unlock(v["password"].asString() ) )
+			{
+				ret = 4;
+			}
+			else
+			{
+				ret = 3;
+			}
+		}
 	}
+
+	return ret;
+}
+
+bool ControlApp::Unlock(string pwd)
+{
+	if( this->SecopUnlocked())
+	{
+		return true;
+	}
+
+	logg << Logger::Debug << "Trying to unlock secop"<<lend;
+
+	return  Secop().Init(pwd);
 }
 
 bool ControlApp::SecopUnlocked()
