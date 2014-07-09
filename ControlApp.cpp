@@ -5,6 +5,7 @@
 #include "WebServer.h"
 #include "DiskHelper.h"
 #include "ServiceHelper.h"
+#include "CryptoHelper.h"
 #include "Luks.h"
 
 #include <functional>
@@ -46,6 +47,31 @@ void ControlApp::Main()
 
 
 	logg << Logger::Debug << "Checking device: "<< STORAGE_DEV <<lend;
+
+	CryptoHelper c;
+
+	c.LoadPrivKey("privkey.bin");
+	c.LoadPubKey("pubkey.bin");
+
+
+	//c.GenerateKeys();
+
+	string msg = "Hello World!";
+	vector<byte> signature = c.SignMessage(msg);
+
+	if( c.VerifyMessage(msg, signature ) )
+	{
+		cout << "Message ok!"<<endl;
+	}
+	else
+	{
+		cout << "Message NOT oK!"<<endl;
+	}
+	cout << c.PrivKeyAsPEM() << endl;
+	cout << c.PubKeyAsPEM() << endl;
+
+	c.SavePrivKey("privkey.bin");
+	c.SavePubKey("pubkey.bin");
 #if 0
 	if( ! DiskHelper::DeviceExists( STORAGE_DEV ) )
 	{
@@ -94,6 +120,7 @@ void ControlApp::Main()
 		DiskHelper::Mount("/dev/mapper/opi","/var/opi");
 	}
 #endif
+#if 0
 	if( ! ServiceHelper::IsRunning("secop") )
 	{
 		logg << Logger::Debug << "Starting Secop server"<<lend;
@@ -119,6 +146,7 @@ void ControlApp::Main()
 		this->ws->Join();
 
 	}
+#endif
 }
 
 void ControlApp::ShutDown()
@@ -171,6 +199,18 @@ int ControlApp::WebCallback(Json::Value v)
 				ret = 3;
 			}
 		}
+		else if( cmd == "adduser" )
+		{
+
+			if( this->AddUser(v["username"].asString(), v["displayname"].asString(), v["password"].asString() ) )
+			{
+				ret = 5;
+			}
+			else
+			{
+				ret = 4;
+			}
+		}
 	}
 
 	return ret;
@@ -186,6 +226,21 @@ bool ControlApp::Unlock(string pwd)
 	logg << Logger::Debug << "Trying to unlock secop"<<lend;
 
 	return  Secop().Init(pwd);
+}
+
+bool ControlApp::AddUser(string user, string display, string password)
+{
+	logg << "Add user "<<user<<" "<< display<< " " << password << lend;
+
+	if(! this->SecopUnlocked() )
+	{
+		return false;
+	}
+
+	Secop s;
+	s.SockAuth();
+
+	return s.CreateUser(user, password);
 }
 
 bool ControlApp::SecopUnlocked()

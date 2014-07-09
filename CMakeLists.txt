@@ -8,6 +8,8 @@ pkg_check_modules ( LIBSSL REQUIRED libssl )
 pkg_check_modules ( LIBUDEV REQUIRED libudev )
 pkg_check_modules ( LIBCRYPTSETUP REQUIRED libcryptsetup )
 pkg_check_modules ( LIBPARTED REQUIRED libparted>=2.3 )
+pkg_check_modules ( LIBCURL REQUIRED libcurl )
+pkg_check_modules ( LIBCRYPTO++ REQUIRED libcrypto++>=5.6.1 )
 
 set (OPI_CONTROL_VERSION_MAJOR 1)
 set (OPI_CONTROL_VERSION_MINOR 0)
@@ -51,6 +53,8 @@ target_link_libraries( ${PROJECT_NAME}
 	${LIBUDEV_LDFLAGS}
 	${LIBCRYPTSETUP_LDFLAGS}
 	${LIBPARTED_LDFLAGS}
+	${LIBCURL_LDFLAGS}
+	${LIBCRYPTO++_LDFLAGS}
 	)
 
 install( TARGETS opi-control DESTINATION sbin )

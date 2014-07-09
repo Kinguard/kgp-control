@@ -29,6 +29,7 @@ using namespace std;
 
 std::map<std::pair<std::string,std::string>, std::function<int(mg_connection *)> > WebServer::routes;
 std::function<int(Json::Value)> WebServer::callback;
+int WebServer::state;
 
 WebServer::WebServer(std::function<int(Json::Value)> cb):
 	Utils::Thread(false),
@@ -36,7 +37,7 @@ WebServer::WebServer(std::function<int(Json::Value)> cb):
 	server(NULL)
 {
 	WebServer::callback = cb;
-
+	WebServer::state = 3;
 	routes[std::make_pair("/configure","POST")] = WebServer::handle_configure;
 	routes[std::make_pair("/init","POST")] = WebServer::handle_configure;
 	routes[std::make_pair("/status","GET")] = WebServer::handle_status;
@@ -122,14 +123,69 @@ int WebServer::handle_configure(mg_connection *conn)
 int WebServer::handle_status(mg_connection *conn)
 {
 	mg_send_header( conn, "Content-Type", "application/json");
-	mg_printf_data(conn, "{\"status\":3}");
+	mg_printf_data( conn, "{\"status\":%d}", WebServer::state );
 	return MG_TRUE;
+}
+
+static bool validate_user(const Json::Value& v)
+{
+
+	if( ! v.isMember("username") || !v["username"].isString() )
+	{
+		return false;
+	}
+
+	if( ! v.isMember("displayname") || !v["displayname"].isString() )
+	{
+		return false;
+	}
+
+	if( ! v.isMember("password") || !v["password"].isString() )
+	{
+		return false;
+	}
+
+	return true;
 }
 
 int WebServer::handle_user(mg_connection *conn)
 {
-	mg_send_header( conn, "Content-Type", "application/json");
-	mg_printf_data(conn, "{\"status\":5}");
+	logg << Logger::Debug << "Got request for adduser"<<lend;
+
+	string postdata(conn->content, conn->content_len);
+
+	Json::Value req;
+
+	if( ! Json::Reader().parse(postdata, req) )
+	{
+		logg << Logger::Debug << "Failed to parse input"<<lend;
+		mg_printf_data( conn, "Unable to parse input");
+		mg_send_status(conn, 400);
+
+		return MG_TRUE;
+	}
+
+	if( validate_user(req) )
+	{
+		int ret;
+		if( WebServer::callback != nullptr ){
+			Json::Value cmd;
+			cmd["cmd"]="adduser";
+			cmd["username"]=req["username"];
+			cmd["displayname"]=req["displayname"];
+			cmd["password"]=req["password"];
+			ret = WebServer::callback( cmd );
+		}
+		mg_send_header( conn, "Content-Type", "application/json");
+		mg_printf_data( conn, "{\"status\":%d}",ret);
+	}
+	else
+	{
+		logg << Logger::Debug << "Request for add user had invalid arguments"<<lend;
+		mg_printf_data( conn, "Invalid argument!");
+		mg_send_status(conn, 400);
+	}
+
 	return MG_TRUE;
 }
 

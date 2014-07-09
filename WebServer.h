@@ -32,6 +32,7 @@ private:
 	static int ev_handler(struct mg_connection *conn, enum mg_event ev);
 	static 	std::map<std::pair<std::string,std::string>, std::function<int(mg_connection *)> > routes;
 	static std::function<int(Json::Value)> callback;
+	static int state;
 	bool doRun;
 	struct mg_server *server;
 };

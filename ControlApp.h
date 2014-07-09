@@ -3,8 +3,6 @@
 
 #include <libutils/Application.h>
 
-class ControlApp;
-
 #include "WebServer.h"
 
 class ControlApp : public Utils::DaemonApplication
@@ -24,6 +22,7 @@ private:
 	int state;
 	int WebCallback(Json::Value v);
 	bool Unlock(std::string pwd);
+	bool AddUser(std::string user, std::string display, std::string password);
 	bool SecopUnlocked();
 	WebServerPtr ws;
 };
