@@ -36,6 +36,7 @@ public:
 	bool SockAuth();
 	bool PlainAuth(const string& user, const string& pwd);
 
+	// User commands
 	bool CreateUser(const string& user, const string& pwd);
 	bool RemoveUser(const string& user);
 	vector<string> GetUsers();
@@ -56,6 +57,21 @@ public:
 	bool RemoveIdentifier(const string& user, const string& service, const map<string,string>& identifier);
 
 	list<map<string,string>> GetIdentifiers(const string& user, const string& service);
+
+	// Appid / system commands
+	bool AppAddID(const string& appid);
+	vector<string> AppGetIDs();
+	bool AppRemoveID(const string& appid);
+
+	bool AppAddIdentifier(const string& appid, const map<string,string>& identifier);
+	list<map<string,string>> AppGetIdentifiers(const string& appid);
+	bool AppRemoveIdentifier(const string& appid, const map<string,string>& identifier);
+
+	bool AppAddACL(const string& appid, const string& acl);
+	vector<string> AppGetACL(const string& appid);
+	bool AppRemoveACL(const string& appid, const string& acl);
+	bool AppHasACL(const string& appid, const string& acl);
+
 
 	virtual ~Secop();
 

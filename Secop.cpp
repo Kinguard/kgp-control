@@ -291,6 +291,178 @@ list<map<string,string>> Secop::GetIdentifiers(const string& user, const string&
 	return ret;
 }
 
+bool Secop::AppAddID(const string &appid)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]		= "createappid";
+	cmd["appid"]	= appid;
+
+	Json::Value rep = this->DoCall(cmd);
+
+	return this->CheckReply(rep);
+}
+
+vector<string> Secop::AppGetIDs()
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]= "getappids";
+
+	Json::Value rep = this->DoCall(cmd);
+
+	vector<string> users;
+	if( this->CheckReply(rep) )
+	{
+		for(auto x: rep["appids"])
+		{
+			users.push_back(x.asString() );
+		}
+	}
+	return users;
+
+}
+
+bool Secop::AppRemoveID(const string &appid)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]		= "removeappid";
+	cmd["appid"]	= appid;
+
+	Json::Value rep = this->DoCall(cmd);
+
+	return this->CheckReply(rep);
+}
+
+bool Secop::AppAddIdentifier(const string &appid, const map<string, string> &identifier)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]			= "appaddidentifier";
+	cmd["appid"]		= appid;
+
+	for(const auto& x: identifier)
+	{
+		cmd["identifier"][ x.first ] = x.second;
+	}
+
+	Json::Value rep = this->DoCall(cmd);
+
+	return this->CheckReply(rep);
+}
+
+list<map<string, string> > Secop::AppGetIdentifiers(const string &appid)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]			= "getappidentifiers";
+	cmd["appid"]		= appid;
+
+	Json::Value rep = this->DoCall(cmd);
+
+	list<map<string,string> > ret;
+	//logg << Logger::Debug << rep.toStyledString()<< lend;
+	if ( this->CheckReply(rep) )
+	{
+		for( auto x: rep["identifiers"] )
+		{
+			Json::Value::Members mems = x.getMemberNames();
+			map<string,string> id;
+			for( auto mem: mems)
+			{
+				id[ mem ] = x[mem].asString();
+			}
+			ret.push_back( id );
+		}
+	}
+
+	return ret;
+}
+
+bool Secop::AppRemoveIdentifier(const string &appid, const map<string, string> &identifier)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]			= "appremoveidentifier";
+	cmd["appid"]		= appid;
+
+	for(const auto& x: identifier)
+	{
+		cmd["identifier"][ x.first ] = x.second;
+	}
+
+	Json::Value rep = this->DoCall(cmd);
+
+	return this->CheckReply(rep);
+}
+
+bool Secop::AppAddACL(const string &appid, const string &acl)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]			= "addappacl";
+	cmd["appid"]		= appid;
+	cmd["acl"]			= acl;
+
+	Json::Value rep = this->DoCall(cmd);
+
+	return this->CheckReply(rep);
+}
+
+vector<string> Secop::AppGetACL(const string &appid)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]		= "getappacl";
+	cmd["appid"]	= appid;
+
+	Json::Value rep = this->DoCall(cmd);
+
+	vector<string> acl;
+	if( this->CheckReply(rep) )
+	{
+		for(auto x: rep["acl"])
+		{
+			acl.push_back(x.asString() );
+		}
+	}
+	return acl;
+
+}
+
+bool Secop::AppRemoveACL(const string &appid, const string &acl)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]			= "removeappacl";
+	cmd["appid"]		= appid;
+	cmd["acl"]			= acl;
+
+	Json::Value rep = this->DoCall(cmd);
+
+	return this->CheckReply(rep);
+}
+
+bool Secop::AppHasACL(const string &appid, const string &acl)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]			= "hasappacl";
+	cmd["appid"]		= appid;
+	cmd["acl"]			= acl;
+
+	Json::Value rep = this->DoCall(cmd);
+	bool ret = false;
+
+	if ( this->CheckReply(rep) )
+	{
+		ret = rep["hasacl"].asBool();
+	}
+
+	return ret;
+}
+
 Secop::~Secop()
 {
 
