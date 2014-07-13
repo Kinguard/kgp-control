@@ -15,7 +15,7 @@ public:
 	static bool isLuks(const string& device);
 
 	void Format(const string& password);
-	bool Open(const string& name, const string& password, bool discard = false );
+	bool Open(const string& name, const string& password, bool discard = true );
 	bool Active(const string& name);
 	void Close(const string name="");
 

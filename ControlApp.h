@@ -21,9 +21,13 @@ public:
 private:
 	int state;
 	int WebCallback(Json::Value v);
-	bool Unlock(std::string pwd);
+	bool Unlock(const string &pwd);
 	bool AddUser(std::string user, std::string display, std::string password);
 	bool SecopUnlocked();
+
+	bool InitializeSD(const string& password);
+	bool RegisterKeys();
+
 	WebServerPtr ws;
 };
 

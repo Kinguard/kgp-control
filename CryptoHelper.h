@@ -6,17 +6,26 @@
 
 #include <crypto++/rsa.h>
 #include <crypto++/osrng.h>
+#include <crypto++/modes.h>
 
 using namespace CryptoPP;
 using namespace std;
 
+namespace CryptoHelper {
+
+/*
+ *
+ * RSA Wrapper
+ *
+ */
+
 typedef std::shared_ptr<RSA::PublicKey> PublicKeyPtr;
 typedef std::shared_ptr<RSA::PrivateKey> PrivateKeyPtr;
 
-class CryptoHelper
+class RSAWrapper
 {
 public:
-	CryptoHelper();
+	RSAWrapper();
 
 	void GenerateKeys(unsigned int size=3072);
 
@@ -29,12 +38,20 @@ public:
 	string PubKeyAsPEM();
 	string PrivKeyAsPEM();
 
+	void LoadPubKey(const vector<byte>& key);
+	void LoadPubKeyFromDER(const vector<byte>& key);
+	void LoadPrivKey(const vector<byte>& key);
+	void LoadPrivKeyFromDer(const vector<byte>& key);
+
+	vector<byte> GetPubKey();
+	vector<byte> GetPubKeyAsDER();
+	vector<byte> GetPrivKey();
+	vector<byte> GetPrivKeyAsDER();
+
 	vector<byte> SignMessage(const string& message);
 	bool VerifyMessage(const string& message, const string &signature);
 	bool VerifyMessage(const string &message, const vector<byte>& signature);
 
-	string Base64Encode(const vector<byte> &in);
-	string Base64Encode(const string &s);
 private:
 	void ValidatePrivKey();
 	void ValidatePubKey();
@@ -43,5 +60,71 @@ private:
 	PublicKeyPtr pubkey;
 	AutoSeededRandomPool rng;
 };
+
+/*
+ *
+ *	AES Wrapper
+ *
+ */
+
+template<typename T>
+using SecVector = vector<T, AllocatorWithCleanup<T>>;
+
+template<typename T>
+using SecBasicString = basic_string<T, char_traits<T>, AllocatorWithCleanup<T>>;
+
+typedef SecBasicString<char> SecString;
+
+class AESWrapper {
+public:
+	AESWrapper();
+	AESWrapper(const SecVector<byte>& key, const vector<byte>& iv=AESWrapper::defaultiv);
+
+	void Initialize(const SecVector<byte>& key, const vector<byte>& iv=AESWrapper::defaultiv);
+
+	string Encrypt(const string& s);
+	void Encrypt(const vector<byte>& in, vector<byte>& out);
+	string Decrypt(const string& s);
+	void Decrypt(const vector<byte>& in, vector<byte>& out);
+	string Decrypt(const vector<byte>& in);
+
+	static SecVector<byte> PBKDF2(
+			const SecString& passwd, size_t keylength,
+			const vector<byte>& salt=AESWrapper::defaultsalt, unsigned int iter=5000);
+
+	static void SetDefaultIV(const vector<byte>& iv);
+	static void SetDefaultSalt(const vector<byte>& salt);
+
+
+	virtual ~AESWrapper();
+private:
+
+	SecVector<byte> key;
+	vector<byte> iv;
+
+	static vector<byte> defaultiv;
+	static vector<byte> defaultsalt;
+
+	CBC_Mode< AES >::Encryption e;
+	CBC_Mode< AES >::Decryption d;
+};
+
+
+/*
+ *
+ * String tools
+ *
+ */
+
+string Base64Encode(const vector<byte> &in);
+string Base64Encode(const string &s);
+
+string Base64DecodeToString(const string& s);
+vector<byte> Base64Decode( const string& data);
+void Base64Decode(const string& s, vector<byte>& out);
+void Base64Decode(const string& s, SecVector<byte>& out);
+
+
+}
 
 #endif // CRYPTOHELPER_H

@@ -339,7 +339,7 @@ bool Secop::AppAddIdentifier(const string &appid, const map<string, string> &ide
 {
 	Json::Value cmd(Json::objectValue);
 
-	cmd["cmd"]			= "appaddidentifier";
+	cmd["cmd"]			= "addappidentifier";
 	cmd["appid"]		= appid;
 
 	for(const auto& x: identifier)

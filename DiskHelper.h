@@ -21,9 +21,11 @@ void PartitionDevice(const string& device);
 
 void FormatPartition(const string& device, const string& label );
 
-void Mount(const string& device, const string& mountpoint);
+void Mount(const string& device, const string& mountpoint, bool noatime=true, bool discard=true);
 
 void Umount(const string& device);
+
+void SyncPaths(const string& src, const string& dst);
 
 }
 

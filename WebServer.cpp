@@ -12,7 +12,7 @@
 #define DOCUMENT_ROOT	"/usr/share/opi-control/web"
 #define SSL_CERT_PATH	"/etc/ssl/certs/opi.pem"
 #define SSL_KEY_PATH	"/etc/ssl/private/opi.key"
-#define LISTENING_PORT	"4443"
+#define LISTENING_PORT	"443"
 
 #else
 
@@ -20,7 +20,7 @@
 #define SSL_CERT_PATH	"certificate.pem"
 #define SSL_KEY_PATH	"priv_key.pem"
 
-#define LISTENING_PORT	"8080"
+#define LISTENING_PORT	"443"
 
 #endif
 
@@ -31,15 +31,15 @@ std::map<std::pair<std::string,std::string>, std::function<int(mg_connection *)>
 std::function<int(Json::Value)> WebServer::callback;
 int WebServer::state;
 
-WebServer::WebServer(std::function<int(Json::Value)> cb):
+WebServer::WebServer(int initial_state, std::function<int(Json::Value)> cb):
 	Utils::Thread(false),
 	doRun(true),
 	server(NULL)
 {
 	WebServer::callback = cb;
-	WebServer::state = 3;
-	routes[std::make_pair("/configure","POST")] = WebServer::handle_configure;
-	routes[std::make_pair("/init","POST")] = WebServer::handle_configure;
+	WebServer::state = initial_state;
+	routes[std::make_pair("/configure","POST")] = WebServer::handle_init;
+	routes[std::make_pair("/init","POST")] = WebServer::handle_init;
 	routes[std::make_pair("/status","GET")] = WebServer::handle_status;
 	routes[std::make_pair("/user","POST")] = WebServer::handle_user;
 
@@ -59,6 +59,10 @@ void WebServer::PreRun()
 	mg_set_option(this->server, "ssl_private_key",SSL_KEY_PATH);
 
 	mg_set_option(this->server, "listening_port",LISTENING_PORT);
+
+#if 0
+	mg_set_option( this->server, "access_log_file", "mg_logfile.txt");
+#endif
 }
 
 void WebServer::Run()
@@ -81,22 +85,17 @@ WebServer::~WebServer()
 
 }
 
-int WebServer::handle_configure(mg_connection *conn)
+int WebServer::handle_init(mg_connection *conn)
 {
 	char buf[513];
-	int ret=0;
 
 	logg << Logger::Debug << "Got request for init"<<lend;
 
-	string postdata(conn->content, conn->content_len);
-
 	Json::Value req;
 
-	if( ! Json::Reader().parse(postdata, req) )
+	if( ! WebServer::parse_json(conn, req) )
 	{
-		mg_printf_data( conn, "Unable to parse input");
-		mg_send_status(conn, 400);
-
+		// True in the sense that we handled the req.
 		return MG_TRUE;
 	}
 
@@ -106,10 +105,10 @@ int WebServer::handle_configure(mg_connection *conn)
 			Json::Value cmd;
 			cmd["cmd"]="init";
 			cmd["password"]=req["masterpassword"];
-			ret = WebServer::callback( cmd );
+			WebServer::state = WebServer::callback( cmd );
 		}
 		mg_send_header( conn, "Content-Type", "application/json");
-		mg_printf_data( conn, "{\"status\":%d}",ret);
+		mg_printf_data( conn, "{\"status\":%d}",WebServer::state);
 	}
 	else
 	{
@@ -152,32 +151,26 @@ int WebServer::handle_user(mg_connection *conn)
 {
 	logg << Logger::Debug << "Got request for adduser"<<lend;
 
-	string postdata(conn->content, conn->content_len);
-
 	Json::Value req;
 
-	if( ! Json::Reader().parse(postdata, req) )
+	if( ! WebServer::parse_json(conn, req) )
 	{
-		logg << Logger::Debug << "Failed to parse input"<<lend;
-		mg_printf_data( conn, "Unable to parse input");
-		mg_send_status(conn, 400);
-
+		// True in the sense that we handled the req.
 		return MG_TRUE;
 	}
 
 	if( validate_user(req) )
 	{
-		int ret;
 		if( WebServer::callback != nullptr ){
 			Json::Value cmd;
 			cmd["cmd"]="adduser";
 			cmd["username"]=req["username"];
 			cmd["displayname"]=req["displayname"];
 			cmd["password"]=req["password"];
-			ret = WebServer::callback( cmd );
+			WebServer::state = WebServer::callback( cmd );
 		}
 		mg_send_header( conn, "Content-Type", "application/json");
-		mg_printf_data( conn, "{\"status\":%d}",ret);
+		mg_printf_data( conn, "{\"status\":%d}",WebServer::state);
 	}
 	else
 	{
@@ -214,4 +207,20 @@ int WebServer::ev_handler(mg_connection *conn, mg_event ev)
 
 	return result;
 
+}
+
+bool WebServer::parse_json(mg_connection *conn, Json::Value &val)
+{
+	string postdata(conn->content, conn->content_len);
+
+	if( ! Json::Reader().parse(postdata, val) )
+	{
+		logg << Logger::Debug << "Failed to parse input"<<lend;
+		mg_printf_data( conn, "Unable to parse input");
+		mg_send_status(conn, 400);
+
+		return false;
+	}
+
+	return true;
 }

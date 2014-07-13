@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <iostream>
+#include <sstream>
 #include <map>
 #include <string>
 
@@ -118,11 +119,26 @@ void FormatPartition(const string& device, const string& label )
 
 }
 
-void Mount(const string& device, const string& mountpoint)
+void Mount(const string& device, const string& mountpoint, bool noatime, bool discard)
 {
-	string cmd = "/bin/mount -text4 "+device+" "+mountpoint;
+	stringstream ss;
+	ss << "/bin/mount -text4 ";
+	if( noatime && discard )
+	{
+		ss << "-o noatime,discard ";
+	}
+	else if( noatime )
+	{
+		ss << "-o noatime ";
+	}
+	else if( discard )
+	{
+		ss << "-o discard ";
+	}
 
-	if( do_call( cmd.c_str() ) != 0 )
+	ss << device << " " << mountpoint;
+
+	if( do_call( ss.str().c_str() ) != 0 )
 	{
 		throw Utils::ErrnoException("Failed to mount "+device+" on "+mountpoint );
 	}
@@ -167,6 +183,17 @@ string IsMounted(const string &device)
 	}
 
 	return tab.find(device)==tab.end()?"":tab[device];
+}
+
+void SyncPaths(const string &src, const string &dst)
+{
+	string cmd = "/usr/bin/rsync -a "+src+" "+dst;
+
+	if( do_call( cmd.c_str() ) != 0 )
+	{
+		throw Utils::ErrnoException("Failed sync "+src+" with "+dst );
+	}
+
 }
 
 }
