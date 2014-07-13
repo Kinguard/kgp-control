@@ -572,6 +572,8 @@ int ns_set_ssl_cert(struct ns_server *server, const char *cert) {
 	  }
 	}
 
+	SSL_CTX_set_mode( server->ssl_ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER );
+
   if ( SSL_CTX_use_certificate_file(server->ssl_ctx, cert, SSL_FILETYPE_PEM) == 1 )
   {
 	  return 0;
