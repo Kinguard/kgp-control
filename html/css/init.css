@@ -1,0 +1,43 @@
+#login-bg {
+	overflow : auto;
+}
+#login {
+	width : 400px;
+	margin-left : -200px;
+	top : 40%;
+}
+form label {
+	width : 200px;
+	display : block;
+}
+form p {
+	position : relative;
+}
+.lowercase {
+	text-transform : lowercase;
+}
+.strength-meter, .form-error {
+	width : 125px;
+	height : 24px;
+	background : none;
+	position : absolute;
+	display : block !important;
+	text-align : center;
+	font-size : 10px;
+	font-weight : bold;
+	top : 29px;
+	right : 1px;
+	
+}
+.form-error {
+	top : 20px;
+	right : 3px;
+	text-align : right;
+	width : 100%;
+}
+
+#validation_error {
+	background : rgb(127,0,0,0.8);
+	color : red;
+	text-align : center;
+}

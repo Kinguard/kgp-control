@@ -5,4 +5,6 @@ debian/opi-control/
 debian/opi-control.substvars
 debian/opi-control.*.debhelper
 debian/opi-control.debhelper.log
-html
+html/.*
+*~
+ControlApp.cpp.pa

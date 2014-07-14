@@ -1,12 +1,368 @@
+
 <!doctype html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Test OPI</title>
+  <title></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+<!--
+    <link rel="stylesheet" href="https://localhost/css/app.css">
+    <script src="https://localhost/js/jquery.min.js"></script>
+    <script src="https://localhost/js/form-validator/jquery.form-validator.min.js"></script>
+    
+-->
+    <link rel="stylesheet" href="css/app.css">
+    <link rel="stylesheet" href="css/init.css">
+    <script src="js/jquery.min.js"></script>
+    <script src="js/form-validator/jquery.form-validator.min.js"></script>
+
 </head>
-<body>
-<form method="post" action="/configure">
-	Password: <input type="password" name="password" size="20"/><input type="submit" value="Enter"/>
-</form>
+<body class="claro" id="theBody">
+
+<div id="login-bg">
+<section id="login">
+	<div id="nav" class="hidden">
+	<button type="button" class="navbutton" opi-page="1" id="b1" title="">1</button>
+	<button type="button" class="navbutton" opi-page="2" id="b2" title="">2</button>
+	<button type="button" class="navbutton" opi-page="3" id="b3" title="">3</button>
+	<button type="button" class="navbutton" opi-page="4" id="b4" title="">4</button>
+	<button type="button" class="navbutton" opi-page="5" id="b5" title="">5</button>
+	<button type="button" class="navbutton" opi-page="6" id="b6" title="">6</button>
+	<button type="button" class="navbutton" opi-page="7" id="b7" title="">7</button>
+	</div>
+	<div id="page_error" class="page hidden">
+	<h1>Error - Unable to retrieve status</h1>
+	<p>OPI replied with an unknown error</p>
+	</div>
+	
+	<div id="page_sderror" class="page hidden">
+	<h1>Error - No SD card detected</h1>
+	<p>Please insert SD card and restart OPI</p>
+	</div>
+
+	<div id="page_initprogress" class="page hidden">
+	<h1>Initializing OPI</h1>
+	<p>Please have patiance, initializing may a while</p>
+	</div>
+	
+	<div id="page_password" class="page hidden">
+		<h1>Select master password</h1>
+		<form id="pwdform">
+			<div id="div_unit_id">
+				<p class="form-group">
+				<label for 'unit_id'>OPI activation code</label>
+				<input
+					type ="text"
+					id ="unit_id"
+					name ="unit_id"
+					data-validation="custom"
+					data-validation-regexp= '[\w\d\-]{36}'
+				/> 
+				</p>
+			</div>
+			<div>					
+				<p class="form-group">
+				<label for 'masterpassword_confirmation'>Password</label>
+				<input
+					type="password" 
+					name="masterpassword_confirmation"
+					data-validation="required" 
+					data-validation-strength="1"
+				/>
+				</p>
+			</div>
+			<div>	
+				<p class="form-group">
+				<label for 'masterpassword'>Confirm Password</label>
+				<input 
+					type="password" 
+					name="masterpassword"
+					data-validation="confirmation"
+					data-validation="required"
+					data-validation-error-msg="Passwords do not match"
+				/>
+				</p>
+			</div>
+			<div>
+				<button 
+					type="submit" 
+					id="btnPwd" 
+					href="/init">
+				Continue
+				</button>
+			</div>
+		</form>
+	</div>
+	
+	
+	
+	<div id="page_user" class="page hidden">
+		<h1>Add first user</h1>
+		<form id="userform">
+			<div>
+				<p class="form-group">
+				<label for 'username'>Username</label>
+				<input type="text" 	id="username"
+					name="username"
+					title="Username"
+					data-validation="required"
+					class="lowercase"
+					data-validation-error-msg="Missing 'username'"
+					/>
+				</p>
+			</div>
+			<div>	
+				<p class="form-group">
+				<label for 'displayname'>Real name</label>
+				<input type="text"
+					name="displayname"
+					title="Displayname"
+					data-validation="required"
+					data-validation-error-msg="Missing 'Real name'"
+					/>
+				</p>
+			</div>
+			<div>	
+				<p class="form-group">
+				<label for 'password'>Password</label>
+				<input type="password"
+					name="password_confirmation"
+					data-validation="required"
+					data-validation-strength="1"
+					data-validation-error-msg=" "
+					/>
+				</p>
+			</div>
+			<div>	
+				<p class="form-group">
+				<label for 'password'>Confirm password</label>
+				<input type="password"
+					name="password"
+					data-validation="confirmation"
+					data-validation="required"
+					data-validation-error-msg="Passwords do not match"
+				/>
+				</p>
+			</div>
+			<div>
+				<button 
+					type="submit" 
+					id="btnUser"
+					href="/user" >
+				Continue</button>
+			</div>
+		</form>
+	</div>
+	
+	<div id="page_opiname" class="page hidden">
+		<h1>Select OPI name</h1>
+		<form id="opinameform">
+			<div>
+				<p class="form-group">
+				<label for "opiname">OPI name</label>
+				<input 
+					type="text" 	
+					id="opiname"
+					name="opiname"
+					title="OPI name"
+					data-validation="required"
+					data-validation="alphanumeric" data-validation-allowing="-_"
+					class="lowercase"
+					data-validation-error-msg="OPI name is required during setup"
+				/>
+				<span id="opi_namestate" class="help-block form-error"></span>
+				</p>
+				<div>
+					<button 
+						type="submit"
+						id="btnOpiname"
+						href="/opiname"
+					>
+					Continue</button>
+				</div>
+			</div>
+		</form>
+	</div>
+	
+	<div id="page_unlockpassword" class="page hidden">
+		<h1>Enter master password</h1>
+		<form id="masterpwdform">
+				<div>
+					<p class="form-group">
+					<label for "password">Password</label>
+					<input type="password"
+						 data-validation="required"
+					>
+					</p>
+				</div>
+				<div>
+					<button 
+						type="submit"
+						id="btnPwdunlock">
+					Continue</button>
+				</div>
+		</form>
+	</div>
+	
+	<div id="validation_error"></div>
+	
+	
+	<div id="page_postinit" class="page hidden">
+	<h1>OPI unlocked</h1>
+	<p>Waiting for normal operation</p>
+	</div>
+
+
+</section>
+</div>
+
+
 </body>
+<script>
+
+function getQueryVariable(variable)
+{
+       var query = window.location.search.substring(1);
+       var vars = query.split("&");
+       for (var i=0;i<vars.length;i++) {
+               var pair = vars[i].split("=");
+               if(pair[0] == variable){return pair[1];}
+       }
+       return(false);
+}
+
+
+function setState(state) {
+	var pages = [
+		"page_error", 
+		"page_sderror", 
+		"page_password",
+		"page_user",
+		"page_opiname",
+		"page_unlockpassword",
+		"page_postinit",
+		"page_initprogress"];
+	
+	if( state < 1 || state > pages.length)
+	{
+		console.log("Unknown state! "+state);
+		state = 1;
+	}
+	
+	for( i=1; i <= pages.length; ++i)
+	{
+		if(i==state) {
+			console.log("Show " + pages[i-1]);
+			$("#"+pages[i-1]).removeClass("hidden");
+			$("#"+pages[i-1]).find("input:first").focus();
+		} else {
+			console.log("Hide " + i);
+			$("#"+pages[i-1]).addClass("hidden");
+		}
+	} 
+}
+
+/*
+var opiname_check = false;
+$("#opiname").keyup( function() {
+	if(opiname_check) opiname_check.abort(); // abort any ongoing checks 
+	opiname_check = $.ajax({
+		url : "/opiname.html",
+		data : JSON.stringify({ opiname : $("#opiname").val()}),
+		contentType : "application/json",
+		type : "POST",
+	}).done(function(data) {
+		if(data.status) {
+			console.log("Name available");
+		} else {
+			$("#opi_namestate").text("Name not available");
+			console.log("Name not available");
+		}
+	});	
+});
+*/
+
+$(document).ready( function() {
+	var unit_id;
+	$("input[type='text']").addClass("form-control");
+	$("input[type='password']").addClass("form-control");
+	$("button").addClass("btn").addClass("btn-primary").addClass("fullwidth");
+	console.log("page loaded");
+	unit_id = getQueryVariable('unit_id');
+	console.log("UNIT_ID:" + unit_id);
+	if(unit_id) {
+		console.log("Testing");
+		var re = new RegExp(/[\w\d\-]{36}/);
+		if(re.test(unit_id)) {
+			console.log("Got valid formatted unit_id");
+			$("#unit_id").val(unit_id);
+			$("#div_unit_id").addClass("hidden");
+		}
+	}
+	 
+	$.validate( {
+		modules : 'security',
+		onModulesLoaded : function() {
+		    var optionalConfig = {
+		      fontSize: '10px',
+		      padding: '0px',
+		      bad : 'WEAK PASSWORD',
+		      weak : 'WEAK PASSWORD',
+		      good : 'FAIR PASSWORD',
+		      strong : 'STRONG PASSWORD',
+		    };
+		    $('input[name="masterpassword_confirmation"]').displayPasswordStrength(optionalConfig);
+		    $('input[name="password_confirmation"]').displayPasswordStrength(optionalConfig);
+		},
+		onSuccess : function($form) {
+			url = $form.find("button[type='submit']").attr('href');
+			if(url == "/init") {
+				// trying to init, show init info to user
+				setState(8);
+			}
+			  // collect the form data while iterating over the inputs
+			  formdata = $form.find("input");
+			  var data = {};
+			  for (var i = 0, ii = formdata.length; i < ii; ++i) {
+			    var input = formdata[i];
+			    console.log("Input: " + input);
+			    if (input.name) {
+			      data[input.name] = input.value;
+			    }
+			  }
+			  console.log(data);
+			$.ajax({
+				  type: "POST",
+				  url: url,
+				  contentType : "application/json",
+				  data: JSON.stringify(data),
+				})
+				.done(function( result ) {
+					console.log(result);
+					setState(result.status);	
+				})
+				.fail(function() {
+					setState(1);
+				});
+			return false;
+		},
+		onError : function($form) {
+			console.log("Failed");
+			return false;
+		}
+
+	});
+	
+	$.get("/status",function(data) {
+		console.log(data);
+		setState(data.status);
+	})
+	.fail(function() {
+		setState(1);	
+		console.log("request failed");
+	});
+	
+});
+</script>
 </html>
