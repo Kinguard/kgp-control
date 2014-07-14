@@ -1,6 +1,7 @@
 #include "WebServer.h"
 #include "Config.h"
 #include "mongoose.h"
+#include "DnsServer.h"
 
 #include <libutils/Logger.h>
 
@@ -42,6 +43,7 @@ WebServer::WebServer(int initial_state, std::function<int(Json::Value)> cb):
 	routes[std::make_pair("/init","POST")] = WebServer::handle_init;
 	routes[std::make_pair("/status","GET")] = WebServer::handle_status;
 	routes[std::make_pair("/user","POST")] = WebServer::handle_user;
+	routes[std::make_pair("/opiname","POST")] = WebServer::handle_checkname;
 
 }
 
@@ -85,6 +87,22 @@ WebServer::~WebServer()
 
 }
 
+static bool validate_initdata(const Json::Value& v)
+{
+	if( ! v.isMember("masterpassword") || !v["masterpassword"].isString() )
+	{
+		return false;
+	}
+
+	if( ! v.isMember("unit_id") || !v["unit_id"].isString() )
+	{
+		return false;
+	}
+
+
+	return true;
+}
+
 int WebServer::handle_init(mg_connection *conn)
 {
 	char buf[513];
@@ -99,12 +117,13 @@ int WebServer::handle_init(mg_connection *conn)
 		return MG_TRUE;
 	}
 
-	if( req.isMember("masterpassword") )
+	if(  validate_initdata( req ) )
 	{
 		if( WebServer::callback != nullptr ){
 			Json::Value cmd;
 			cmd["cmd"]="init";
 			cmd["password"]=req["masterpassword"];
+			cmd["unit_id"] = req["unit_id"];
 			WebServer::state = WebServer::callback( cmd );
 		}
 		mg_send_header( conn, "Content-Type", "application/json");
@@ -179,6 +198,48 @@ int WebServer::handle_user(mg_connection *conn)
 		mg_send_status(conn, 400);
 	}
 
+	return MG_TRUE;
+}
+
+int WebServer::handle_checkname(mg_connection *conn)
+{
+	logg << Logger::Debug << "Got request for checkname"<<lend;
+
+	Json::Value req;
+
+	if( ! WebServer::parse_json(conn, req) )
+	{
+		// True in the sense that we handled the req.
+		return MG_TRUE;
+	}
+
+	if( req.isMember("opiname") && req["opiname"].isString() )
+	{
+		DnsServer dns;
+		int result_code;
+		Json::Value ret;
+		tie(result_code, ret) = dns.CheckOPIName(req["opiname"].asString() );
+
+		if( result_code == 200 || result_code == 403 )
+		{
+
+			mg_send_header( conn, "Content-Type", "application/json");
+			mg_printf_data( conn, "{\"available\":%d}", result_code==200?1:0);
+		}
+		else
+		{
+			logg << Logger::Debug << "Request for dns check name failed"<<lend;
+			mg_printf_data( conn, "Operation failed");
+			mg_send_status(conn, 502);
+
+		}
+	}
+	else
+	{
+		logg << Logger::Debug << "Request for add user had invalid arguments"<<lend;
+		mg_printf_data( conn, "Invalid argument!");
+		mg_send_status(conn, 400);
+	}
 	return MG_TRUE;
 }
 

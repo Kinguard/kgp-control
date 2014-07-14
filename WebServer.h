@@ -28,6 +28,7 @@ private:
 	static int handle_init(struct mg_connection *conn);
 	static int handle_status(struct mg_connection *conn);
 	static int handle_user(struct mg_connection *conn);
+	static int handle_checkname(struct mg_connection *conn);
 
 	static int ev_handler(struct mg_connection *conn, enum mg_event ev);
 	static bool parse_json(struct mg_connection *conn, Json::Value& val);

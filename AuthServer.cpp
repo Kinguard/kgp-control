@@ -6,15 +6,8 @@ using namespace std;
 using namespace CryptoHelper;
 
 
-AuthServer::AuthServer(const string &unit_id, const string &host): host( host ), unit_id(unit_id)
+AuthServer::AuthServer(const string &unit_id, const string &host): HttpClient( host ), unit_id(unit_id)
 {
-	curl_global_init(CURL_GLOBAL_DEFAULT);
-
-	this->curl = curl_easy_init();
-	if( ! this->curl )
-	{
-		throw runtime_error("Unable to init Curl");
-	}
 }
 
 tuple<int, string> AuthServer::GetChallenge()
@@ -112,104 +105,4 @@ void AuthServer::GetAuth(const string& unit_id)
 
 AuthServer::~AuthServer()
 {
-	curl_easy_cleanup( this->curl );
-	curl_global_cleanup();
-}
-
-void AuthServer::CurlPre()
-{
-	curl_easy_reset( this->curl );
-	this->body.str("");
-
-	//TODO: Setup to use our CA and verify host, setting CURLOPT_CAPATH
-	curl_easy_setopt(this->curl, CURLOPT_SSL_VERIFYPEER, 0L);
-	curl_easy_setopt(this->curl, CURLOPT_SSL_VERIFYHOST, 0L);
-
-	curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, AuthServer::WriteCallback );
-	curl_easy_setopt(this->curl, CURLOPT_WRITEDATA, (void *)this);
-
-}
-
-string AuthServer::DoGet(string path, map<string, string> data)
-{
-
-	this->CurlPre();
-
-	string url = this->host+path+"?"+this->MakeFormData(data);
-	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-
-	return this->CurlPerform();
-}
-
-string AuthServer::DoPost(string path, map<string, string> data)
-{
-	this->CurlPre();
-
-	string url = this->host+path;
-	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-
-	string poststring = this->MakeFormData(data);
-
-	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, poststring.c_str() );
-
-	return this->CurlPerform();
-}
-
-string AuthServer::CurlPerform()
-{
-	CURLcode res = curl_easy_perform(curl);
-
-	if(res != CURLE_OK)
-	{
-		throw runtime_error( curl_easy_strerror(res) );
-	}
-
-	res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE ,  &this->result_code);
-	if(res != CURLE_OK)
-	{
-		throw runtime_error( curl_easy_strerror(res) );
-	}
-
-	return this->body.str();
-}
-
-string AuthServer::MakeFormData(map<string, string> data)
-{
-	stringstream postdata;
-	bool first = true;
-	for(auto arg: data )
-	{
-		if (!first)
-		{
-			postdata << "&";
-		}
-		else
-		{
-			first = false;
-		}
-		postdata << this->EscapeString(arg.first) << "=" << this->EscapeString(arg.second);
-	}
-
-	return postdata.str();
-}
-
-string AuthServer::EscapeString(const string &arg)
-{
-	char *tmparg = curl_easy_escape(curl, arg.c_str(), arg.length());
-	if( ! tmparg )
-	{
-		cerr << "Failed to escape url"<<endl;
-	}
-	string escarg(tmparg);
-	curl_free(tmparg);
-
-	return escarg;
-}
-
-size_t
-AuthServer::WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
-{
-	AuthServer* serv = static_cast<AuthServer*>(userp);
-	serv->body.write((char*)contents, size*nmemb);
-	return size*nmemb;
 }

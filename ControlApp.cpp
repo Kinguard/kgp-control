@@ -47,7 +47,7 @@ using namespace CryptoHelper;
 
 #define DEBUG (logg << Logger::Debug)
 
-ControlApp::ControlApp() : DaemonApplication("opi-control","/var/run","root","root"), unit_id("486d72f5-a346-4cd8-afb9-257d39b95f07")
+ControlApp::ControlApp() : DaemonApplication("opi-control","/var/run","root","root")
 {
 }
 
@@ -57,6 +57,8 @@ void ControlApp::Startup()
 	Utils::SigHandler::Instance().AddHandler(SIGTERM, std::bind(&ControlApp::SigTerm, this, _1) );
 	Utils::SigHandler::Instance().AddHandler(SIGINT, std::bind(&ControlApp::SigTerm, this, _1) );
 	Utils::SigHandler::Instance().AddHandler(SIGHUP, std::bind(&ControlApp::SigHup, this, _1) );
+
+	curl_global_init(CURL_GLOBAL_DEFAULT);
 }
 
 bool ControlApp::DoLogin(const string& pwd)
@@ -226,6 +228,7 @@ void ControlApp::ShutDown()
 	DiskHelper::Umount("/var/opi");
 	Luks( STORAGE_PART).Close("opi");
 #endif
+	curl_global_cleanup();
 	logg << Logger::Debug << "Shutting down"<< lend;
 }
 
@@ -259,7 +262,7 @@ int ControlApp::WebCallback(Json::Value v)
 		string cmd = v["cmd"].asString();
 		if( cmd == "init" )
 		{
-			if( this->Unlock(v["password"].asString() ) )
+			if( this->Unlock(v["password"].asString(), v["unit_id"].asString() ) )
 			{
 				this->state = 4;
 			}
@@ -280,18 +283,16 @@ int ControlApp::WebCallback(Json::Value v)
 				this->state = 4;
 			}
 		}
-		else if( cmd == "opiname" )
-		{
-
-		}
 	}
 
 	return this->state ;
 }
 
-bool ControlApp::Unlock(const string& pwd)
+bool ControlApp::Unlock(const string& pwd, const string& unit_id)
 {
 	bool ret = true;
+
+	this->unit_id = unit_id;
 	this->InitializeSD(pwd);
 
 	if( ! ServiceHelper::IsRunning("secop") )
@@ -326,7 +327,7 @@ bool ControlApp::Unlock(const string& pwd)
 
 	if( ret )
 	{
-		ret = this->RegisterKeys(pwd);
+		ret = this->RegisterKeys(pwd, unit_id);
 	}
 
 	if( ret)
@@ -352,7 +353,7 @@ bool ControlApp::Unlock(const string& pwd)
 	return ret;
 }
 
-bool ControlApp::AddUser(string user, string display, string password)
+bool ControlApp::AddUser(const string user, const string display, const string password)
 {
 	logg << "Add user "<<user<<" "<< display<< " " << password << lend;
 
@@ -445,7 +446,7 @@ bool ControlApp::InitializeSD(const string &password)
 	return true;
 }
 
-bool ControlApp::RegisterKeys(const string& password)
+bool ControlApp::RegisterKeys(const string& password, const string& unit_id)
 {
 	logg << Logger::Debug << "Register keys"<<lend;
 	try{
@@ -516,7 +517,7 @@ bool ControlApp::RegisterKeys(const string& password)
 
 		ControlApp::WriteBackupConfig(backuppass);
 
-		ControlApp::WriteConfig();
+		ControlApp::WriteConfig(unit_id);
 	}
 
 	catch( runtime_error& err)
@@ -527,7 +528,7 @@ bool ControlApp::RegisterKeys(const string& password)
 	return true;
 }
 
-void ControlApp::WriteConfig()
+void ControlApp::WriteConfig(const string& unit_id)
 {
 	string path = File::GetPath( SYSCONFIG_PATH );
 
@@ -543,7 +544,7 @@ void ControlApp::WriteConfig()
 	c["sys_pubkey"] = SYS_PUB_PATH;
 	c["sys_privkey"] = SYS_PRIV_PATH;
 	c["ca_path"] = "/etc/opi/op_ca.pem";
-	c["unit_id"] = "Not known";
+	c["unit_id"] = unit_id;
 
 	c.Sync(true, 0644);
 

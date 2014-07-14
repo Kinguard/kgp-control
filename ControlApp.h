@@ -25,15 +25,16 @@ private:
 
 	// Web communication
 	int WebCallback(Json::Value v);
-	bool Unlock(const string &pwd);
-	bool AddUser(std::string user, std::string display, std::string password);
+	bool Unlock(const string &pwd, const string &unit_id);
+	bool AddUser(const std::string user, const std::string display, const std::string password);
+
 	bool SecopUnlocked();
 
 	// Helper methods
 	bool InitializeSD(const string& password);
-	bool RegisterKeys(const string &password);
+	bool RegisterKeys(const string &password, const string &unit_id);
 
-	static void WriteConfig();
+	static void WriteConfig(const string &unit_id);
 	static void WriteBackupConfig(const string& password);
 
 	bool DoLogin(const string &pwd);

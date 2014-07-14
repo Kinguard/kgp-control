@@ -19,4 +19,7 @@
 #define SYS_PRIV_PATH "/var/opi/etc/syspriv.pem"
 #define SYSCONFIG_PATH "/etc/opi/sysinfo.conf"
 
+#define OP_HOST "https://auth.openproducts.com/"
+
+
 #endif

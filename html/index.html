@@ -263,17 +263,16 @@ function setState(state) {
 	} 
 }
 
-/*
 var opiname_check = false;
 $("#opiname").keyup( function() {
 	if(opiname_check) opiname_check.abort(); // abort any ongoing checks 
 	opiname_check = $.ajax({
-		url : "/opiname.html",
+		url : "/opiname",
 		data : JSON.stringify({ opiname : $("#opiname").val()}),
 		contentType : "application/json",
 		type : "POST",
 	}).done(function(data) {
-		if(data.status) {
+		if(data.available) {
 			console.log("Name available");
 		} else {
 			$("#opi_namestate").text("Name not available");
@@ -281,7 +280,6 @@ $("#opiname").keyup( function() {
 		}
 	});	
 });
-*/
 
 $(document).ready( function() {
 	var unit_id;
