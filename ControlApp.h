@@ -20,13 +20,23 @@ public:
 	virtual ~ControlApp();
 private:
 	int state;
+	string unit_id;
+	string token;
+
+	// Web communication
 	int WebCallback(Json::Value v);
 	bool Unlock(const string &pwd);
 	bool AddUser(std::string user, std::string display, std::string password);
 	bool SecopUnlocked();
 
+	// Helper methods
 	bool InitializeSD(const string& password);
-	bool RegisterKeys();
+	bool RegisterKeys(const string &password);
+
+	static void WriteConfig();
+	static void WriteBackupConfig(const string& password);
+
+	bool DoLogin(const string &pwd);
 
 	WebServerPtr ws;
 };

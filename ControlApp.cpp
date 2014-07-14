@@ -10,6 +10,7 @@
 #include "Luks.h"
 
 #include <libutils/FileUtils.h>
+#include <libutils/ConfigFile.h>
 
 #include <functional>
 
@@ -46,7 +47,7 @@ using namespace CryptoHelper;
 
 #define DEBUG (logg << Logger::Debug)
 
-ControlApp::ControlApp() : DaemonApplication("opi-control","/var/run","root","root")
+ControlApp::ControlApp() : DaemonApplication("opi-control","/var/run","root","root"), unit_id("486d72f5-a346-4cd8-afb9-257d39b95f07")
 {
 }
 
@@ -58,9 +59,9 @@ void ControlApp::Startup()
 	Utils::SigHandler::Instance().AddHandler(SIGHUP, std::bind(&ControlApp::SigHup, this, _1) );
 }
 
-void dologin()
+bool ControlApp::DoLogin(const string& pwd)
 {
-	AuthServer s("486d72f5-a346-4cd8-afb9-257d39b95f07");
+	AuthServer s( this->unit_id);
 
 	string challenge;
 	int resultcode;
@@ -70,15 +71,47 @@ void dologin()
 
 	if( resultcode != 200 )
 	{
-		cout << "Unknown reply of server "<<resultcode<<endl;
+		logg << Logger::Error << "Unknown reply of server "<<resultcode<< lend;
+		return false;
 	}
+#if 0
 	cout << "Challenge:\n"<<challenge<<endl;
 	DEBUG << "Send signed Challenge"<<lend;
-
+#endif
 	RSAWrapper c;
 
-	c.LoadPrivKey("privkey.bin");
-	c.LoadPubKey("pubkey.bin");
+	Secop secop;
+	secop.SockAuth();
+
+	list<map<string,string>> ids =  secop.AppGetIdentifiers("op-backend");
+
+	if( ids.size() == 0 )
+	{
+		logg << Logger::Error << "Failed to get keys from secop"<<lend;
+		return false;
+	}
+
+	bool found = false;
+	for(auto id : ids )
+	{
+		if( id.find("type") != id.end() )
+		{
+			if( id["type"] == "backendkeys" )
+			{
+				// Key found
+				c.LoadPrivKeyFromDER( Base64Decode( id["privkey"]) );
+				c.LoadPubKeyFromDER( Base64Decode( id["pubkey"]) );
+				found = true;
+				break;
+			}
+		}
+	}
+
+	if( ! found )
+	{
+		logg << Logger::Error << "failed to load keys from secop"<<lend;
+		return false;
+	}
 
 	string signedchallenge = Base64Encode( c.SignMessage( challenge ) );
 
@@ -87,35 +120,69 @@ void dologin()
 
 	if( resultcode != 200 && resultcode != 403 )
 	{
-		cout << "Unexpected reply from server "<< resultcode;
+		logg << Logger::Error << "Unexpected reply from server "<< resultcode <<lend;
+		return false;
 	}
-	cout << "Result "<<resultcode<<endl;
-	cout << "Got "<< rep.toStyledString()<<endl;
+
 	if( resultcode == 403 )
 	{
 		DEBUG << "Send Secret"<<lend;
 
 		// Got new challenge to encrypt with master
-		tie(resultcode, rep) = s.SendSecret(rep["challange"].asString(), Base64Encode(c.PubKeyAsPEM()) );
-		cout << "Result "<<resultcode<<endl;
-		cout << "Reply "<< rep.toStyledString()<<endl;
+		string challenge = rep["challange"].asString();
+
+		SecVector<byte> key = PBKDF2(SecString(pwd.c_str(), pwd.size() ), 32 );
+
+		//SecVector<byte> key(pwd.begin(), pwd.end() );
+		AESWrapper aes( key );
+
+		string cryptchal = Base64Encode( aes.Encrypt( challenge ) );
+
+		tie(resultcode, rep) = s.SendSecret(cryptchal, Base64Encode(c.PubKeyAsPEM()) );
+		if( resultcode != 200 )
+		{
+			cout << "Result "<<resultcode<<endl;
+			cout << "Reply "<< rep.toStyledString()<<endl;
+
+		}
+
+		DEBUG << "Send secret succeded"<<lend;
+		if( rep.isMember("token") && rep["token"].isString() )
+		{
+			this->token = rep["token"].asString();
+		}
+		else
+		{
+			logg << Logger::Error << "Missing argument in reply"<<lend;
+			return false;
+		}
+
 	}
 	else
 	{
+#if 0
 		DEBUG << "We should be authed"<<lend;
 		cout << "Result "<<resultcode<<endl;
 		cout << "Reply "<< rep.toStyledString()<<endl;
+#endif
+		if( rep.isMember("token") && rep["token"].isString() )
+		{
+			this->token = rep["token"].asString();
+		}
+		else
+		{
+			logg << Logger::Error << "Missing argument in reply"<<lend;
+			return false;
+		}
 	}
 
+	return true;
 }
 
 void ControlApp::Main()
 {
 
 	logg << Logger::Debug << "Checking device: "<< STORAGE_DEV <<lend;
-
-
-	//RSAWrapper rsa;
 
 	this->state = 3;
 
@@ -259,8 +326,29 @@ bool ControlApp::Unlock(const string& pwd)
 
 	if( ret )
 	{
-		ret = this->RegisterKeys();
+		ret = this->RegisterKeys(pwd);
 	}
+
+	if( ret)
+	{
+		for( int i=0; i<3; i++ )
+		{
+			try
+			{
+				ret = this->DoLogin(pwd);
+				if( ret )
+				{
+					break;
+				}
+			}
+			catch(runtime_error& err )
+			{
+				logg << Logger::Notice << "Failed to login to backend: "<< err.what()<<lend;
+				ret = false;
+			}
+		}
+	}
+
 	return ret;
 }
 
@@ -357,7 +445,7 @@ bool ControlApp::InitializeSD(const string &password)
 	return true;
 }
 
-bool ControlApp::RegisterKeys()
+bool ControlApp::RegisterKeys(const string& password)
 {
 	logg << Logger::Debug << "Register keys"<<lend;
 	try{
@@ -374,6 +462,23 @@ bool ControlApp::RegisterKeys()
 			RSAWrapper ob;
 			ob.GenerateKeys();
 
+			// Write to disk
+			string priv_path = File::GetPath( SYS_PRIV_PATH );
+			if( ! File::DirExists( priv_path ) )
+			{
+				File::MkPath( priv_path, 0755);
+			}
+
+			string pub_path = File::GetPath( SYS_PUB_PATH );
+			if( ! File::DirExists( pub_path ) )
+			{
+				File::MkPath( pub_path, 0755);
+			}
+
+			File::Write(SYS_PRIV_PATH, ob.PrivKeyAsPEM(), 0600 );
+			File::Write(SYS_PUB_PATH, ob.PubKeyAsPEM(), 0644 );
+
+			// Write to secop
 			map<string,string> data;
 
 			data["type"] = "backendkeys";
@@ -382,13 +487,84 @@ bool ControlApp::RegisterKeys()
 			s.AppAddIdentifier("op-backend", data);
 		}
 
-		//TODO: Fortsätt här....
+		string priv_path = File::GetPath( DNS_PRIV_PATH );
+		if( ! File::DirExists( priv_path ) )
+		{
+			File::MkPath( priv_path, 0755);
+		}
+
+		string pub_path = File::GetPath( DNS_PUB_PATH );
+		if( ! File::DirExists( pub_path ) )
+		{
+			File::MkPath( pub_path, 0755);
+		}
+
+		if( ! File::FileExists( DNS_PRIV_PATH) || ! File::FileExists( DNS_PUB_PATH ) )
+		{
+			RSAWrapper dns;
+			dns.GenerateKeys();
+
+			File::Write(DNS_PRIV_PATH, dns.PrivKeyAsPEM(), 0600 );
+			File::Write(DNS_PUB_PATH, dns.PubKeyAsPEM(), 0644 );
+		}
+
+		SecString spass(password.c_str(), password.size() );
+		SecVector<byte> key = PBKDF2( spass, 20);
+		vector<byte> ukey(key.begin(), key.end());
+
+		string  backuppass = Base64Encode( ukey );
+
+		ControlApp::WriteBackupConfig(backuppass);
+
+		ControlApp::WriteConfig();
 	}
 
 	catch( runtime_error& err)
 	{
-		logg << Logger::Notice << "Failed to register keys" << lend;
+		logg << Logger::Notice << "Failed to register keys " << err.what() << lend;
 		return false;
 	}
 	return true;
+}
+
+void ControlApp::WriteConfig()
+{
+	string path = File::GetPath( SYSCONFIG_PATH );
+
+	if( ! File::DirExists( path ) )
+	{
+		File::MkPath( path, 0755 );
+	}
+
+	ConfigFile c( SYSCONFIG_PATH );
+
+	c["dns_pubkey"] = DNS_PUB_PATH;
+	c["dns_privkey"] = DNS_PRIV_PATH;
+	c["sys_pubkey"] = SYS_PUB_PATH;
+	c["sys_privkey"] = SYS_PRIV_PATH;
+	c["ca_path"] = "/etc/opi/op_ca.pem";
+	c["unit_id"] = "Not known";
+
+	c.Sync(true, 0644);
+
+}
+
+
+void ControlApp::WriteBackupConfig(const string &password)
+{
+	string path = File::GetPath( BACKUP_PATH );
+
+	if( ! File::DirExists( path ) )
+	{
+		File::MkPath( path ,0755);
+	}
+
+	stringstream ss;
+	ss << "[s3op]\n"
+		<< "storage-url: s3op://storage.openproducts.com/\n"
+		<< "backend-login: NotUsed\n"
+		<< "backend-password: NotUsed\n"
+		<< "fs-passphrase: " << password<<endl;
+
+	File::Write(BACKUP_PATH, ss.str(), 0600 );
 }

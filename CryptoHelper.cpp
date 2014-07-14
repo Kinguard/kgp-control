@@ -255,13 +255,13 @@ void RSAWrapper::LoadPrivKey(const vector<byte> &key)
  * We actually use BER decode but never mind.
  */
 
-void RSAWrapper::LoadPrivKeyFromDer(const vector<byte> &key)
+void RSAWrapper::LoadPrivKeyFromDER(const vector<byte> &key)
 {
 	ByteQueue q;
 
 	q.Put(&key[0], key.size() );
 
-	this->pubkey = PrivateKeyPtr( new RSA::PrivateKey() );
+	this->privkey = PrivateKeyPtr( new RSA::PrivateKey() );
 
 	this->privkey->BERDecodePrivateKey( q, false, q.MaxRetrievable() );
 
@@ -293,7 +293,7 @@ void RSAWrapper::LoadPubKeyFromDER(const vector<byte> &key)
 
 	this->pubkey = PublicKeyPtr( new RSA::PublicKey() );
 
-	this->pubkey->BERDecodePublicKey( q, false, q.MaxRetrievable() );
+	this->pubkey->BERDecode( q );
 
 	this->ValidatePubKey();
 
@@ -458,19 +458,6 @@ vector<byte> AESWrapper::defaultiv = {
 	9,10,11,12,
 	13,14,15,16
 };
-;
-vector<byte> AESWrapper::defaultsalt = {
-	33, 31, 2, 238, 199, 213, 62,
-	70, 132, 179, 13, 251, 120,
-	29, 251, 69, 216, 120, 141, 19,
-	177, 102, 3, 49, 165, 5, 120,
-	159, 191, 117, 240, 125, 235,
-	75, 158, 112, 67, 172, 57, 123,
-	175, 203, 37, 94, 57, 99, 237,
-	225, 238, 122, 213, 86, 182, 181,
-	251, 192, 142, 41, 105, 163, 1,
-	132, 52, 97
-};
 
 AESWrapper::AESWrapper(const SecVector<byte>& key, const vector<byte>& iv)
 {
@@ -564,10 +551,25 @@ AESWrapper::Decrypt ( const vector<byte>& in )
 	return plain;
 }
 
+const vector<byte> defaultsalt( {
+		33, 31, 2, 238, 199, 213, 62,
+		70, 132, 179, 13, 251, 120,
+		29, 251, 69, 216, 120, 141, 19,
+		177, 102, 3, 49, 165, 5, 120,
+		159, 191, 117, 240, 125, 235,
+		75, 158, 112, 67, 172, 57, 123,
+		175, 203, 37, 94, 57, 99, 237,
+		225, 238, 122, 213, 86, 182, 181,
+		251, 192, 142, 41, 105, 163, 1,
+		132, 52, 97
+	} );
+
+
 SecVector<byte>
-AESWrapper::PBKDF2 ( const SecString& passwd, size_t keylength, const vector<byte>& salt,
+PBKDF2 (const SecString &passwd, size_t keylength, const vector<byte>& salt,
 		unsigned int iter )
 {
+
 	SecVector<byte> ret(keylength);
 
 	PKCS5_PBKDF2_HMAC<SHA512> df;
@@ -576,7 +578,8 @@ AESWrapper::PBKDF2 ( const SecString& passwd, size_t keylength, const vector<byt
 		&ret[0], ret.size(),
 		0,
 		(const byte*)passwd.c_str(), passwd.length(),
-		&salt[0],salt.size(),
+		&salt[0],
+		salt.size(),
 		iter);
 
 	return ret;
@@ -586,12 +589,6 @@ void
 AESWrapper::SetDefaultIV ( const vector<byte>& iv )
 {
 	AESWrapper::defaultiv = iv;
-}
-
-void
-AESWrapper::SetDefaultSalt ( const vector<byte>& salt )
-{
-	AESWrapper::defaultsalt = salt;
 }
 
 

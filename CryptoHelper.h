@@ -13,6 +13,16 @@ using namespace std;
 
 namespace CryptoHelper {
 
+
+template<typename T>
+using SecVector = vector<T, AllocatorWithCleanup<T>>;
+
+template<typename T>
+using SecBasicString = basic_string<T, char_traits<T>, AllocatorWithCleanup<T>>;
+
+typedef SecBasicString<char> SecString;
+
+
 /*
  *
  * RSA Wrapper
@@ -41,7 +51,7 @@ public:
 	void LoadPubKey(const vector<byte>& key);
 	void LoadPubKeyFromDER(const vector<byte>& key);
 	void LoadPrivKey(const vector<byte>& key);
-	void LoadPrivKeyFromDer(const vector<byte>& key);
+	void LoadPrivKeyFromDER(const vector<byte>& key);
 
 	vector<byte> GetPubKey();
 	vector<byte> GetPubKeyAsDER();
@@ -67,14 +77,6 @@ private:
  *
  */
 
-template<typename T>
-using SecVector = vector<T, AllocatorWithCleanup<T>>;
-
-template<typename T>
-using SecBasicString = basic_string<T, char_traits<T>, AllocatorWithCleanup<T>>;
-
-typedef SecBasicString<char> SecString;
-
 class AESWrapper {
 public:
 	AESWrapper();
@@ -88,13 +90,7 @@ public:
 	void Decrypt(const vector<byte>& in, vector<byte>& out);
 	string Decrypt(const vector<byte>& in);
 
-	static SecVector<byte> PBKDF2(
-			const SecString& passwd, size_t keylength,
-			const vector<byte>& salt=AESWrapper::defaultsalt, unsigned int iter=5000);
-
 	static void SetDefaultIV(const vector<byte>& iv);
-	static void SetDefaultSalt(const vector<byte>& salt);
-
 
 	virtual ~AESWrapper();
 private:
@@ -112,7 +108,7 @@ private:
 
 /*
  *
- * String tools
+ * Crypt tools
  *
  */
 
@@ -124,6 +120,16 @@ vector<byte> Base64Decode( const string& data);
 void Base64Decode(const string& s, vector<byte>& out);
 void Base64Decode(const string& s, SecVector<byte>& out);
 
+
+extern const vector<byte> defaultsalt;
+
+SecVector<byte> PBKDF2(const SecString& passwd, size_t keylength,
+		const vector<byte>& salt = defaultsalt, unsigned int iter=5000);
+
+#if 0
+vector<byte> PBKDF2(const string &passwd, size_t keylength,
+		const vector<byte>& salt = defaultsalt, unsigned int iter=5000);
+#endif
 
 }
 
