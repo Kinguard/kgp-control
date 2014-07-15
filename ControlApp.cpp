@@ -332,6 +332,8 @@ bool ControlApp::Unlock(const string& pwd, const string& unit_id)
 
 	if( ret)
 	{
+		// Assume that we fail and only set to true if we succeed
+		ret = false;
 		for( int i=0; i<3; i++ )
 		{
 			try
