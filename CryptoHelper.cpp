@@ -631,6 +631,23 @@ AESWrapper::~AESWrapper()
 {
 }
 
+static int do_call(const string& cmd){
+	int ret=system(cmd.c_str());
+	if(ret<0){
+					return ret;
+	}
+	return WEXITSTATUS(ret);
+}
+
+bool MakeCSR(const string &privkeypath, const string &csrpath, const string &cn, const string &company)
+{
+	stringstream cmd;
+	cmd << "/usr/bin/openssl ";
+	cmd << "req -out \""<< csrpath << "\" -key \""<<  privkeypath << "\" -new -subj '/O="<<company<<"/CN="<<cn<<"'";
+
+	return do_call( cmd.str().c_str() ) == 0;
+}
+
 
 
 }

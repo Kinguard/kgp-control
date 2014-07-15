@@ -24,7 +24,7 @@ public:
 
 	tuple<int, Json::Value> SendSecret(const string& secret, const string& pubkey);
 
-	void GetAuth(const string &unit_id);
+	tuple<int, Json::Value> GetCertificate(const string& csr, const string& token);
 
 	virtual ~AuthServer();
 private:

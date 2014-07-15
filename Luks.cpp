@@ -122,7 +122,9 @@ bool Luks::Open(const string &name, const string &password, bool discard)
 
 bool Luks::Active(const string &name)
 {
-	return crypt_status( this->cryptdevice, name.c_str() ) == CRYPT_ACTIVE;
+	crypt_status_info info = crypt_status( this->cryptdevice, name.c_str() );
+
+	return info == CRYPT_ACTIVE || info == CRYPT_BUSY;
 }
 
 void Luks::Close(const string mname)

@@ -41,6 +41,7 @@ WebServer::WebServer(int initial_state, std::function<int(Json::Value)> cb):
 	WebServer::state = initial_state;
 	routes[std::make_pair("/configure","POST")] = WebServer::handle_init;
 	routes[std::make_pair("/init","POST")] = WebServer::handle_init;
+	routes[std::make_pair("/unlock","POST")] = WebServer::handle_unlock;
 	routes[std::make_pair("/status","GET")] = WebServer::handle_status;
 	routes[std::make_pair("/user","POST")] = WebServer::handle_user;
 	routes[std::make_pair("/checkname","POST")] = WebServer::handle_checkname;
@@ -106,8 +107,6 @@ static bool validate_initdata(const Json::Value& v)
 
 int WebServer::handle_init(mg_connection *conn)
 {
-	char buf[513];
-
 	logg << Logger::Debug << "Got request for init"<<lend;
 
 	Json::Value req;
@@ -125,6 +124,38 @@ int WebServer::handle_init(mg_connection *conn)
 			cmd["cmd"]="init";
 			cmd["password"]=req["masterpassword"];
 			cmd["unit_id"] = req["unit_id"];
+			WebServer::state = WebServer::callback( cmd );
+		}
+		mg_send_header( conn, "Content-Type", "application/json");
+		mg_printf_data( conn, "{\"status\":%d}",WebServer::state);
+	}
+	else
+	{
+		mg_printf_data( conn, "Missing argument!");
+		mg_send_status(conn, 400);
+	}
+
+	return MG_TRUE;
+}
+
+int WebServer::handle_unlock(mg_connection *conn)
+{
+	logg << Logger::Debug << "Got request for unlock"<<lend;
+
+	Json::Value req;
+
+	if( ! WebServer::parse_json(conn, req) )
+	{
+		// True in the sense that we handled the req.
+		return MG_TRUE;
+	}
+
+	if( req.isMember("masterpassword") && req["masterpassword"].isString() )
+	{
+		if( WebServer::callback != nullptr ){
+			Json::Value cmd;
+			cmd["cmd"]="unlock";
+			cmd["password"]=req["masterpassword"];
 			WebServer::state = WebServer::callback( cmd );
 		}
 		mg_send_header( conn, "Content-Type", "application/json");

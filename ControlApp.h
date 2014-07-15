@@ -25,7 +25,8 @@ private:
 
 	// Web communication
 	int WebCallback(Json::Value v);
-	bool Unlock(const string &pwd, const string &unit_id);
+	bool DoUnlock(const string& pwd);
+	bool DoInit(const string &pwd, const string &unit_id);
 	bool AddUser(const std::string user, const std::string display, const std::string password);
 	bool SetDNSName( const std::string& opiname);
 	bool SecopUnlocked();
@@ -33,7 +34,7 @@ private:
 	// Helper methods
 	bool InitializeSD(const string& password);
 	bool RegisterKeys(const string &password, const string &unit_id);
-
+	bool GetCertificate(const string& opiname, const string& company="OPI");
 	static void WriteConfig(const string &unit_id);
 	static void WriteBackupConfig(const string& password);
 

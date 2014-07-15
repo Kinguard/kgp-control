@@ -15,6 +15,8 @@
 #define BACKUP_PATH "/var/opi/etc/backup_auth.conf"
 #define DNS_PUB_PATH "/etc/opi/dnspub.pem"
 #define DNS_PRIV_PATH "/etc/opi/dnspriv.pem"
+#define CSR_PATH "/etc/opi/opi.csr"
+#define CERT_PATH "/etc/opi/opi.cert"
 #define SYS_PUB_PATH "/var/opi/etc/syspub.pem"
 #define SYS_PRIV_PATH "/var/opi/etc/syspriv.pem"
 #define SYSCONFIG_PATH "/etc/opi/sysinfo.conf"

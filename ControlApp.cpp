@@ -189,6 +189,20 @@ void ControlApp::Main()
 
 	this->state = 3;
 
+	if( File::FileExists(SYSCONFIG_PATH))
+	{
+		ConfigFile c(SYSCONFIG_PATH);
+
+		string unit_id = c.ValueOrDefault("unit_id");
+
+		if( unit_id != "" )
+		{
+			this->state = 6;
+			this->unit_id = unit_id;
+		}
+
+	}
+
 	// Preconditions
 	// Secop should not be running
 	if( ServiceHelper::IsRunning("secop") )
@@ -224,8 +238,8 @@ void ControlApp::Main()
 
 void ControlApp::ShutDown()
 {
-	ServiceHelper::Stop("secop");
 #if 0
+	ServiceHelper::Stop("secop");
 	DiskHelper::Umount("/var/opi");
 	Luks( STORAGE_PART).Close("opi");
 #endif
@@ -263,7 +277,7 @@ int ControlApp::WebCallback(Json::Value v)
 		string cmd = v["cmd"].asString();
 		if( cmd == "init" )
 		{
-			if( this->Unlock(v["password"].asString(), v["unit_id"].asString() ) )
+			if( this->DoInit(v["password"].asString(), v["unit_id"].asString() ) )
 			{
 				this->state = 4;
 			}
@@ -295,17 +309,96 @@ int ControlApp::WebCallback(Json::Value v)
 				this->state = 5;
 			}
 		}
+		else if( cmd == "unlock" )
+		{
+			if( this->DoUnlock(v["password"].asString() ) )
+			{
+				this->state = 7;
+			}
+			else
+			{
+				this->state = 6;
+			}
+		}
 	}
 
 	return this->state ;
 }
 
-bool ControlApp::Unlock(const string& pwd, const string& unit_id)
+bool ControlApp::DoUnlock(const string &pwd)
+{
+	logg << Logger::Debug << "Unlock sd card"<<lend;
+
+	if( ! Luks::isLuks( OPI_MMC_PART ) )
+	{
+		return false;
+	}
+
+	logg << Logger::Notice << "LUKS volume found on "<<STORAGE_PART<< lend;
+
+	Luks l( STORAGE_PART);
+
+	if( ! l.Active("opi") )
+	{
+		logg << Logger::Debug << "Activating LUKS volume"<<lend;
+		if ( !l.Open("opi",pwd) )
+		{
+			logg << Logger::Debug << "Failed to openLUKS volume on "<<STORAGE_PART<< lend;
+			return false;
+		}
+	}
+
+	logg << Logger::Debug << "LUKS volume on "<<STORAGE_PART<< " opened"<< lend;
+
+	// Make sure device is not mounted (Should not happen)
+	if( DiskHelper::IsMounted( LUKSDEVICE ) != "" )
+	{
+		DiskHelper::Umount( LUKSDEVICE );
+	}
+
+	DiskHelper::Mount( LUKSDEVICE , MOUNTPOINT );
+
+	if( ! ServiceHelper::IsRunning("secop") )
+	{
+		logg << Logger::Debug << "Starting Secop server"<<lend;
+		if( ! ServiceHelper::Start("secop") )
+		{
+			logg << Logger::Notice << "Failed to start secop"<<lend;
+		}
+		else
+		{
+			// Give daemon time to start.
+			sleep(1);
+		}
+	}
+
+	try{
+		if( ! this->SecopUnlocked())
+		{
+			logg << Logger::Debug << "Trying to unlock secop"<<lend;
+			return Secop().Init(pwd);
+		}
+	}
+	catch(std::runtime_error err)
+	{
+		logg << Logger::Error << "Failed to unlock Secop:"<<err.what()<<lend;
+		return false;
+	}
+
+	return true;
+}
+
+bool ControlApp::DoInit(const string& pwd, const string& unit_id)
 {
 	bool ret = true;
 
 	this->unit_id = unit_id;
-	this->InitializeSD(pwd);
+
+	if ( ! this->InitializeSD(pwd) )
+	{
+		logg << Logger::Error << "Failed to unlock SD card"<<lend;
+		return false;
+	}
 
 	if( ! ServiceHelper::IsRunning("secop") )
 	{
@@ -394,7 +487,12 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 bool ControlApp::SetDNSName(const string &opiname)
 {
 	DnsServer dns;
-	return dns.UpdateDynDNS(this->unit_id, opiname);
+	if( ! dns.UpdateDynDNS(this->unit_id, opiname) )
+	{
+		return false;
+	}
+
+	return this->GetCertificate(opiname, "OPI");
 }
 
 bool ControlApp::SecopUnlocked()
@@ -553,6 +651,27 @@ bool ControlApp::RegisterKeys(const string& password, const string& unit_id)
 		logg << Logger::Notice << "Failed to register keys " << err.what() << lend;
 		return false;
 	}
+	return true;
+}
+
+bool ControlApp::GetCertificate(const string &opiname, const string &company)
+{
+	if( ! CryptoHelper::MakeCSR(DNS_PRIV_PATH, CSR_PATH, opiname+".op-i.me", company) )
+	{
+		return false;
+	}
+
+	string csr = File::GetContentAsString(CSR_PATH, true);
+
+	AuthServer s(this->unit_id);
+
+	int resultcode;
+	Json::Value ret;
+	tie(resultcode, ret) = s.GetCertificate(csr,this->token );
+
+	cout << "Resultcode: "<<resultcode<<endl;
+	cout << "Retobj\n"<<ret.toStyledString()<<endl;
+
 	return true;
 }
 

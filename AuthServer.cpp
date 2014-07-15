@@ -69,38 +69,25 @@ tuple<int, Json::Value> AuthServer::SendSecret(const string &secret, const strin
 	return tuple<int,Json::Value>(this->result_code, retobj );
 }
 
-void AuthServer::GetAuth(const string& unit_id)
+tuple<int, Json::Value> AuthServer::GetCertificate(const string &csr, const string &token)
 {
-	map<string,string> arg = {{ "unit_id", unit_id }};
+	map<string,string> postargs = {
+		{"unit_id", this->unit_id },
+		{"csr", csr }
+	};
 
-	string s_res = this->DoGet("auth.php", arg);
+	map<string,string> headers = {
+		{"token", token}
+	};
 
-	Json::Value res;
-	if( this->reader.parse(s_res, res) )
-	{
-		string chal = res["challange"].asString();
+	this->CurlSetHeaders(headers);
 
-		RSAWrapper c;
-		c.GenerateKeys();
+	Json::Value retobj = Json::objectValue;
+	string body = this->DoPost("get_cert.php", postargs);
 
-		vector<byte> signature = c.SignMessage(chal);
-		string sig = Base64Encode(signature);
+	this->reader.parse(body, retobj);
 
-		cout << sig << endl;
-
-		Json::Value data;
-		data["unit_id"] = unit_id;
-		data["signature"] = sig;
-
-		map<string,string> postargs = {
-			{"data", this->writer.write(data) }
-		};
-
-		cout << this->DoPost("auth.php", postargs)<<endl;
-		cout << this->result_code<<endl;
-
-	}
-
+	return tuple<int,Json::Value>(this->result_code, retobj );
 }
 
 AuthServer::~AuthServer()
