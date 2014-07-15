@@ -27,7 +27,7 @@ private:
 	int WebCallback(Json::Value v);
 	bool Unlock(const string &pwd, const string &unit_id);
 	bool AddUser(const std::string user, const std::string display, const std::string password);
-
+	bool SetDNSName( const std::string& opiname);
 	bool SecopUnlocked();
 
 	// Helper methods

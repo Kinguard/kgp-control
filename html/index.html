@@ -267,7 +267,7 @@ var opiname_check = false;
 $("#opiname").keyup( function() {
 	if(opiname_check) opiname_check.abort(); // abort any ongoing checks 
 	opiname_check = $.ajax({
-		url : "/opiname",
+		url : "/checkname",
 		data : JSON.stringify({ opiname : $("#opiname").val()}),
 		contentType : "application/json",
 		type : "POST",

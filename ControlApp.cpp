@@ -7,6 +7,7 @@
 #include "ServiceHelper.h"
 #include "CryptoHelper.h"
 #include "AuthServer.h"
+#include "DnsServer.h"
 #include "Luks.h"
 
 #include <libutils/FileUtils.h>
@@ -283,6 +284,17 @@ int ControlApp::WebCallback(Json::Value v)
 				this->state = 4;
 			}
 		}
+		else if( cmd == "opiname" )
+		{
+			if( this->SetDNSName(v["opiname"].asString() ) )
+			{
+				this->state = 7;
+			}
+			else
+			{
+				this->state = 5;
+			}
+		}
 	}
 
 	return this->state ;
@@ -349,6 +361,18 @@ bool ControlApp::Unlock(const string& pwd, const string& unit_id)
 		}
 	}
 
+	if( ret )
+	{
+		stringstream pk;
+		for( auto row: File::GetContent(DNS_PUB_PATH) )
+		{
+			pk << row << "\n";
+		}
+		DnsServer dns;
+		string pubkey = Base64Encode( pk.str() );
+		ret = dns.RegisterPublicKey(this->unit_id, pubkey, this->token );
+	}
+
 	return ret;
 }
 
@@ -365,6 +389,12 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 	s.SockAuth();
 
 	return s.CreateUser(user, password);
+}
+
+bool ControlApp::SetDNSName(const string &opiname)
+{
+	DnsServer dns;
+	return dns.UpdateDynDNS(this->unit_id, opiname);
 }
 
 bool ControlApp::SecopUnlocked()

@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 
 #include <libutils/Logger.h>
+#include <libutils/String.h>
 
 using namespace std;
 using namespace CryptoPP;
@@ -251,6 +252,11 @@ void RSAWrapper::LoadPrivKey(const vector<byte> &key)
 	this->priv_i = true;
 }
 
+void RSAWrapper::LoadPrivKeyFromPEM(const string &key)
+{
+	this->LoadPrivKeyFromDER( RSAWrapper::PEMToDER(key) );
+}
+
 /*
  * We actually use BER decode but never mind.
  */
@@ -283,6 +289,11 @@ void RSAWrapper::LoadPubKey(const vector<byte> &key)
 	this->ValidatePubKey();
 
 	this->pub_i = true;
+}
+
+void RSAWrapper::LoadPubKeyFromPEM(const string &key)
+{
+	this->LoadPubKeyFromDER( RSAWrapper::PEMToDER(key) );
 }
 
 void RSAWrapper::LoadPubKeyFromDER(const vector<byte> &key)
@@ -348,6 +359,30 @@ bool RSAWrapper::VerifyMessage(const string &message, const vector<byte> &signat
 										  message.length(), &signature[0], signature.size() );
 
 	return result;
+}
+
+vector<byte> RSAWrapper::PEMToDER(const string &key)
+{
+	list<string> rows = String::Split(key, "\n");
+	if( rows.size() < 3 )
+	{
+		logg << Logger::Debug << "Key\n"<<key<<lend;
+		logg << Logger::Debug << "Rows "<<rows.size()<<lend;
+		throw runtime_error("Malformed PEM key");
+	}
+
+	// Lose first and last line
+	rows.pop_back();
+	rows.pop_front();
+
+	// Merge rows again
+	stringstream ss;
+	for(auto row: rows)
+	{
+		ss << row;
+	}
+
+	return Base64Decode( ss.str() );
 }
 
 void RSAWrapper::ValidatePrivKey()

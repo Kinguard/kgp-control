@@ -49,8 +49,10 @@ public:
 	string PrivKeyAsPEM();
 
 	void LoadPubKey(const vector<byte>& key);
+	void LoadPubKeyFromPEM(const string& key);
 	void LoadPubKeyFromDER(const vector<byte>& key);
 	void LoadPrivKey(const vector<byte>& key);
+	void LoadPrivKeyFromPEM(const string& key);
 	void LoadPrivKeyFromDER(const vector<byte>& key);
 
 	vector<byte> GetPubKey();
@@ -63,6 +65,7 @@ public:
 	bool VerifyMessage(const string &message, const vector<byte>& signature);
 
 private:
+	static vector<byte> PEMToDER(const string& key);
 	void ValidatePrivKey();
 	void ValidatePubKey();
 	bool priv_i, pub_i; // Keys initialized?

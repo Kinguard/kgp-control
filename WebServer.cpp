@@ -43,7 +43,8 @@ WebServer::WebServer(int initial_state, std::function<int(Json::Value)> cb):
 	routes[std::make_pair("/init","POST")] = WebServer::handle_init;
 	routes[std::make_pair("/status","GET")] = WebServer::handle_status;
 	routes[std::make_pair("/user","POST")] = WebServer::handle_user;
-	routes[std::make_pair("/opiname","POST")] = WebServer::handle_checkname;
+	routes[std::make_pair("/checkname","POST")] = WebServer::handle_checkname;
+	routes[std::make_pair("/opiname","POST")] = WebServer::handle_selectname;
 
 }
 
@@ -241,6 +242,38 @@ int WebServer::handle_checkname(mg_connection *conn)
 		mg_send_status(conn, 400);
 	}
 	return MG_TRUE;
+}
+
+int WebServer::handle_selectname(mg_connection *conn)
+{
+	logg << Logger::Debug << "Got request for update dnsname"<<lend;
+
+	Json::Value req;
+
+	if( ! WebServer::parse_json(conn, req) )
+	{
+		// True in the sense that we handled the req.
+		return MG_TRUE;
+	}
+	if( req.isMember("opiname") && req["opiname"].isString() )
+	{
+		if( WebServer::callback != nullptr ){
+			Json::Value cmd;
+			cmd["cmd"]="opiname";
+			cmd["opiname"]=req["opiname"];
+			WebServer::state = WebServer::callback( cmd );
+		}
+		mg_send_header( conn, "Content-Type", "application/json");
+		mg_printf_data( conn, "{\"status\":%d}",WebServer::state);
+	}
+	else
+	{
+		logg << Logger::Debug << "Request for add user had invalid arguments"<<lend;
+		mg_printf_data( conn, "Invalid argument!");
+		mg_send_status(conn, 400);
+	}
+	return MG_TRUE;
+
 }
 
 int WebServer::ev_handler(mg_connection *conn, mg_event ev)
