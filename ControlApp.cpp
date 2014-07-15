@@ -310,14 +310,11 @@ bool ControlApp::Unlock(const string& pwd, const string& unit_id)
 	}
 
 	try{
-		if( this->SecopUnlocked())
+		if( ! this->SecopUnlocked())
 		{
-			return true;
+			logg << Logger::Debug << "Trying to unlock secop"<<lend;
+			ret = Secop().Init(pwd);
 		}
-
-		logg << Logger::Debug << "Trying to unlock secop"<<lend;
-
-		ret = Secop().Init(pwd);
 	}
 	catch(std::runtime_error err)
 	{
@@ -521,7 +518,6 @@ bool ControlApp::RegisterKeys(const string& password, const string& unit_id)
 
 		ControlApp::WriteConfig(unit_id);
 	}
-
 	catch( runtime_error& err)
 	{
 		logg << Logger::Notice << "Failed to register keys " << err.what() << lend;
