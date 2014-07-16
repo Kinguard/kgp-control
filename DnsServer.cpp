@@ -80,9 +80,6 @@ bool DnsServer::UpdateDynDNS(const string &unit_id, const string &name)
 	Json::Value retobj = Json::objectValue;
 	this->reader.parse(body, retobj);
 
-	cout << "Got resultcode: " << this->result_code<<endl;
-	cout << "Got reply "<< retobj.toStyledString()<<endl;
-
 	return this->result_code == 200;
 }
 

@@ -72,7 +72,7 @@ void WebServer::PreRun()
 
 void WebServer::Run()
 {
-	printf("Starting on port %s\n", mg_get_option(server, "listening_port"));
+	logg << Logger::Debug << "Starting webserver on port " << mg_get_option(server, "listening_port") <<lend;
 	while ( this->doRun ) {
 		mg_poll_server(this->server, 1000);
 	}

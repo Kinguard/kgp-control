@@ -8,6 +8,7 @@
 #include "CryptoHelper.h"
 #include "AuthServer.h"
 #include "DnsServer.h"
+#include "InboundTest.h"
 #include "ConnTest.h"
 #include "Luks.h"
 
@@ -232,8 +233,14 @@ void ControlApp::Main()
 		this->state = 3;
 	}
 
+	InboundTestPtr ibt;
+
 	if( this->state == 3 )
 	{
+		logg << Logger::Debug << "Starting inbound connection tests"<<lend;
+		ibt = InboundTestPtr(new InboundTest( {25,80,143, 993 }));
+		ibt->Start();
+
 		logg << Logger::Debug << "Doing connection tests"<<lend;
 		ConnTest ct;
 		this->connstatus = ct.DoTest();
@@ -244,6 +251,13 @@ void ControlApp::Main()
 	this->ws->Start();
 
 	this->ws->Join();
+
+	if( ibt )
+	{
+		logg << Logger::Debug << "Stopping inbound connection tests"<<lend;
+		ibt->Stop();
+	}
+	logg << Logger::Debug << "OPI control finnished " <<lend;
 }
 
 void ControlApp::ShutDown()
