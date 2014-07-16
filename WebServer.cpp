@@ -46,6 +46,7 @@ WebServer::WebServer(int initial_state, std::function<Json::Value(Json::Value)> 
 	routes[std::make_pair("/user","POST")] = WebServer::handle_user;
 	routes[std::make_pair("/checkname","POST")] = WebServer::handle_checkname;
 	routes[std::make_pair("/opiname","POST")] = WebServer::handle_selectname;
+	routes[std::make_pair("/portstatus","GET")] = WebServer::handle_portstatus;
 
 }
 
@@ -313,6 +314,24 @@ int WebServer::handle_selectname(mg_connection *conn)
 	}
 	return MG_TRUE;
 
+}
+
+int WebServer::handle_portstatus(mg_connection *conn)
+{
+	logg << Logger::Debug << "Got request for portstatus"<<lend;
+
+
+	Json::Value ret;
+	if( WebServer::callback != nullptr ){
+		Json::Value cmd;
+		cmd["cmd"]="portstatus";
+		ret = WebServer::callback( cmd );
+	}
+
+	mg_send_header( conn, "Content-Type", "application/json");
+	mg_printf_data( conn, ret.toStyledString().c_str() );
+
+	return MG_TRUE;
 }
 
 int WebServer::ev_handler(mg_connection *conn, mg_event ev)

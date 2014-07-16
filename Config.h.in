@@ -22,6 +22,5 @@
 #define SYSCONFIG_PATH "/etc/opi/sysinfo.conf"
 
 #define OP_HOST "https://auth.openproducts.com/"
-
-
+#define CONNTEST_HOST "http://conntest.op-i.me"
 #endif

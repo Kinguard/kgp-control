@@ -24,6 +24,7 @@ private:
 	string masterpassword;
 	string token;
 
+	Json::Value connstatus;
 	string global_error;
 
 	// Web communication

@@ -8,6 +8,7 @@
 #include "CryptoHelper.h"
 #include "AuthServer.h"
 #include "DnsServer.h"
+#include "ConnTest.h"
 #include "Luks.h"
 
 #include <libutils/FileUtils.h>
@@ -224,6 +225,20 @@ void ControlApp::Main()
 		this->state = 2;
 	}
 
+	// We have a valid config and a device but device is not a luks container
+	if( this->state == 6 && ! Luks::isLuks( OPI_MMC_PART ) )
+	{
+		logg << Logger::Debug << "Config correct but no luksdevice do initialization"<<lend;
+		this->state = 3;
+	}
+
+	if( this->state == 3 )
+	{
+		logg << Logger::Debug << "Doing connection tests"<<lend;
+		ConnTest ct;
+		this->connstatus = ct.DoTest();
+	}
+
 	this->ws = WebServerPtr( new WebServer( this->state, std::bind(&ControlApp::WebCallback,this, _1)) );
 
 	this->ws->Start();
@@ -265,7 +280,9 @@ ControlApp::~ControlApp()
 Json::Value ControlApp::WebCallback(Json::Value v)
 {
 
+#if 0
 	logg << Logger::Debug << "Got call from webserver\n"<<v.toStyledString()<<lend;
+#endif
 
 	Json::Value ret;
 	bool status = true;
@@ -320,6 +337,15 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 				status = false;
 				this->state = 6;
 			}
+		}
+		else if( cmd == "portstatus" )
+		{
+			return this->connstatus;
+		}
+		else
+		{
+			status = false;
+			this->global_error = "Unknown command";
 		}
 	}
 	ret["status"]=status;

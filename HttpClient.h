@@ -16,6 +16,9 @@ public:
 	HttpClient(const string& host);
 
 	virtual ~HttpClient();
+
+	void setPort(long value);
+	void setTimeout( long value );
 protected:
 	void CurlPre();
 	void CurlSetHeaders(const map<string, string> &headers);
@@ -38,7 +41,8 @@ private:
 	void clearheaders();
 	struct curl_slist *slist;
 	map<string,string> headers;
-
+	long port;
+	long timeout;
 };
 
 #endif // HTTPCLIENT_H

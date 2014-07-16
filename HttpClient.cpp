@@ -1,6 +1,6 @@
 #include "HttpClient.h"
 
-HttpClient::HttpClient(const string& host): host(host)
+HttpClient::HttpClient(const string& host): host(host),port(0)
 {
 	this->curl = curl_easy_init();
 	if( ! this->curl )
@@ -25,6 +25,17 @@ void HttpClient::CurlPre()
 
 	curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, HttpClient::WriteCallback );
 	curl_easy_setopt(this->curl, CURLOPT_WRITEDATA, (void *)this);
+
+	// Override protocol default port
+	if( port != 0 )
+	{
+		curl_easy_setopt(this->curl, CURLOPT_PORT, this->port);
+	}
+
+	if( this->timeout != 0)
+	{
+		curl_easy_setopt(this->curl, CURLOPT_CONNECTTIMEOUT, this->timeout);
+	}
 
 }
 
@@ -149,3 +160,14 @@ void HttpClient::clearheaders()
 		 this->headers.clear();
 	}
 }
+
+void HttpClient::setPort(long value)
+{
+	port = value;
+}
+
+void HttpClient::setTimeout(long value)
+{
+	this->timeout = value;
+}
+
