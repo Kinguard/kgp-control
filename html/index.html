@@ -30,6 +30,7 @@
 	<button type="button" class="navbutton" opi-page="5" id="b5" title="">5</button>
 	<button type="button" class="navbutton" opi-page="6" id="b6" title="">6</button>
 	<button type="button" class="navbutton" opi-page="7" id="b7" title="">7</button>
+	<button type="button" class="navbutton" opi-page="8" id="b8" title="">8</button>
 	</div>
 	<div id="page_error" class="page hidden">
 	<h1>Error - Unable to retrieve status</h1>
@@ -207,6 +208,29 @@
 				</div>
 		</form>
 	</div>
+
+	<div id="page_knownunit_id" class="page hidden">
+		<h1>Enter master password</h1>
+		<form id="masterpwdform">
+				<div>
+					<p class="form-group">
+					<label for "password">Password</label>
+					<input type="password"
+						name="masterpassword"
+						data-validation="required"
+					>
+					</p>
+				</div>
+				<div>
+					<button 
+						type="submit"
+						id="btnPwdunlock"
+						href="/init"
+					>
+					Continue</button>
+				</div>
+		</form>
+	</div>
 	
 	<div id="validation_error"></div>
 	
@@ -223,6 +247,10 @@
 
 </body>
 <script>
+
+$(".navbutton").click(function() {
+	setState($(this).attr('opi-page'));
+});
 
 function getQueryVariable(variable)
 {
@@ -245,7 +273,8 @@ function setState(state) {
 		"page_opiname",
 		"page_unlockpassword",
 		"page_postinit",
-		"page_initprogress"];
+		"page_initprogress",
+		"page_knownunit_id"];
 	
 	if( state < 1 || state > pages.length)
 	{
@@ -256,14 +285,41 @@ function setState(state) {
 	for( i=1; i <= pages.length; ++i)
 	{
 		if(i==state) {
-			console.log("Show " + pages[i-1]);
+//			console.log("Show " + pages[i-1]);
 			$("#"+pages[i-1]).removeClass("hidden");
 			$("#"+pages[i-1]).find("input:first").focus();
 		} else {
-			console.log("Hide " + i);
+//			console.log("Hide " + i);
 			$("#"+pages[i-1]).addClass("hidden");
 		}
 	} 
+}
+
+function done() {
+	$.ajax({
+		  type: "POST",
+		  url: "/terminate",
+		  contentType : "application/json",
+		  data: '{"shutdown" : "true"}',
+		})
+		.done(function( result ) {
+			if(result.status != true) {
+				try {
+					$("#validation_error").text(result.errmsg);	
+				} catch(err) {
+				    console.log(err.message);
+				}
+				
+			} else {
+				setTimeout(function() {  // wait 5 seconds, then try redirect to admin UI
+					location.href = "/admin";
+				},5000);
+			}
+		})
+		.fail(function() {
+			setState(1);
+		});
+	
 }
 
 var opiname_check = false;
@@ -277,11 +333,16 @@ $("#opiname").keyup( function() {
 	}).done(function(data) {
 		if(data.available) {
 			console.log("Name available");
+			$("#opi_namestate").text();
 		} else {
 			$("#opi_namestate").text("Name not available");
 			console.log("Name not available");
 		}
 	});	
+});
+
+$("input").keyup(function() {
+	$("#validation_error").text('');
 });
 
 $(document).ready( function() {
@@ -293,10 +354,8 @@ $(document).ready( function() {
 	unit_id = getQueryVariable('unit_id');
 	console.log("UNIT_ID:" + unit_id);
 	if(unit_id) {
-		console.log("Testing");
 		var re = new RegExp(/[\w\d\-]{36}/);
 		if(re.test(unit_id)) {
-			console.log("Got valid formatted unit_id");
 			$("#unit_id").val(unit_id);
 			$("#div_unit_id").addClass("hidden");
 		}
@@ -340,8 +399,19 @@ $(document).ready( function() {
 				  data: JSON.stringify(data),
 				})
 				.done(function( result ) {
-					console.log(result);
-					setState(result.state);	
+					if(result.status != true) {
+						try {
+							$("#validation_error").text(result.errmsg);	
+						} catch(err) {
+						    console.log(err.message);
+						}
+						
+					} else {
+						setState(result.state);
+						if(result.state == 7 ) {
+							done();
+						}
+					}
 				})
 				.fail(function() {
 					setState(1);
