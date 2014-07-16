@@ -24,8 +24,10 @@ private:
 	string masterpassword;
 	string token;
 
+	string global_error;
+
 	// Web communication
-	int WebCallback(Json::Value v);
+	Json::Value WebCallback(Json::Value v);
 	bool DoUnlock(const string& pwd);
 	bool DoInit(const string &pwd, const string &unit_id);
 	bool AddUser(const std::string user, const std::string display, const std::string password);

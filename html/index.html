@@ -341,7 +341,7 @@ $(document).ready( function() {
 				})
 				.done(function( result ) {
 					console.log(result);
-					setState(result.status);	
+					setState(result.state);	
 				})
 				.fail(function() {
 					setState(1);
@@ -357,7 +357,7 @@ $(document).ready( function() {
 	
 	$.get("/status",function(data) {
 		console.log(data);
-		setState(data.status);
+		setState(data.state);
 	})
 	.fail(function() {
 		setState(1);	

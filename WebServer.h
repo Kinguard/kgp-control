@@ -14,7 +14,7 @@
 class WebServer : public Utils::Thread, Utils::NoCopy
 {
 public:
-	WebServer(int initial_state, std::function<int(Json::Value)>);
+	WebServer(int initial_state, std::function< Json::Value (Json::Value)>);
 
 	void Stop();
 
@@ -35,7 +35,7 @@ private:
 	static int ev_handler(struct mg_connection *conn, enum mg_event ev);
 	static bool parse_json(struct mg_connection *conn, Json::Value& val);
 	static 	std::map<std::pair<std::string,std::string>, std::function<int(mg_connection *)> > routes;
-	static std::function<int(Json::Value)> callback;
+	static std::function<Json::Value(Json::Value)> callback;
 	static int state;
 	bool doRun;
 	struct mg_server *server;

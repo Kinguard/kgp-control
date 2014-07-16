@@ -29,10 +29,10 @@ using namespace Utils;
 using namespace std;
 
 std::map<std::pair<std::string,std::string>, std::function<int(mg_connection *)> > WebServer::routes;
-std::function<int(Json::Value)> WebServer::callback;
+std::function<Json::Value(Json::Value)> WebServer::callback;
 int WebServer::state;
 
-WebServer::WebServer(int initial_state, std::function<int(Json::Value)> cb):
+WebServer::WebServer(int initial_state, std::function<Json::Value(Json::Value)> cb):
 	Utils::Thread(false),
 	doRun(true),
 	server(NULL)
@@ -119,15 +119,17 @@ int WebServer::handle_init(mg_connection *conn)
 
 	if(  validate_initdata( req ) )
 	{
+		Json::Value ret;
 		if( WebServer::callback != nullptr ){
 			Json::Value cmd;
 			cmd["cmd"]="init";
 			cmd["password"]=req["masterpassword"];
 			cmd["unit_id"] = req["unit_id"];
-			WebServer::state = WebServer::callback( cmd );
+			ret = WebServer::callback( cmd );
+			WebServer::state = ret["state"].asInt();
 		}
 		mg_send_header( conn, "Content-Type", "application/json");
-		mg_printf_data( conn, "{\"status\":%d}",WebServer::state);
+		mg_printf_data( conn, ret.toStyledString().c_str());
 	}
 	else
 	{
@@ -152,14 +154,16 @@ int WebServer::handle_unlock(mg_connection *conn)
 
 	if( req.isMember("masterpassword") && req["masterpassword"].isString() )
 	{
+		Json::Value ret;
 		if( WebServer::callback != nullptr ){
 			Json::Value cmd;
 			cmd["cmd"]="unlock";
 			cmd["password"]=req["masterpassword"];
-			WebServer::state = WebServer::callback( cmd );
+			ret = WebServer::callback( cmd );
+			WebServer::state = ret["state"].asInt();
 		}
 		mg_send_header( conn, "Content-Type", "application/json");
-		mg_printf_data( conn, "{\"status\":%d}",WebServer::state);
+		mg_printf_data( conn, ret.toStyledString().c_str() );
 	}
 	else
 	{
@@ -173,7 +177,7 @@ int WebServer::handle_unlock(mg_connection *conn)
 int WebServer::handle_status(mg_connection *conn)
 {
 	mg_send_header( conn, "Content-Type", "application/json");
-	mg_printf_data( conn, "{\"status\":%d}", WebServer::state );
+	mg_printf_data( conn, "{\"state\":%d}", WebServer::state );
 	return MG_TRUE;
 }
 
@@ -212,16 +216,18 @@ int WebServer::handle_user(mg_connection *conn)
 
 	if( validate_user(req) )
 	{
+		Json::Value ret;
 		if( WebServer::callback != nullptr ){
 			Json::Value cmd;
 			cmd["cmd"]="adduser";
 			cmd["username"]=req["username"];
 			cmd["displayname"]=req["displayname"];
 			cmd["password"]=req["password"];
-			WebServer::state = WebServer::callback( cmd );
+			ret = WebServer::callback( cmd );
+			WebServer::state = ret["state"].asInt();
 		}
 		mg_send_header( conn, "Content-Type", "application/json");
-		mg_printf_data( conn, "{\"status\":%d}",WebServer::state);
+		mg_printf_data( conn, ret.toStyledString().c_str() );
 	}
 	else
 	{
@@ -288,14 +294,16 @@ int WebServer::handle_selectname(mg_connection *conn)
 	}
 	if( req.isMember("opiname") && req["opiname"].isString() )
 	{
+		Json::Value ret;
 		if( WebServer::callback != nullptr ){
 			Json::Value cmd;
 			cmd["cmd"]="opiname";
 			cmd["opiname"]=req["opiname"];
-			WebServer::state = WebServer::callback( cmd );
+			ret = WebServer::callback( cmd );
+			WebServer::state = ret["state"].asInt();
 		}
 		mg_send_header( conn, "Content-Type", "application/json");
-		mg_printf_data( conn, "{\"status\":%d}",WebServer::state);
+		mg_printf_data( conn, ret.toStyledString().c_str() );
 	}
 	else
 	{

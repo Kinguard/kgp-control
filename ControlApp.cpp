@@ -76,6 +76,7 @@ bool ControlApp::DoLogin()
 	if( ids.size() == 0 )
 	{
 		logg << Logger::Error << "Failed to get keys from secop"<<lend;
+		this->global_error ="Failed to retrieve krypto keys";
 		return false;
 	}
 
@@ -98,18 +99,19 @@ bool ControlApp::DoLogin()
 	if( ! found )
 	{
 		logg << Logger::Error << "failed to load keys from secop"<<lend;
+		this->global_error ="Failed to load krypto keys";
 		return false;
 	}
 
 	string challenge;
 	int resultcode;
 
-	DEBUG << "Get Challenge"<<lend;
 	tie(resultcode,challenge) = s.GetChallenge();
 
 	if( resultcode != 200 )
 	{
 		logg << Logger::Error << "Unknown reply of server "<<resultcode<< lend;
+		this->global_error ="Failed to connect with OP server";
 		return false;
 	}
 
@@ -122,6 +124,7 @@ bool ControlApp::DoLogin()
 	if( resultcode != 200 && resultcode != 403 )
 	{
 		logg << Logger::Error << "Unexpected reply from server "<< resultcode <<lend;
+		this->global_error ="Unexpected reply from OP server";
 		return false;
 	}
 
@@ -141,12 +144,10 @@ bool ControlApp::DoLogin()
 		tie(resultcode, rep) = s.SendSecret(cryptchal, Base64Encode(c.PubKeyAsPEM()) );
 		if( resultcode != 200 )
 		{
-			cout << "Result "<<resultcode<<endl;
-			cout << "Reply "<< rep.toStyledString()<<endl;
-
+			this->global_error ="Failed to communicate with OP server";
+			return false;
 		}
 
-		DEBUG << "Send secret succeded"<<lend;
 		if( rep.isMember("token") && rep["token"].isString() )
 		{
 			this->token = rep["token"].asString();
@@ -154,6 +155,7 @@ bool ControlApp::DoLogin()
 		else
 		{
 			logg << Logger::Error << "Missing argument in reply"<<lend;
+			this->global_error ="Failed to communicate with OP server (Missing argument)";
 			return false;
 		}
 
@@ -166,6 +168,7 @@ bool ControlApp::DoLogin()
 		}
 		else
 		{
+			this->global_error ="Missing argument in reply from OP server";
 			logg << Logger::Error << "Missing argument in reply"<<lend;
 			return false;
 		}
@@ -259,11 +262,13 @@ ControlApp::~ControlApp()
 
 }
 
-int ControlApp::WebCallback(Json::Value v)
+Json::Value ControlApp::WebCallback(Json::Value v)
 {
 
 	logg << Logger::Debug << "Got call from webserver\n"<<v.toStyledString()<<lend;
 
+	Json::Value ret;
+	bool status = true;
 	if( v.isMember("cmd") )
 	{
 		string cmd = v["cmd"].asString();
@@ -275,6 +280,7 @@ int ControlApp::WebCallback(Json::Value v)
 			}
 			else
 			{
+				status = false;
 				this->state = 3;
 			}
 		}
@@ -287,6 +293,7 @@ int ControlApp::WebCallback(Json::Value v)
 			}
 			else
 			{
+				status = false;
 				this->state = 4;
 			}
 		}
@@ -298,6 +305,7 @@ int ControlApp::WebCallback(Json::Value v)
 			}
 			else
 			{
+				status = false;
 				this->state = 5;
 			}
 		}
@@ -309,12 +317,18 @@ int ControlApp::WebCallback(Json::Value v)
 			}
 			else
 			{
+				status = false;
 				this->state = 6;
 			}
 		}
 	}
-
-	return this->state ;
+	ret["status"]=status;
+	if(!status)
+	{
+		ret["errmsg"]=this->global_error;
+	}
+	ret["state"]=state;
+	return ret;
 }
 
 bool ControlApp::DoUnlock(const string &pwd)
@@ -323,6 +337,7 @@ bool ControlApp::DoUnlock(const string &pwd)
 
 	if( ! Luks::isLuks( OPI_MMC_PART ) )
 	{
+		this->global_error = "No crypto storage available";
 		return false;
 	}
 
@@ -336,6 +351,7 @@ bool ControlApp::DoUnlock(const string &pwd)
 		if ( !l.Open("opi",pwd) )
 		{
 			logg << Logger::Debug << "Failed to openLUKS volume on "<<STORAGE_PART<< lend;
+			this->global_error = "Unable to unlock crypto storage. (Wrong password?)";
 			return false;
 		}
 	}
@@ -356,6 +372,8 @@ bool ControlApp::DoUnlock(const string &pwd)
 		if( ! ServiceHelper::Start("secop") )
 		{
 			logg << Logger::Notice << "Failed to start secop"<<lend;
+			this->global_error = "Failed to start password database";
+			return false;
 		}
 		else
 		{
@@ -368,12 +386,18 @@ bool ControlApp::DoUnlock(const string &pwd)
 		if( ! this->SecopUnlocked())
 		{
 			logg << Logger::Debug << "Trying to unlock secop"<<lend;
-			return Secop().Init(pwd);
+			if( ! Secop().Init(pwd) )
+			{
+				this->global_error = "Failed to unlock password database";
+				return false;
+			}
+			return true;
 		}
 	}
 	catch(std::runtime_error err)
 	{
 		logg << Logger::Error << "Failed to unlock Secop:"<<err.what()<<lend;
+		this->global_error = "Failed to unlock password database ("+string(err.what() )+")";
 		return false;
 	}
 
@@ -389,7 +413,7 @@ bool ControlApp::DoInit(const string& pwd, const string& unit_id)
 
 	if ( ! this->InitializeSD() )
 	{
-		logg << Logger::Error << "Failed to unlock SD card"<<lend;
+		logg << Logger::Error << "Failed to unlock SD card" <<lend;
 		return false;
 	}
 
@@ -399,6 +423,8 @@ bool ControlApp::DoInit(const string& pwd, const string& unit_id)
 		if( ! ServiceHelper::Start("secop") )
 		{
 			logg << Logger::Notice << "Failed to start secop"<<lend;
+			this->global_error = "Failed to start krypto database";
+			return false;
 		}
 		else
 		{
@@ -412,11 +438,16 @@ bool ControlApp::DoInit(const string& pwd, const string& unit_id)
 		{
 			logg << Logger::Debug << "Trying to unlock secop"<<lend;
 			ret = Secop().Init( this->masterpassword );
+			if( ! ret )
+			{
+				this->global_error = "Wrong password for password store";
+			}
 		}
 	}
 	catch(std::runtime_error err)
 	{
 		logg << Logger::Error << "Failed to unlock Secop:"<<err.what()<<lend;
+		this->global_error = "Wrong password for password store";
 		return false;
 	}
 
@@ -441,6 +472,7 @@ bool ControlApp::DoInit(const string& pwd, const string& unit_id)
 			}
 			catch(runtime_error& err )
 			{
+				this->global_error ="Failed to login with OP server ("+string(err.what())+")";
 				logg << Logger::Notice << "Failed to login to backend: "<< err.what()<<lend;
 				ret = false;
 			}
@@ -457,6 +489,10 @@ bool ControlApp::DoInit(const string& pwd, const string& unit_id)
 		DnsServer dns;
 		string pubkey = Base64Encode( pk.str() );
 		ret = dns.RegisterPublicKey(this->unit_id, pubkey, this->token );
+		if( ! ret )
+		{
+			this->global_error ="Failed to register dns key";
+		}
 	}
 
 	return ret;
@@ -468,13 +504,20 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 
 	if(! this->SecopUnlocked() )
 	{
+		this->global_error = "Failed to connect with password database";
 		return false;
 	}
 
 	Secop s;
 	s.SockAuth();
 
-	return s.CreateUser(user, password);
+	if( ! s.CreateUser(user, password) )
+	{
+		this->global_error = "Failed to create user (User exists?)";
+		return false;
+	}
+
+	return true;
 }
 
 bool ControlApp::SetDNSName(const string &opiname)
@@ -482,10 +525,16 @@ bool ControlApp::SetDNSName(const string &opiname)
 	DnsServer dns;
 	if( ! dns.UpdateDynDNS(this->unit_id, opiname) )
 	{
+		this->global_error = "Failed to update DynDNS";
 		return false;
 	}
 
-	return this->GetCertificate(opiname, "OPI");
+	if( !this->GetCertificate(opiname, "OPI") )
+	{
+		return false;
+	}
+
+	return true;
 }
 
 bool ControlApp::SecopUnlocked()
@@ -521,6 +570,7 @@ bool ControlApp::InitializeSD()
 
 		if( ! l.Open("opi", this->masterpassword ) )
 		{
+			this->global_error = "Wrong password";
 			return false;
 		}
 
@@ -538,6 +588,7 @@ bool ControlApp::InitializeSD()
 			logg << Logger::Debug << "Activating LUKS volume"<<lend;
 			if ( !l.Open("opi", this->masterpassword ) )
 			{
+				this->global_error = "Wrong password";
 				return false;
 			}
 		}
@@ -641,6 +692,7 @@ bool ControlApp::RegisterKeys( )
 	}
 	catch( runtime_error& err)
 	{
+		this->global_error = "Failed to register keys " + string(err.what());
 		logg << Logger::Notice << "Failed to register keys " << err.what() << lend;
 		return false;
 	}
@@ -658,12 +710,14 @@ bool ControlApp::GetCertificate(const string &opiname, const string &company)
 	 */
 	if( ! this->DoLogin() )
 	{
+		this->global_error = "Failed to login to OP servers";
 		return false;
 	}
 
 
 	if( ! CryptoHelper::MakeCSR(DNS_PRIV_PATH, CSR_PATH, opiname+".op-i.me", company) )
 	{
+		this->global_error = "Failed to make certificate signing request";
 		return false;
 	}
 
@@ -678,12 +732,14 @@ bool ControlApp::GetCertificate(const string &opiname, const string &company)
 	if( resultcode != 200 )
 	{
 		logg << Logger::Error << "Failed to get csr "<<resultcode <<lend;
+		this->global_error = "Failed to get certificate from OP servers";
 		return false;
 	}
 
 	if( ! ret.isMember("cert") || ! ret["cert"].isString() )
 	{
 		logg << Logger::Error << "Malformed reply from server " <<lend;
+		this->global_error = "Unexpected reply from OP server when retrieving certificate";
 		return false;
 	}
 
