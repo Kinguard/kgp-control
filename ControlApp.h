@@ -21,6 +21,7 @@ public:
 private:
 	int state;
 	string unit_id;
+	string masterpassword;
 	string token;
 
 	// Web communication
@@ -32,13 +33,13 @@ private:
 	bool SecopUnlocked();
 
 	// Helper methods
-	bool InitializeSD(const string& password);
-	bool RegisterKeys(const string &password, const string &unit_id);
+	bool InitializeSD();
+	bool RegisterKeys();
 	bool GetCertificate(const string& opiname, const string& company="OPI");
 	static void WriteConfig(const string &unit_id);
 	static void WriteBackupConfig(const string& password);
 
-	bool DoLogin(const string &pwd);
+	bool DoLogin();
 
 	WebServerPtr ws;
 };

@@ -62,25 +62,10 @@ void ControlApp::Startup()
 	curl_global_init(CURL_GLOBAL_DEFAULT);
 }
 
-bool ControlApp::DoLogin(const string& pwd)
+bool ControlApp::DoLogin()
 {
 	AuthServer s( this->unit_id);
 
-	string challenge;
-	int resultcode;
-
-	DEBUG << "Get Challenge"<<lend;
-	tie(resultcode,challenge) = s.GetChallenge();
-
-	if( resultcode != 200 )
-	{
-		logg << Logger::Error << "Unknown reply of server "<<resultcode<< lend;
-		return false;
-	}
-#if 0
-	cout << "Challenge:\n"<<challenge<<endl;
-	DEBUG << "Send signed Challenge"<<lend;
-#endif
 	RSAWrapper c;
 
 	Secop secop;
@@ -116,6 +101,19 @@ bool ControlApp::DoLogin(const string& pwd)
 		return false;
 	}
 
+	string challenge;
+	int resultcode;
+
+	DEBUG << "Get Challenge"<<lend;
+	tie(resultcode,challenge) = s.GetChallenge();
+
+	if( resultcode != 200 )
+	{
+		logg << Logger::Error << "Unknown reply of server "<<resultcode<< lend;
+		return false;
+	}
+
+
 	string signedchallenge = Base64Encode( c.SignMessage( challenge ) );
 
 	Json::Value rep;
@@ -134,9 +132,8 @@ bool ControlApp::DoLogin(const string& pwd)
 		// Got new challenge to encrypt with master
 		string challenge = rep["challange"].asString();
 
-		SecVector<byte> key = PBKDF2(SecString(pwd.c_str(), pwd.size() ), 32 );
+		SecVector<byte> key = PBKDF2(SecString(this->masterpassword.c_str(), this->masterpassword.size() ), 32 );
 
-		//SecVector<byte> key(pwd.begin(), pwd.end() );
 		AESWrapper aes( key );
 
 		string cryptchal = Base64Encode( aes.Encrypt( challenge ) );
@@ -163,11 +160,6 @@ bool ControlApp::DoLogin(const string& pwd)
 	}
 	else
 	{
-#if 0
-		DEBUG << "We should be authed"<<lend;
-		cout << "Result "<<resultcode<<endl;
-		cout << "Reply "<< rep.toStyledString()<<endl;
-#endif
 		if( rep.isMember("token") && rep["token"].isString() )
 		{
 			this->token = rep["token"].asString();
@@ -393,8 +385,9 @@ bool ControlApp::DoInit(const string& pwd, const string& unit_id)
 	bool ret = true;
 
 	this->unit_id = unit_id;
+	this->masterpassword = pwd;
 
-	if ( ! this->InitializeSD(pwd) )
+	if ( ! this->InitializeSD() )
 	{
 		logg << Logger::Error << "Failed to unlock SD card"<<lend;
 		return false;
@@ -418,7 +411,7 @@ bool ControlApp::DoInit(const string& pwd, const string& unit_id)
 		if( ! this->SecopUnlocked())
 		{
 			logg << Logger::Debug << "Trying to unlock secop"<<lend;
-			ret = Secop().Init(pwd);
+			ret = Secop().Init( this->masterpassword );
 		}
 	}
 	catch(std::runtime_error err)
@@ -429,7 +422,7 @@ bool ControlApp::DoInit(const string& pwd, const string& unit_id)
 
 	if( ret )
 	{
-		ret = this->RegisterKeys(pwd, unit_id);
+		ret = this->RegisterKeys();
 	}
 
 	if( ret)
@@ -440,7 +433,7 @@ bool ControlApp::DoInit(const string& pwd, const string& unit_id)
 		{
 			try
 			{
-				ret = this->DoLogin(pwd);
+				ret = this->DoLogin();
 				if( ret )
 				{
 					break;
@@ -514,7 +507,7 @@ bool ControlApp::SecopUnlocked()
 	return (st != Secop::Uninitialized) && (st != Secop::Unknown);
 }
 
-bool ControlApp::InitializeSD(const string &password)
+bool ControlApp::InitializeSD()
 {
 	logg << Logger::Debug << "Initialize sd card"<<lend;
 	bool sd_isnew = false;
@@ -524,9 +517,9 @@ bool ControlApp::InitializeSD(const string &password)
 
 		DiskHelper::PartitionDevice( STORAGE_DEV );
 		Luks l( STORAGE_PART);
-		l.Format(password);
+		l.Format( this->masterpassword );
 
-		if( ! l.Open("opi",password) )
+		if( ! l.Open("opi", this->masterpassword ) )
 		{
 			return false;
 		}
@@ -543,7 +536,7 @@ bool ControlApp::InitializeSD(const string &password)
 		if( ! l.Active("opi") )
 		{
 			logg << Logger::Debug << "Activating LUKS volume"<<lend;
-			if ( !l.Open("opi",password) )
+			if ( !l.Open("opi", this->masterpassword ) )
 			{
 				return false;
 			}
@@ -573,7 +566,7 @@ bool ControlApp::InitializeSD(const string &password)
 	return true;
 }
 
-bool ControlApp::RegisterKeys(const string& password, const string& unit_id)
+bool ControlApp::RegisterKeys( )
 {
 	logg << Logger::Debug << "Register keys"<<lend;
 	try{
@@ -636,7 +629,7 @@ bool ControlApp::RegisterKeys(const string& password, const string& unit_id)
 			File::Write(DNS_PUB_PATH, dns.PubKeyAsPEM(), 0644 );
 		}
 
-		SecString spass(password.c_str(), password.size() );
+		SecString spass(this->masterpassword.c_str(), this->masterpassword.size() );
 		SecVector<byte> key = PBKDF2( spass, 20);
 		vector<byte> ukey(key.begin(), key.end());
 
@@ -644,7 +637,7 @@ bool ControlApp::RegisterKeys(const string& password, const string& unit_id)
 
 		ControlApp::WriteBackupConfig(backuppass);
 
-		ControlApp::WriteConfig(unit_id);
+		ControlApp::WriteConfig( this->unit_id);
 	}
 	catch( runtime_error& err)
 	{
@@ -656,6 +649,19 @@ bool ControlApp::RegisterKeys(const string& password, const string& unit_id)
 
 bool ControlApp::GetCertificate(const string &opiname, const string &company)
 {
+
+	/*
+	 *
+	 * This is a workaround for a bug in the authserver that loses our
+	 * credentials when we login with dns-key
+	 *
+	 */
+	if( ! this->DoLogin() )
+	{
+		return false;
+	}
+
+
 	if( ! CryptoHelper::MakeCSR(DNS_PRIV_PATH, CSR_PATH, opiname+".op-i.me", company) )
 	{
 		return false;
@@ -669,8 +675,24 @@ bool ControlApp::GetCertificate(const string &opiname, const string &company)
 	Json::Value ret;
 	tie(resultcode, ret) = s.GetCertificate(csr,this->token );
 
+	if( resultcode != 200 )
+	{
+		logg << Logger::Error << "Failed to get csr "<<resultcode <<lend;
+		return false;
+	}
+
+	if( ! ret.isMember("cert") || ! ret["cert"].isString() )
+	{
+		logg << Logger::Error << "Malformed reply from server " <<lend;
+		return false;
+	}
+
+	File::Write( CERT_PATH, ret["cert"].asString(), 0644);
+
+#if 0
 	cout << "Resultcode: "<<resultcode<<endl;
 	cout << "Retobj\n"<<ret.toStyledString()<<endl;
+#endif
 
 	return true;
 }
