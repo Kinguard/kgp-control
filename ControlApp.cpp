@@ -42,8 +42,8 @@ using namespace CryptoHelper;
 #define STORAGE_DEV		"/dev/mmcblk0"
 #define STORAGE_PART	"/dev/mmcblk0p1"
 
-#define TMP_MOUNT		"/mnt/opi"
-#define MOUNTPOINT		"/var/opi"
+#define TMP_MOUNT		"/mnt/opi/"
+#define MOUNTPOINT		"/var/opi/"
 
 #define LUKSDEVICE		"/dev/mapper/opi"
 #endif
