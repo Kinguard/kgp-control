@@ -4,8 +4,9 @@ Priority: extra
 Maintainer: Tor Krill <tor@openproducts.se>
 Build-Depends: debhelper (>= 8.0.0), cmake,
 	rsync,
-	libcurl4-openssl-dev,
-	libutils-dev,
+	openssl,
+	libcurl4-gnutls-dev,
+	libutils-dev (>= 1.4),
 	libjsoncpp-dev,
 	libssl-dev,
 	libcryptsetup-dev,

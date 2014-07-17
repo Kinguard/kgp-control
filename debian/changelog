@@ -1,3 +1,9 @@
+opi-control (0.9.4) testing; urgency=low
+
+  * Feature complete
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 17 Jul 2014 11:07:28 +0200
+
 opi-control (0.9.3) testing; urgency=medium
 
   * Ok, so we have legacy boot. Try again to fix init.d
