@@ -1,3 +1,9 @@
+opi-control (0.9.8) testing; urgency=low
+
+  * Set close on exec on mongoose listening socket as well
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 17 Jul 2014 17:41:58 +0200
+
 opi-control (0.9.7) testing; urgency=low
 
   * Do close sockets upon exec.
