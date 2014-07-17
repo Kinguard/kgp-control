@@ -257,6 +257,15 @@ void ControlApp::Main()
 		logg << Logger::Debug << "Stopping inbound connection tests"<<lend;
 		ibt->Stop();
 	}
+
+	if( this->state == 7 )
+	{
+		// We should have reached a positive end of init, start services
+		logg << Logger::Debug << "Init completed, start servers"<<lend;
+		ServiceHelper::Start( "nginx" );
+		ServiceHelper::Start( "opi-authproxy" );
+	}
+
 	logg << Logger::Debug << "OPI control finnished " <<lend;
 }
 
