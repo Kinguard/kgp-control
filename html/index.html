@@ -300,7 +300,7 @@ function done() {
 		  type: "POST",
 		  url: "/terminate",
 		  contentType : "application/json",
-		  data: '{"shutdown" : "true"}',
+		  data: '{"shutdown" : true}',
 		})
 		.done(function( result ) {
 			if(result.status != true) {

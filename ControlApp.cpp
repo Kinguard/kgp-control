@@ -352,6 +352,13 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 				this->state = 6;
 			}
 		}
+		else if( cmd == "shutdown" )
+		{
+			if( v["shutdown"].asBool() )
+			{
+				this->ws->Stop();
+			}
+		}
 		else if( cmd == "portstatus" )
 		{
 			return this->connstatus;
