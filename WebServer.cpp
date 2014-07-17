@@ -41,6 +41,7 @@ WebServer::WebServer(int initial_state, std::function<Json::Value(Json::Value)> 
 	WebServer::state = initial_state;
 	routes[std::make_pair("/configure","POST")] = WebServer::handle_init;
 	routes[std::make_pair("/init","POST")] = WebServer::handle_init;
+	routes[std::make_pair("/reinit","POST")] = WebServer::handle_reinit;
 	routes[std::make_pair("/unlock","POST")] = WebServer::handle_unlock;
 	routes[std::make_pair("/status","GET")] = WebServer::handle_status;
 	routes[std::make_pair("/user","POST")] = WebServer::handle_user;
@@ -127,6 +128,41 @@ int WebServer::handle_init(mg_connection *conn)
 			cmd["cmd"]="init";
 			cmd["password"]=req["masterpassword"];
 			cmd["unit_id"] = req["unit_id"];
+			ret = WebServer::callback( cmd );
+			WebServer::state = ret["state"].asInt();
+		}
+		mg_send_header( conn, "Content-Type", "application/json");
+		mg_printf_data( conn, ret.toStyledString().c_str());
+	}
+	else
+	{
+		mg_printf_data( conn, "Missing argument!");
+		mg_send_status(conn, 400);
+	}
+
+	return MG_TRUE;
+}
+
+int WebServer::handle_reinit(mg_connection *conn)
+{
+	// Almost like init but from an initialized unut
+	logg << Logger::Debug << "Got request for reinit"<<lend;
+
+	Json::Value req;
+
+	if( ! WebServer::parse_json(conn, req) )
+	{
+		// True in the sense that we handled the req.
+		return MG_TRUE;
+	}
+
+	if(   req.isMember("masterpassword") && req["masterpassword"].isString()  )
+	{
+		Json::Value ret;
+		if( WebServer::callback != nullptr ){
+			Json::Value cmd;
+			cmd["cmd"]="reinit";
+			cmd["password"]=req["masterpassword"];
 			ret = WebServer::callback( cmd );
 			WebServer::state = ret["state"].asInt();
 		}

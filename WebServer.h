@@ -26,6 +26,7 @@ public:
 private:
 
 	static int handle_init(struct mg_connection *conn);
+	static int handle_reinit(struct mg_connection *conn);
 	static int handle_unlock(struct mg_connection *conn);
 	static int handle_status(struct mg_connection *conn);
 	static int handle_user(struct mg_connection *conn);

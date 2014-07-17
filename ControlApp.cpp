@@ -230,7 +230,7 @@ void ControlApp::Main()
 	if( this->state == 6 && ! Luks::isLuks( OPI_MMC_PART ) )
 	{
 		logg << Logger::Debug << "Config correct but no luksdevice do initialization"<<lend;
-		this->state = 3;
+		this->state = 9;
 	}
 
 	InboundTestPtr ibt;
@@ -315,6 +315,18 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 				this->state = 3;
 			}
 		}
+		else if( cmd == "reinit" )
+		{
+			if( this->DoInit(v["password"].asString(), this->unit_id ) )
+			{
+				this->state = 4;
+			}
+			else
+			{
+				status = false;
+				this->state = 3;
+			}
+		}
 		else if( cmd == "adduser" )
 		{
 
@@ -354,9 +366,14 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 		}
 		else if( cmd == "shutdown" )
 		{
-			if( v["shutdown"].asBool() )
+			if( v["shutdown"].asBool() && this->state == 7 )
 			{
 				this->ws->Stop();
+			}
+			else
+			{
+				status = false;
+				this->global_error = "Wrong state for request";
 			}
 		}
 		else if( cmd == "portstatus" )
