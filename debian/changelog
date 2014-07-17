@@ -1,3 +1,9 @@
+opi-control (0.9.7) testing; urgency=low
+
+  * Do close sockets upon exec.
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 17 Jul 2014 17:19:25 +0200
+
 opi-control (0.9.6) testing; urgency=low
 
   * Fix paths for sync (Was wrong when packaging) 

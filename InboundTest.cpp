@@ -5,6 +5,8 @@
 #include <libutils/Socket.h>
 #include <libutils/ClassTools.h>
 
+#include <fcntl.h>
+
 using namespace Utils::Net;
 
 class TcpServer: public Thread, NoCopy {
@@ -19,7 +21,13 @@ public:
 		s("eth0",port),
 		port(port),
 		dorun(true)
-	{}
+	{
+		int fd = this->s.getSocketFd();
+		if( ! fcntl( fd,fcntl(fd, F_GETFD) | FD_CLOEXEC ) != 0 )
+		{
+			throw ErrnoException("Failed to update socket fd");
+		}
+	}
 
 	void Stop()
 	{
