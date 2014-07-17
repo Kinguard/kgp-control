@@ -1,3 +1,9 @@
+opi-control (0.9.5) testing; urgency=low
+
+  * Fix bug in deps
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 17 Jul 2014 15:27:55 +0200
+
 opi-control (0.9.4) testing; urgency=low
 
   * Feature complete
