@@ -37,6 +37,7 @@ using namespace CryptoHelper;
 #endif
 
 #ifdef OPI_BUILD_PACKAGE
+#define DO_SANITY_CHECKS
 #define OPI_MMC_DEV		"mmcblk0"
 #define OPI_MMC_PART	"mmcblk0p1"
 #define STORAGE_DEV		"/dev/mmcblk0"
@@ -48,7 +49,7 @@ using namespace CryptoHelper;
 #define LUKSDEVICE		"/dev/mapper/opi"
 #endif
 
-#define DEBUG (logg << Logger::Debug)
+//#define DEBUG (logg << Logger::Debug)
 
 ControlApp::ControlApp() : DaemonApplication("opi-control","/var/run","root","root")
 {
@@ -132,7 +133,7 @@ bool ControlApp::DoLogin()
 
 	if( resultcode == 403 )
 	{
-		DEBUG << "Send Secret"<<lend;
+		logg << Logger::Debug << "Send Secret"<<lend;
 
 		// Got new challenge to encrypt with master
 		string challenge = rep["challange"].asString();
@@ -215,6 +216,21 @@ void ControlApp::Main()
 
 
 	// Check environment
+#ifdef DO_SANITY_CHECKS
+	/*
+	 * If on opi and no sd is in place, emmc will have gotten our
+	 * devicenode that we want to install to. So we double check
+	 * that we really have two mmc devices, mmc and SD card
+	 */
+
+	if( ! DiskHelper::DeviceExists( "/dev/mmcblk1" ) )
+	{
+		logg << Logger::Error << "No SD card present"<<lend;
+		this->state = 2;
+	}
+
+#endif
+
 	if( ! DiskHelper::DeviceExists( STORAGE_DEV ) )
 	{
 		logg << Logger::Error << "Device not present"<<lend;

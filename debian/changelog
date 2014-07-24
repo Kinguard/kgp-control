@@ -1,3 +1,9 @@
+opi-control (0.9.9) testing; urgency=low
+
+  * Make sure SD card is inserted before doing setup 
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 24 Jul 2014 23:25:43 +0200
+
 opi-control (0.9.8) testing; urgency=low
 
   * Set close on exec on mongoose listening socket as well
