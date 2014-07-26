@@ -450,7 +450,8 @@ $(document).ready( function() {
 	console.log("Window width:" + $(window).width());
 	if($(window).width() < 760) {
 		console.log("Change margin");
-		$("#login").css("marginLeft","0px");
+		margin = ($(window).width() - 400)/2; 
+		$("#login").css("marginLeft",margin+"px");
 	}
 	
 	$("input[type='text']").addClass("form-control");
