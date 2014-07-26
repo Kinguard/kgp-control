@@ -14,11 +14,25 @@
 -->
     <link rel="stylesheet" href="css/app.css">
     <link rel="stylesheet" href="css/init.css">
+    <link rel="stylesheet" href="css/jquery.qtip.min.css">
     <script src="js/jquery.min.js"></script>
+    <script src="js/jquery.qtip.min.js"></script>
+    <script src="js/helptexts.js"></script>
     <script src="js/form-validator/jquery.form-validator.min.js"></script>
 
 </head>
 <body class="claro" id="theBody">
+<nav id="nav-shutdown">
+	<div id="shutdown">
+		<button type="button" class="shutdown" id="btn-shutdown"><img src='img/shutdown.png' /><span>Shutdown OPI</span></button>
+	</div>
+</nav>
+
+<div id="spinner-bg" class="hidden">
+	<div id="spinner">
+		<img src='img/spinner.gif' />
+	</div>
+</div>
 
 <div id="login-bg">
 <section id="login">
@@ -31,22 +45,73 @@
 	<button type="button" class="navbutton" opi-page="6" id="b6" title="">6</button>
 	<button type="button" class="navbutton" opi-page="7" id="b7" title="">7</button>
 	<button type="button" class="navbutton" opi-page="8" id="b8" title="">8</button>
+	<button type="button" class="navbutton" opi-page="9" id="b9" title="">9</button>
+	<button type="button" class="navbutton" opi-page="10" id="b10" title="">10</button>
+	<button type="button" class="navbutton" opi-page="11" id="b11" title="">11</button>
 	</div>
 	<div id="page_error" class="page hidden">
 	<h1>Error - Unable to retrieve status</h1>
 	<p>OPI replied with an unknown error</p>
 	</div>
 	
+	<div id="page_shutdown" class="page hidden">
+		<center><h1>Confirm shutdown of OPI</h1></center>
+		<p></p>
+		<div class="sd-buttons">
+			<form>
+				<button 
+					type="submit" 
+					id="sd-btn-shutdown" 
+					href="/shutdown"
+					name="action"
+					value="shutdown"
+					class="width_50">
+					Shutdown
+				</button>
+			</form>
+			<form>
+				<button 
+					type="submit" 
+					id="sd-btn-reboot" 
+					href="/shutdown"
+					name="action"
+					value="reboot"
+					class="width_50 btn-right">
+					Reboot
+				</button>
+			</form>
+		</div>
+		<div class="sd-buttons">
+			<button 
+				type="cancel" 
+				id="sd-btn-cancel" 
+				class="fullwidth">
+				Cancel
+			</button>
+		</div>
+		</form>
+	</div>
+
 	<div id="page_sderror" class="page hidden">
-	<h1>Error - No SD card detected</h1>
-	<p>Please insert SD card and restart OPI</p>
+		<h1>Error - No SD card detected</h1>
+		<p>Please insert SD card and restart OPI</p>
 	</div>
 
 	<div id="page_initprogress" class="page hidden">
-	<h1>Initializing OPI</h1>
-	<p>Please have patiance, initializing may a while</p>
+		<h1>Initializing OPI</h1>
+		<p>Please have patiance, initializing may a while</p>
 	</div>
 	
+	<div id="page_shutdownprogress" class="page hidden">
+		<h1>OPI shutdown in progress</h1>
+		<p>Please to not remove power until all LEDs are turned off.</p>
+	</div>
+
+	<div id="page_rebootprogress" class="page hidden">
+		<h1>OPI reboot in progress</h1>
+		<p>OPI is rebooting, please wait ...</p>
+	</div>
+
 	<div id="page_password" class="page hidden">
 		<h1>Select master password</h1>
 		<form id="pwdform">
@@ -54,6 +119,7 @@
 				<p class="form-group">
 				<label for 'unit_id'>OPI activation code</label>
 				<input
+					title = "unit_id"
 					type ="text"
 					id ="unit_id"
 					name ="unit_id"
@@ -66,6 +132,7 @@
 				<p class="form-group">
 				<label for 'masterpassword_confirmation'>Password</label>
 				<input
+					title="Master"
 					type="password" 
 					name="masterpassword_confirmation"
 					data-validation="required" 
@@ -128,6 +195,7 @@
 				<p class="form-group">
 				<label for 'password'>Password</label>
 				<input type="password"
+					title="userpassword"
 					name="password_confirmation"
 					data-validation="required"
 					data-validation-strength="1"
@@ -193,6 +261,7 @@
 					<p class="form-group">
 					<label for "password">Password</label>
 					<input type="password"
+						title="masterpassword"
 						name="masterpassword"
 						data-validation="required"
 					>
@@ -216,6 +285,7 @@
 					<p class="form-group">
 					<label for "password">Password</label>
 					<input type="password"
+						title="masterpassword"
 						name="masterpassword"
 						data-validation="required"
 					>
@@ -232,7 +302,9 @@
 		</form>
 	</div>
 	
-	<div id="validation_error"></div>
+	<div id="validation_error" class="hidden">
+		<div id="validation_error_msg"></div>
+	</div>
 	
 	
 	<div id="page_postinit" class="page hidden">
@@ -248,8 +320,20 @@
 </body>
 <script>
 
+current_state = 0;
+
+$("button[type='cancel']").click(function() {
+	console.log("State: "+current_state);
+	setState(current_state);
+});
+
 $(".navbutton").click(function() {
 	setState($(this).attr('opi-page'));
+});
+
+$("#btn-shutdown").click(function() {
+	$(".page").addClass("hidden");
+	$("#page_shutdown").removeClass("hidden");
 });
 
 function getQueryVariable(variable)
@@ -265,6 +349,7 @@ function getQueryVariable(variable)
 
 
 function setState(state) {
+	current_state = state;
 	var pages = [
 		"page_error", 
 		"page_sderror", 
@@ -274,25 +359,37 @@ function setState(state) {
 		"page_unlockpassword",
 		"page_postinit",
 		"page_initprogress",
-		"page_knownunit_id"];
+		"page_knownunit_id",
+		"page_shutdownprogress",
+		"page_rebootprogress"];
 	
 	if( state < 1 || state > pages.length)
 	{
 		console.log("Unknown state! "+state);
 		state = 1;
 	}
-	
+
+	$(".page").addClass("hidden");
 	for( i=1; i <= pages.length; ++i)
 	{
 		if(i==state) {
 //			console.log("Show " + pages[i-1]);
 			$("#"+pages[i-1]).removeClass("hidden");
-			$("#"+pages[i-1]).find("input:first").focus();
-		} else {
+			$("#"+pages[i-1]).find("input").filter(':visible:first').focus();
+			$("form").get(0).reset();
+/*
+} else {
 //			console.log("Hide " + i);
 			$("#"+pages[i-1]).addClass("hidden");
+*/
 		}
 	} 
+}
+
+function redirect(url,timeout) {
+	setTimeout(function() {
+		location.href = url;
+	},timeout);
 }
 
 function done() {
@@ -305,7 +402,7 @@ function done() {
 		.done(function( result ) {
 			if(result.status != true) {
 				try {
-					$("#validation_error").text(result.errmsg);	
+					$("#validation_error_msg").text(result.errmsg);	
 				} catch(err) {
 				    console.log(err.message);
 				}
@@ -342,17 +439,25 @@ $("#opiname").keyup( function() {
 });
 
 $("input").keyup(function() {
-	$("#validation_error").text('');
+	$("#validation_error_msg").text('');
+	$("#validation_error").addClass("hidden");
 });
 
 $(document).ready( function() {
 	var unit_id;
+	
+	// fix margin if we are running in a small browser.
+	console.log("Window width:" + $(window).width());
+	if($(window).width() < 760) {
+		console.log("Change margin");
+		$("#login").css("marginLeft","0px");
+	}
+	
 	$("input[type='text']").addClass("form-control");
 	$("input[type='password']").addClass("form-control");
-	$("button").addClass("btn").addClass("btn-primary").addClass("fullwidth");
-	console.log("page loaded");
+	$("button").addClass("btn").addClass("btn-primary");
+	$(".page button").addClass("fullwidth");
 	unit_id = getQueryVariable('unit_id');
-	console.log("UNIT_ID:" + unit_id);
 	if(unit_id) {
 		var re = new RegExp(/[\w\d\-]{36}/);
 		if(re.test(unit_id)) {
@@ -361,9 +466,26 @@ $(document).ready( function() {
 		}
 	}
 	 
+	
+    $('input[title]').qtip({
+        show: 'focus',
+        hide: 'blur',
+        position : {
+	        my: 'left bottom',
+	        at: 'top right'
+        }
+    });
+    $.each($('input[title]'), function() {
+    	if(helptext[$(this).attr("name")]) {
+    		$(this).attr("title", helptext[$(this).attr("name")]);
+    	}
+    });
+
+	
 	$.validate( {
 		modules : 'security',
 		onModulesLoaded : function() {
+			/*
 		    var optionalConfig = {
 		      fontSize: '10px',
 		      padding: '0px',
@@ -372,8 +494,17 @@ $(document).ready( function() {
 		      good : 'FAIR PASSWORD',
 		      strong : 'STRONG PASSWORD',
 		    };
-		    $('input[name="masterpassword_confirmation"]').displayPasswordStrength(optionalConfig);
-		    $('input[name="password_confirmation"]').displayPasswordStrength(optionalConfig);
+			*/
+		    var optionalConfig = {
+				      fontSize: '10px',
+				      padding: '0px',
+				      bad : '',
+				      weak : '',
+				      good : '',
+				      strong : '',
+				    };
+		    //$('input[name="masterpassword_confirmation"]').displayPasswordStrength(optionalConfig);
+		    //$('input[name="password_confirmation"]').displayPasswordStrength(optionalConfig);
 		},
 		onSuccess : function($form) {
 			url = $form.find("button[type='submit']").attr('href');
@@ -391,7 +522,12 @@ $(document).ready( function() {
 			      data[input.name] = input.value;
 			    }
 			  }
+			  if(button = $form.children('button')) {
+				  data[button.attr('name')] = button.val(); 
+			  }
 			  console.log(data);
+			  console.log("Show spinner");
+			  $("#spinner-bg").removeClass("hidden");
 			$.ajax({
 				  type: "POST",
 				  url: url,
@@ -399,22 +535,40 @@ $(document).ready( function() {
 				  data: JSON.stringify(data),
 				})
 				.done(function( result ) {
+					console.log("done");
+					
 					if(result.status != true) {
+						$("#validation_error").removeClass("hidden");
 						try {
-							$("#validation_error").text(result.errmsg);	
+							$("#validation_error_msg").text(result.errmsg);
+							setState(result.state);
 						} catch(err) {
+							$("#validation_error_msg").text(err.message);
 						    console.log(err.message);
 						}
 						
 					} else {
 						setState(result.state);
-						if(result.state == 7 ) {
-							done();
-						}
+						if(result.redirect) {
+							try {
+								result(result.url,result.timeout);
+							} catch(err) {
+								setState(1);
+								console.log(err.message);
+							}
+						} else {
+							if(result.state == 7 ) {
+								done();
+							}
+						}	
 					}
 				})
 				.fail(function() {
 					setState(1);
+				})
+				.always(function(){
+					console.log("Hide spinner");
+					$("#spinner-bg").addClass("hidden");
 				});
 			return false;
 		},

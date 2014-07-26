@@ -5570,6 +5570,9 @@ html.rgba hr {
 .icon-hint {
   background: #ffd100; }
 
+.form-control-sm {
+  width: 50%; }
+
 .form-buttons {
   margin-top: 3em; }
 
@@ -5734,162 +5737,6 @@ html.rgba hr {
       top: 28px; }
   .modal-dialog .modal-content article {
     padding: 50px; }
-
-.panel {
-  border: 0;
-  padding: 0;
-  background: none;
-  box-shadow: none;
-  -webkit-box-shadow: none;
-  -ms-box-shadow: none;
-  -moz-box-shadow: none;
-  -o-box-shadow: none;
-  border-bottom: 2px solid #f7f7f7; }
-  .panel + .panel {
-    margin: 0; }
-  .panel .panel-heading {
-    background: white;
-    padding: 0;
-    font-size: 90%; }
-    .panel .panel-heading a {
-      display: block;
-      text-decoration: none;
-      padding: 2% 3.8% 2% 10%;
-      color: #222222;
-      opacity: 0.7; }
-      .panel .panel-heading a:hover {
-        opacity: 0.9; }
-      .panel .panel-heading a {
-        display: table;
-        width: 100%; }
-        .panel .panel-heading a h4, .panel .panel-heading a .status-icon {
-          display: table-cell;
-          vertical-align: middle; }
-        .panel .panel-heading a h4 {
-          padding: 3% 0; }
-        .panel .panel-heading a .status-icon {
-          width: 50px;
-          font-size: 120%; }
-          .panel .panel-heading a .status-icon .icon {
-            transition: 0.3s;
-            -webkit-transition: 0.3s;
-            -ms-transition: 0.3s;
-            -moz-transition: 0.3s;
-            -o-transition: 0.3s;
-            display: block;
-            padding: 13px;
-            width: 45px;
-            height: 45px;
-            overflow: hidden;
-            border-radius: 50%;
-            border: 2px solid; }
-          @media (max-width: 767px) {
-            .panel .panel-heading a .status-icon {
-              width: 36px; }
-            .panel .panel-heading a .status-icon .icon {
-              font-size: 80%;
-              width: 36px;
-              height: 36px;
-              padding: 9px; } }
-          .panel .panel-heading a .status-icon .fa-plus {
-            border-color: #222222;
-            background: white;
-            color: #222222; }
-          .panel .panel-heading a .status-icon .open {
-            background: #222222;
-            color: white; }
-            .panel .panel-heading a .status-icon .open:before {
-              content: "\f068"; }
-            html.csstransforms .panel .panel-heading a .status-icon .open {
-              transform: rotate(45deg);
-              -webkit-transform: rotate(45deg);
-              -ms-transform: rotate(45deg);
-              -moz-transform: rotate(45deg);
-              -o-transform: rotate(45deg); }
-              html.csstransforms .panel .panel-heading a .status-icon .open:before {
-                content: "\f067"; }
-          .panel .panel-heading a .status-icon .fa-exclamation {
-            background: #e7302a;
-            border-color: #e7302a;
-            color: white; }
-          .panel .panel-heading a .status-icon .fa-check {
-            background: #009f6e;
-            border-color: #009f6e;
-            color: white; }
-    .panel .panel-heading + .panel-collapse .panel-body {
-      border: 0; }
-  .panel.open .panel-heading a {
-    opacity: 1; }
-  .panel .panel-body {
-    padding: 5% 10%;
-    background: #f7f7f7; }
-
-.panel-button {
-  padding: 3% 10%; }
-
-.pages {
-  position: relative;
-  /*
-  &.page1 {
-    &.page2 .page1 { @include prefixed(animation, slide-out-to-left 0.5s forward); }
-  }
-  */ }
-  .pages .page {
-    position: absolute;
-    top: 0;
-    width: 100%;
-    left: 0;
-    overflow: hidden;
-    transition: 0.5s;
-    -webkit-transition: 0.5s;
-    -ms-transition: 0.5s;
-    -moz-transition: 0.5s;
-    -o-transition: 0.5s;
-    background: white; }
-  .pages .page2, .pages .page3 {
-    left: 100%;
-    height: 0; }
-  .pages.page2 .page1 {
-    left: -100%; }
-  .pages.page2 .page2 {
-    left: 0;
-    height: auto; }
-  .pages.page3 .page2 {
-    left: -100%; }
-  .pages.page3 .page3 {
-    left: 0;
-    height: auto; }
-
-.bags-summary {
-  padding: 1.5% 0; }
-  .bags-summary .bag-summary {
-    text-align: center; }
-    .bags-summary .bag-summary .icons {
-      display: block;
-      position: relative;
-      height: 0;
-      padding-bottom: 50%; }
-    .bags-summary .bag-summary .icon {
-      display: block;
-      width: 50%;
-      position: absolute;
-      left: 50%;
-      margin-left: -25%; }
-    .bags-summary .bag-summary .icon-inner {
-      position: relative; }
-    .bags-summary .bag-summary .round-inner {
-      background: #222222;
-      border: 2px solid white; }
-    .bags-summary .bag-summary .bag-label {
-      display: block;
-      padding: 5%; }
-      @media (min-width: 768px) {
-        .bags-summary .bag-summary .bag-label {
-          font-size: 125%; } }
-      .bags-summary .bag-summary .bag-label strong {
-        display: block; }
-  .bags-summary .bag-summary-large .round-inner {
-    padding: 5% 2.5%; }
 
 /*** ANIMATIONS ***/
 @keyframes rotate {
@@ -6839,7 +6686,8 @@ html.rgba hr {
         display: inline-block;
         width: 40px;
         height: 40px;
-        background: none no-repeat center center;
+        background-repeat: no-repeat;
+        background-position: center center;
         background-size: cover;
         opacity: 0.5; }
       #panel nav a strong {
@@ -6861,22 +6709,69 @@ html.rgba hr {
       background: #f18800; }
       #panel nav .active a i {
         opacity: 1; }
-    #panel nav .home i {
-      background-image: url(../img/icons/menu/home.png); }
-    #panel nav .me i {
-      background-image: url(../img/icons/menu/profile.png); }
-    #panel nav .users i {
-      background-image: url(../img/icons/menu/users.png); }
-    #panel nav .mail i {
-      background-image: url(../img/icons/menu/mail.png); }
-    #panel nav .network i {
-      background-image: url(../img/icons/menu/network.png); }
-    #panel nav .backup i {
-      background-image: url(../img/icons/menu/backup.png); }
-    #panel nav .update i {
-      background-image: url(../img/icons/menu/update.png); }
-    #panel nav .logout i {
-      background-image: url(../img/icons/menu/logout.png); }
+
+nav .home i {
+  background-image: url(../img/icons/menu/home.png); }
+nav .me i {
+  background-image: url(../img/icons/menu/profile.png); }
+nav .users i {
+  background-image: url(../img/icons/menu/users.png); }
+nav .mail i {
+  background-image: url(../img/icons/menu/mail.png); }
+nav .network i {
+  background-image: url(../img/icons/menu/network.png); }
+nav .backup i {
+  background-image: url(../img/icons/menu/backup.png); }
+nav .update i {
+  background-image: url(../img/icons/menu/update.png); }
+nav .logout i {
+  background-image: url(../img/icons/menu/logout.png); }
+nav .shutdown i {
+  background-image: url(../img/icons/menu/shutdown.png); }
+
+#home-list a {
+  display: table;
+  width: 100%;
+  max-width: 500px;
+  border-radius: 10px;
+  margin-bottom: 30px;
+  overflow: hidden;
+  text-decoration: none;
+  transition: 0.3s;
+  -webkit-transition: 0.3s;
+  -ms-transition: 0.3s;
+  -moz-transition: 0.3s;
+  -o-transition: 0.3s; }
+  #home-list a:before, #home-list a:after {
+    display: table;
+    content: " "; }
+  #home-list a:after {
+    clear: both; }
+  #home-list a:hover {
+    transform: scale(1.05);
+    -webkit-transform: scale(1.05);
+    -ms-transform: scale(1.05);
+    -moz-transform: scale(1.05);
+    -o-transform: scale(1.05);
+    box-shadow: 0 0 10px rgba(34, 34, 34, 0.2); }
+  #home-list a i, #home-list a strong {
+    display: table-cell;
+    padding: 8%;
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: 60%;
+    background-color: #f18800;
+    overflow: hidden;
+    white-space: nowrap; }
+  #home-list a i {
+    width: 120px;
+    min-width: 120px; }
+  #home-list a strong {
+    color: #222222;
+    background: white; }
+@media (min-width: 768px) {
+  #home-list li:nth-child(odd) {
+    clear: both; } }
 
 @media (min-width: 768px) {
   html {

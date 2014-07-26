@@ -1,10 +1,67 @@
 #login-bg {
 	overflow : auto;
 }
+
 #login {
 	width : 400px;
 	margin-left : -200px;
 	top : 40%;
+}
+
+#page_shutdown {
+	z-index : 10;
+}
+#page_shutdown form{
+	display : inline;
+}
+
+#nav-shutdown {
+	position : fixed;
+	right : 50px;
+	top : 50px;
+	z-index : 100;
+}
+nav .shutdown img {
+	width : 30px;
+	margin-bottom : 1px;
+	margin-left : -5px;
+}
+nav  button.shutdown {
+	padding : 0px 10px;
+}
+nav button span {
+	vertical-align: middle;
+	font-size : 0.7em;
+}
+.width_50 {
+	width : 48%;
+}
+.btn-right {
+	float : right;
+}
+.sd-buttons {
+	margin-top : 10px;
+}
+#spinner-bg {
+	z-index : 100;
+	position : absolute;
+	left : 0;
+	right :0;
+	top : 0;
+	bottom: 0;
+	background-color:#FFF;
+	opacity : 0.25;
+}
+#spinner {
+	width : 75px;
+	margin : auto;
+	margin-top: 30%;
+}
+.faded {
+	opacity : 0.25;
+}
+#page_shutdown p{
+	margin-top : 20px;
 }
 form label {
 	width : 200px;
@@ -17,27 +74,30 @@ form p {
 	text-transform : lowercase;
 }
 .strength-meter, .form-error {
-	width : 125px;
-	height : 24px;
+	//width : 125px;
+	//height : 24px;
 	background : none;
 	position : absolute;
 	display : block !important;
 	text-align : center;
 	font-size : 10px;
 	font-weight : bold;
-	top : 29px;
-	right : 1px;
+	//top : 29px;
+	bottom : 1px;
+	right : 2px;
+	left : 2px;
 	
 }
 .form-error {
 	top : 20px;
-	right : 3px;
 	text-align : right;
-	width : 100%;
+	width : 97%;
+	height : 0px;
 }
 
 #validation_error {
-	background : rgb(127,0,0,0.8);
+	margin-top: 10px;
+//	background : rgb(255, 192, 203);
 	color : red;
 	text-align : center;
 }
