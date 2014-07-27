@@ -323,7 +323,6 @@
 current_state = 0;
 
 $("button[type='cancel']").click(function() {
-	console.log("State: "+current_state);
 	setState(current_state);
 });
 
@@ -373,20 +372,21 @@ function setState(state) {
 	for( i=1; i <= pages.length; ++i)
 	{
 		if(i==state) {
-//			console.log("Show " + pages[i-1]);
 			$("#"+pages[i-1]).removeClass("hidden");
 			$("#"+pages[i-1]).find("input").filter(':visible:first').focus();
-			$("form").get(0).reset();
-/*
-} else {
-//			console.log("Hide " + i);
-			$("#"+pages[i-1]).addClass("hidden");
-*/
+			$.each($("form"),function() {
+				if($(this).attr('id') != "pwdform") {
+					// reset form to clear error markers.
+					// do not reset the pwdform since that will reset the hidden (and required) unit_id field.
+					$(this).get(0).reset();
+				}
+			});
 		}
 	} 
 }
 
 function redirect(url,timeout) {
+	$("#spinner-bg").removeClass("hidden");
 	setTimeout(function() {
 		location.href = url;
 	},timeout);
@@ -408,9 +408,7 @@ function done() {
 				}
 				
 			} else {
-				setTimeout(function() {  // wait 5 seconds, then try redirect to admin UI
-					location.href = "/admin";
-				},5000);
+				redirect("/admin",5000);
 			}
 		})
 		.fail(function() {
@@ -429,11 +427,9 @@ $("#opiname").keyup( function() {
 		type : "POST",
 	}).done(function(data) {
 		if(data.available) {
-			console.log("Name available");
-			$("#opi_namestate").text();
+			$("#opi_namestate").text("Name available");
 		} else {
 			$("#opi_namestate").text("Name not available");
-			console.log("Name not available");
 		}
 	});	
 });
@@ -447,9 +443,7 @@ $(document).ready( function() {
 	var unit_id;
 	
 	// fix margin if we are running in a small browser.
-	console.log("Window width:" + $(window).width());
 	if($(window).width() < 760) {
-		console.log("Change margin");
 		margin = ($(window).width() - 400)/2; 
 		$("#login").css("marginLeft",margin+"px");
 	}
@@ -518,7 +512,6 @@ $(document).ready( function() {
 			  var data = {};
 			  for (var i = 0, ii = formdata.length; i < ii; ++i) {
 			    var input = formdata[i];
-			    console.log("Input: " + input);
 			    if (input.name) {
 			      data[input.name] = input.value;
 			    }
@@ -526,8 +519,6 @@ $(document).ready( function() {
 			  if(button = $form.children('button')) {
 				  data[button.attr('name')] = button.val(); 
 			  }
-			  console.log(data);
-			  console.log("Show spinner");
 			  $("#spinner-bg").removeClass("hidden");
 			$.ajax({
 				  type: "POST",
@@ -536,8 +527,6 @@ $(document).ready( function() {
 				  data: JSON.stringify(data),
 				})
 				.done(function( result ) {
-					console.log("done");
-					
 					if(result.status != true) {
 						$("#validation_error").removeClass("hidden");
 						try {
@@ -559,6 +548,8 @@ $(document).ready( function() {
 							}
 						} else {
 							if(result.state == 7 ) {
+								// this will send the "terminate" signal to opi-control
+								// then redirect to "/admin"
 								done();
 							}
 						}	
@@ -568,20 +559,19 @@ $(document).ready( function() {
 					setState(1);
 				})
 				.always(function(){
-					console.log("Hide spinner");
 					$("#spinner-bg").addClass("hidden");
 				});
 			return false;
 		},
 		onError : function($form) {
-			console.log("Failed");
+			console.log("Validation Failed");
 			return false;
 		}
 
 	});
 	
 	$.get("/status",function(data) {
-		console.log(data);
+		//console.log(data);
 		setState(data.state);
 	})
 	.fail(function() {
