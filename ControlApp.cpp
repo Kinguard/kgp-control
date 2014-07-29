@@ -489,13 +489,21 @@ bool ControlApp::DoUnlock(const string &pwd)
 
 	logg << Logger::Debug << "LUKS volume on "<<STORAGE_PART<< " opened"<< lend;
 
-	// Make sure device is not mounted (Should not happen)
-	if( DiskHelper::IsMounted( LUKSDEVICE ) != "" )
+	try
 	{
-		DiskHelper::Umount( LUKSDEVICE );
-	}
+		// Make sure device is not mounted (Should not happen)
+		if( DiskHelper::IsMounted( LUKSDEVICE ) != "" )
+		{
+			DiskHelper::Umount( LUKSDEVICE );
+		}
 
-	DiskHelper::Mount( LUKSDEVICE , MOUNTPOINT );
+		DiskHelper::Mount( LUKSDEVICE , MOUNTPOINT );
+	}
+	catch( ErrnoException& err)
+	{
+		this->global_error = "Unable to access SD card";
+		return false;
+	}
 
 	if( ! ServiceHelper::IsRunning("secop") )
 	{
@@ -727,6 +735,8 @@ bool ControlApp::InitializeSD()
 		}
 	}
 
+	try
+	{
 	// Make sure device is not mounted (Should not happen)
 	if( DiskHelper::IsMounted( LUKSDEVICE ) != "" )
 	{
@@ -746,6 +756,12 @@ bool ControlApp::InitializeSD()
 
 	// Mount in final place
 	DiskHelper::Mount( LUKSDEVICE , MOUNTPOINT );
+	}
+	catch( ErrnoException& err)
+	{
+		this->global_error = "Unable to access SD card";
+		return false;
+	}
 
 	return true;
 }
