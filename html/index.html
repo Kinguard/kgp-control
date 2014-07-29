@@ -389,7 +389,7 @@ function redirect(url,timeout) {
 	$("#spinner-bg").removeClass("hidden");
 	setTimeout(function() {
 		location.href = url;
-	},timeout);
+	},timeout*1000);
 }
 
 function done() {
@@ -539,9 +539,9 @@ $(document).ready( function() {
 						
 					} else {
 						setState(result.state);
-						if(result.redirect) {
+						if(result.url) {
 							try {
-								result(result.url,result.timeout);
+								redirect(result.url,result.timeout);
 							} catch(err) {
 								setState(1);
 								console.log(err.message);

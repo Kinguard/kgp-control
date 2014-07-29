@@ -49,6 +49,7 @@ WebServer::WebServer(int initial_state, std::function<Json::Value(Json::Value)> 
 	routes[std::make_pair("/opiname","POST")] = WebServer::handle_selectname;
 	routes[std::make_pair("/portstatus","GET")] = WebServer::handle_portstatus;
 	routes[std::make_pair("/terminate","POST")] = WebServer::handle_terminate;
+	routes[std::make_pair("/shutdown","POST")] = WebServer::handle_shutdown;
 
 }
 
@@ -388,8 +389,43 @@ int WebServer::handle_terminate(mg_connection *conn)
 		Json::Value ret;
 		if( WebServer::callback != nullptr ){
 			Json::Value cmd;
-			cmd["cmd"]="shutdown";
+			cmd["cmd"]="terminate";
 			cmd["shutdown"]=req["shutdown"];
+			ret = WebServer::callback( cmd );
+			WebServer::state = ret["state"].asInt();
+		}
+		mg_send_header( conn, "Content-Type", "application/json");
+		mg_printf_data( conn, ret.toStyledString().c_str() );
+	}
+	else
+	{
+		mg_printf_data( conn, "Missing argument!");
+		mg_send_status(conn, 400);
+	}
+
+	return MG_TRUE;
+
+}
+
+int WebServer::handle_shutdown(mg_connection *conn)
+{
+	logg << Logger::Debug << "Got request for shutdown"<<lend;
+
+	Json::Value req;
+
+	if( ! WebServer::parse_json(conn, req) )
+	{
+		// True in the sense that we handled the req.
+		return MG_TRUE;
+	}
+
+	if( req.isMember("action") && req["action"].isString() )
+	{
+		Json::Value ret;
+		if( WebServer::callback != nullptr ){
+			Json::Value cmd;
+			cmd["cmd"]="shutdown";
+			cmd["action"]=req["action"];
 			ret = WebServer::callback( cmd );
 			WebServer::state = ret["state"].asInt();
 		}

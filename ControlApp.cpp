@@ -289,6 +289,18 @@ void ControlApp::Main()
 		ServiceHelper::Start( "nginx" );
 		ServiceHelper::Start( "opi-authproxy" );
 	}
+	else if( this->state == 10 )
+	{
+		logg << Logger::Debug << "Power off opi"<<lend;
+
+		system("/sbin/poweroff");
+	}
+	else if( this->state == 11 )
+	{
+		logg << Logger::Debug << "Reboot opi"<<lend;
+
+		system("/sbin/reboot");
+	}
 
 	logg << Logger::Debug << "OPI control finnished " <<lend;
 }
@@ -397,7 +409,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 				this->state = 6;
 			}
 		}
-		else if( cmd == "shutdown" )
+		else if( cmd == "terminate" )
 		{
 			if( v["shutdown"].asBool() && this->state == 7 )
 			{
@@ -407,6 +419,28 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			{
 				status = false;
 				this->global_error = "Wrong state for request";
+			}
+		}
+		else if( cmd == "shutdown" )
+		{
+			string action = v["action"].asString();
+
+			if( action == "shutdown")
+			{
+				this->state = 10;
+				this->ws->Stop();
+			}
+			else if( action == "reboot" )
+			{
+				this->state = 11;
+				ret["url"]="/";
+				ret["timeout"]=45;
+				this->ws->Stop();
+			}
+			else
+			{
+				status = false;
+				this->global_error = "Unknown action for shutdown";
 			}
 		}
 		else if( cmd == "portstatus" )
