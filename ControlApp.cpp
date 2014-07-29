@@ -656,6 +656,12 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 		return false;
 	}
 
+	if( ! s.AddGroupMember("admin", user) )
+	{
+		this->global_error = "Failed to make user admin";
+		return false;
+	}
+
 	return true;
 }
 
@@ -773,7 +779,16 @@ bool ControlApp::RegisterKeys( )
 		Secop s;
 
 		s.SockAuth();
-		list<map<string,string>> ids = s.AppGetIdentifiers("op-backend");
+		list<map<string,string>> ids;
+
+		try
+		{
+			ids = s.AppGetIdentifiers("op-backend");
+		}
+		catch( runtime_error& err)
+		{
+			// Do nothing, appid is missing but thats ok.
+		}
 
 		if( ids.size() == 0 )
 		{
