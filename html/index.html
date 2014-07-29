@@ -558,8 +558,10 @@ $(document).ready( function() {
 				.fail(function() {
 					setState(1);
 				})
-				.always(function(){
-					$("#spinner-bg").addClass("hidden");
+				.always(function(result){
+					if(!result.url) {
+						$("#spinner-bg").addClass("hidden");
+					}
 				});
 			return false;
 		},
