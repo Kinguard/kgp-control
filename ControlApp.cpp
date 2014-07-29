@@ -665,6 +665,8 @@ bool ControlApp::SetDNSName(const string &opiname)
 		return false;
 	}
 
+	this->opi_name = opiname;
+
 	return true;
 }
 
@@ -819,7 +821,7 @@ bool ControlApp::RegisterKeys( )
 
 		ControlApp::WriteBackupConfig(backuppass);
 
-		ControlApp::WriteConfig( this->unit_id);
+		this->WriteConfig( );
 	}
 	catch( runtime_error& err)
 	{
@@ -884,7 +886,7 @@ bool ControlApp::GetCertificate(const string &opiname, const string &company)
 	return true;
 }
 
-void ControlApp::WriteConfig(const string& unit_id)
+void ControlApp::WriteConfig()
 {
 	string path = File::GetPath( SYSCONFIG_PATH );
 
@@ -898,7 +900,8 @@ void ControlApp::WriteConfig(const string& unit_id)
 	c["dns_key"] = DNS_PRIV_PATH;
 	c["sys_key"] = SYS_PRIV_PATH;
 	c["ca_path"] = "/etc/opi/op_ca.pem";
-	c["unit_id"] = unit_id;
+	c["unit_id"] = this->unit_id;
+	c["opi_name"] = this->opi_name;
 
 	c.Sync(true, 0644);
 

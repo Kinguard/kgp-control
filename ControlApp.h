@@ -23,6 +23,7 @@ private:
 	string unit_id;
 	string masterpassword;
 	string token;
+	string opi_name;
 
 	Json::Value connstatus;
 	string global_error;
@@ -39,7 +40,7 @@ private:
 	bool InitializeSD();
 	bool RegisterKeys();
 	bool GetCertificate(const string& opiname, const string& company="OPI");
-	static void WriteConfig(const string &unit_id);
+	void WriteConfig();
 	static void WriteBackupConfig(const string& password);
 
 	bool DoLogin();
