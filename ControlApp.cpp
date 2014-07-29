@@ -25,10 +25,18 @@ using namespace std::placeholders;
 using namespace CryptoHelper;
 
 #ifdef OPI_BUILD_LOCAL
-#define OPI_MMC_DEV		"sdg"
+
+#ifdef USE_SDB
+#define OPI_MMC_DEV	"sdb"
+#define OPI_MMC_PART	"sdb1"
+#define STORAGE_DEV	"/dev/sdb"
+#define STORAGE_PART	"/dev/sdb1"
+#else
+#define OPI_MMC_DEV	"sdg"
 #define OPI_MMC_PART	"sdg1"
-#define STORAGE_DEV		"/dev/sdg"
+#define STORAGE_DEV	"/dev/sdg"
 #define STORAGE_PART	"/dev/sdg1"
+#endif
 
 #define MOUNTPOINT		"/var/opi/"
 #define TMP_MOUNT		"/mnt/opi/"
@@ -853,10 +861,8 @@ void ControlApp::WriteConfig(const string& unit_id)
 
 	ConfigFile c( SYSCONFIG_PATH );
 
-	c["dns_pubkey"] = DNS_PUB_PATH;
-	c["dns_privkey"] = DNS_PRIV_PATH;
-	c["sys_pubkey"] = SYS_PUB_PATH;
-	c["sys_privkey"] = SYS_PRIV_PATH;
+	c["dns_key"] = DNS_PRIV_PATH;
+	c["sys_key"] = SYS_PRIV_PATH;
 	c["ca_path"] = "/etc/opi/op_ca.pem";
 	c["unit_id"] = unit_id;
 
@@ -876,9 +882,13 @@ void ControlApp::WriteBackupConfig(const string &password)
 
 	stringstream ss;
 	ss << "[s3op]\n"
-		<< "storage-url: s3op://storage.openproducts.com/\n"
+		<< "storage-url: s3op://\n"
 		<< "backend-login: NotUsed\n"
 		<< "backend-password: NotUsed\n"
+		<< "fs-passphrase: " << password<<"\n\n"
+
+		<< "[local]\n"
+		<< "storage-url: local://\n"
 		<< "fs-passphrase: " << password<<endl;
 
 	File::Write(BACKUP_PATH, ss.str(), 0600 );
