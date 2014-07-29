@@ -2,6 +2,7 @@
 #define SECOP_H
 
 #include <libutils/Socket.h>
+#include <libutils/ClassTools.h>
 #include <json/json.h>
 
 #include <string>
@@ -17,7 +18,7 @@ using namespace Utils::Net;
 #define AUTHENTICATED	0x04
 
 
-class Secop
+class Secop: public Utils::NoCopy
 {
 public:
 	enum State {
@@ -37,9 +38,16 @@ public:
 	bool PlainAuth(const string& user, const string& pwd);
 
 	// User commands
-	bool CreateUser(const string& user, const string& pwd);
+	bool CreateUser(const string& user, const string& pwd, const string& display="");
+	bool UpdateUserPassword(const string& user, const string& pwd);
 	bool RemoveUser(const string& user);
 	vector<string> GetUsers();
+
+	bool AddAttribute(const string& user, const string& attr, const string& value);
+	bool RemoveAttribute(const string& user, const string& attr);
+	vector<string> GetAttributes(const string& user);
+	string GetAttribute(const string& user, const string& attr);
+
 
 	vector<string> GetServices(const string& user);
 	bool AddService(const string& user, const string& service);
@@ -57,6 +65,14 @@ public:
 	bool RemoveIdentifier(const string& user, const string& service, const map<string,string>& identifier);
 
 	list<map<string,string>> GetIdentifiers(const string& user, const string& service);
+
+	// Group commands
+	bool AddGroup(const string& group);
+	bool AddGroupMember(const string& group, const string& member);
+	vector<string> GetGroupMembers(const string& group);
+	vector<string> GetGroups();
+	bool RemoveGroup(const string& group);
+	bool RemoveGroupMember(const string& group, const string& member);
 
 	// Appid / system commands
 	bool AppAddID(const string& appid);
@@ -86,6 +102,8 @@ private:
 	Json::FastWriter writer;
 	Json::Reader reader;
 };
+
+typedef shared_ptr<Secop> SecopPtr;
 
 
 #endif // SECOP_H

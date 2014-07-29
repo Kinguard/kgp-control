@@ -6,6 +6,18 @@
 
 using namespace Utils;
 
+inline void throw_error(const Json::Value& rep)
+{
+	if( rep.isMember("status") && rep["status"].isMember("desc") && rep["status"]["desc"].isString() )
+	{
+		throw std::runtime_error(rep["status"]["desc"].asString());
+	}
+	else
+	{
+		throw std::runtime_error("Internal error");
+	}
+}
+
 Secop::Secop(): tid(0), secop("/tmp/secop")
 {
 
@@ -31,11 +43,12 @@ Secop::State Secop::Status()
 
 	Json::Value rep = this->DoCall(cmd);
 
-	if( this->CheckReply(rep) )
+	if( ! this->CheckReply(rep) )
 	{
-		return static_cast<Secop::State>(rep["server"]["state"].asInt());
+		throw_error(rep);
 	}
-	return Secop::Unknown;
+
+	return static_cast<Secop::State>(rep["server"]["state"].asInt());
 }
 
 bool Secop::SockAuth()
@@ -64,11 +77,28 @@ bool Secop::PlainAuth(const string& user, const string& pwd)
 	return this->CheckReply(rep);
 }
 
-bool Secop::CreateUser(const string& user, const string& pwd)
+bool Secop::CreateUser(const string& user, const string& pwd, const string &display)
 {
 	Json::Value cmd(Json::objectValue);
 
 	cmd["cmd"]		= "createuser";
+	cmd["username"]	= user;
+	cmd["password"]	= pwd;
+	if( display != "")
+	{
+		cmd["displayname"] = display;
+	}
+
+	Json::Value rep = this->DoCall(cmd);
+
+	return this->CheckReply(rep);
+}
+
+bool Secop::UpdateUserPassword(const string &user, const string &pwd)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]		= "updateuserpassword";
 	cmd["username"]	= user;
 	cmd["password"]	= pwd;
 
@@ -106,9 +136,80 @@ vector<string> Secop::GetUsers()
 			users.push_back(x.asString() );
 		}
 	}
+	else
+	{
+		throw_error(rep);
+	}
 	return users;
 }
 
+bool Secop::AddAttribute(const string &user, const string &attr, const string &value)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]		= "addattribute";
+	cmd["username"]	= user;
+	cmd["attribute"]= attr;
+	cmd["value"]= value;
+
+	Json::Value rep = this->DoCall(cmd);
+
+	return this->CheckReply(rep);
+}
+
+bool Secop::RemoveAttribute(const string &user, const string &attr)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]		= "addattribute";
+	cmd["username"]	= user;
+	cmd["attribute"]= attr;
+
+	Json::Value rep = this->DoCall(cmd);
+
+	return this->CheckReply(rep);
+}
+
+vector<string> Secop::GetAttributes(const string &user)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]		= "getattributes";
+	cmd["username"]	= user;
+
+	Json::Value rep = this->DoCall(cmd);
+
+	vector<string> attrs;
+	if( this->CheckReply(rep) )
+	{
+		for(auto x: rep["attributes"])
+		{
+			attrs.push_back(x.asString() );
+		}
+	}
+	else
+	{
+		throw_error(rep);
+	}
+	return attrs;
+}
+
+string Secop::GetAttribute(const string &user, const string &attr)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]		= "getattribute";
+	cmd["username"]	= user;
+	cmd["attribute"] = attr;
+	Json::Value rep = this->DoCall(cmd);
+
+	if( ! this->CheckReply(rep) )
+	{
+		throw_error(rep);
+	}
+
+	return rep["attribute"].asString();
+}
 vector<string> Secop::GetServices(const string& user)
 {
 	Json::Value cmd(Json::objectValue);
@@ -125,6 +226,10 @@ vector<string> Secop::GetServices(const string& user)
 		{
 			services.push_back(x.asString() );
 		}
+	}
+	else
+	{
+		throw_error(rep);
 	}
 	return services;
 }
@@ -173,6 +278,10 @@ vector<string> Secop::GetACL(const string& user, const string& service)
 			acl.push_back(x.asString() );
 		}
 	}
+	else
+	{
+		throw_error(rep);
+	}
 	return acl;
 }
 
@@ -219,6 +328,10 @@ bool Secop::HasACL(const string& user, const string& service, const string& acl)
 	if ( this->CheckReply(rep) )
 	{
 		ret = rep["hasacl"].asBool();
+	}
+	else
+	{
+		throw_error(rep);
 	}
 
 	return ret;
@@ -287,8 +400,111 @@ list<map<string,string>> Secop::GetIdentifiers(const string& user, const string&
 			ret.push_back( id );
 		}
 	}
+	else
+	{
+		throw_error(rep);
+	}
 
 	return ret;
+}
+
+bool Secop::AddGroup(const string &group)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]	= "groupadd";
+	cmd["group"]= group;
+
+	Json::Value rep = this->DoCall(cmd);
+
+	return this->CheckReply(rep);
+}
+
+bool Secop::AddGroupMember(const string &group, const string &member)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]	= "groupaddmember";
+	cmd["group"]= group;
+	cmd["member"]= member;
+
+	Json::Value rep = this->DoCall(cmd);
+
+	return this->CheckReply(rep);
+
+}
+
+vector<string> Secop::GetGroupMembers(const string &group)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]	= "groupgetmembers";
+	cmd["group"]= group;
+
+	Json::Value rep = this->DoCall(cmd);
+
+	vector<string> ret;
+	if( this->CheckReply(rep) )
+	{
+		for( auto member: rep["members"])
+		{
+			ret.push_back( member.asString() );
+		}
+	}
+	else
+	{
+		throw_error(rep);
+	}
+
+	return ret;
+}
+
+vector<string> Secop::GetGroups()
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]			= "groupsget";
+
+	Json::Value rep = this->DoCall(cmd);
+
+	vector<string> ret;
+	if ( this->CheckReply(rep) )
+	{
+		for(auto group: rep["groups"])
+		{
+			ret.push_back( group.asString() );
+		}
+	}
+	else
+	{
+		throw_error(rep);
+	}
+	return ret;
+}
+
+bool Secop::RemoveGroup(const string &group)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]		= "groupremove";
+	cmd["group"]	= group;
+
+	Json::Value rep = this->DoCall(cmd);
+
+	return this->CheckReply(rep);
+}
+
+bool Secop::RemoveGroupMember(const string &group, const string &member)
+{
+	Json::Value cmd(Json::objectValue);
+
+	cmd["cmd"]		= "groupremovemember";
+	cmd["group"]	= group;
+	cmd["member"]	= member;
+
+	Json::Value rep = this->DoCall(cmd);
+
+	return this->CheckReply(rep);
 }
 
 bool Secop::AppAddID(const string &appid)
@@ -318,6 +534,10 @@ vector<string> Secop::AppGetIDs()
 		{
 			users.push_back(x.asString() );
 		}
+	}
+	else
+	{
+		throw_error(rep);
 	}
 	return users;
 
@@ -376,6 +596,10 @@ list<map<string, string> > Secop::AppGetIdentifiers(const string &appid)
 			ret.push_back( id );
 		}
 	}
+	else
+	{
+		throw_error(rep);
+	}
 
 	return ret;
 }
@@ -427,6 +651,10 @@ vector<string> Secop::AppGetACL(const string &appid)
 			acl.push_back(x.asString() );
 		}
 	}
+	else
+	{
+		throw_error(rep);
+	}
 	return acl;
 
 }
@@ -458,6 +686,10 @@ bool Secop::AppHasACL(const string &appid, const string &acl)
 	if ( this->CheckReply(rep) )
 	{
 		ret = rep["hasacl"].asBool();
+	}
+	else
+	{
+		throw_error(rep);
 	}
 
 	return ret;
