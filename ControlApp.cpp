@@ -825,6 +825,10 @@ bool ControlApp::RegisterKeys( )
 			RSAWrapper dns;
 			dns.GenerateKeys();
 
+			// Could be leftover symlinks, remove
+			unlink( DNS_PRIV_PATH );
+			unlink( DNS_PUB_PATH );
+
 			File::Write(DNS_PRIV_PATH, dns.PrivKeyAsPEM(), 0600 );
 			File::Write(DNS_PUB_PATH, dns.PubKeyAsPEM(), 0644 );
 		}
@@ -891,6 +895,9 @@ bool ControlApp::GetCertificate(const string &opiname, const string &company)
 		this->global_error = "Unexpected reply from OP server when retrieving certificate";
 		return false;
 	}
+
+	// Make sure we have no symlinked tempcert in place
+	unlink( CERT_PATH );
 
 	File::Write( CERT_PATH, ret["cert"].asString(), 0644);
 
