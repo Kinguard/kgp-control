@@ -1,3 +1,9 @@
+opi-control (0.9.10) testing; urgency=low
+
+  * A lot of bugfixing 
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 29 Jul 2014 16:41:15 +0200
+
 opi-control (0.9.9) testing; urgency=low
 
   * Make sure SD card is inserted before doing setup 
