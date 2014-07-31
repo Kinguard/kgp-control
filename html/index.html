@@ -408,7 +408,7 @@ function done() {
 				}
 				
 			} else {
-				redirect("/admin",5000);
+				redirect("/admin",5);
 			}
 		})
 		.fail(function() {
@@ -503,7 +503,7 @@ $(document).ready( function() {
 		},
 		onSuccess : function($form) {
 			url = $form.find("button[type='submit']").attr('href');
-			if(url == "/init") {
+			if( (url == "/init") || (url == "/reinit") ) {
 				// trying to init, show init info to user
 				setState(8);
 			}
