@@ -1,3 +1,11 @@
+opi-control (0.9.11) testing; urgency=low
+
+  * Fixed timeout for redirect to /admin
+  * Showing "doing init"-page on reinit as well
+  * Not removing spinner on reboot
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 31 Jul 2014 15:58:51 +0200
+
 opi-control (0.9.10) testing; urgency=low
 
   * A lot of bugfixing 
