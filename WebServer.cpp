@@ -68,6 +68,9 @@ void WebServer::PreRun()
 
 	mg_set_option(this->server, "listening_port",LISTENING_PORT);
 
+	// Redirect all 404 to our index page
+	mg_set_option(this->server, "url_rewrites","404=/");
+
 #if 0
 	mg_set_option( this->server, "access_log_file", "mg_logfile.txt");
 #endif

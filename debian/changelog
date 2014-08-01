@@ -1,3 +1,9 @@
+opi-control (0.9.12) vili; urgency=low
+
+  *  Redirect all 404s to index page
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 01 Aug 2014 15:30:19 +0200
+
 opi-control (0.9.11) testing; urgency=low
 
   * Fixed timeout for redirect to /admin
