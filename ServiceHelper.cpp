@@ -23,12 +23,12 @@ namespace ServiceHelper {
 
 bool Start(const string& service)
 {
-	return do_call("/etc/init.d/"+service+" start >/dev/null")==0;
+	return do_call( "/usr/sbin/service "+service+" stop &> /dev/null") == 0;
 }
 
 bool Stop(const string& service)
 {
-	return do_call("/etc/init.d/"+service+" stop >/dev/null")==0;
+	return do_call( "/usr/sbin/service "+service+" stop &> /dev/null") == 0;
 }
 
 pid_t GetPid(const string& service)

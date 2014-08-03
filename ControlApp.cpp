@@ -286,8 +286,11 @@ void ControlApp::Main()
 	{
 		// We should have reached a positive end of init, start services
 		logg << Logger::Debug << "Init completed, start servers"<<lend;
-		ServiceHelper::Start( "nginx" );
+		ServiceHelper::Start( "postfix" );
+		ServiceHelper::Start( "dovecot" );
 		ServiceHelper::Start( "opi-authproxy" );
+		ServiceHelper::Start( "mysql" );
+		ServiceHelper::Start( "nginx" );
 	}
 	else if( this->state == 10 )
 	{
