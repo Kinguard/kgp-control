@@ -1,3 +1,9 @@
+opi-control (0.9.13) vili; urgency=low
+
+  * Start more apps on successful unlock.
+
+ -- Tor Krill <tor@openproducts.se>  Sun, 03 Aug 2014 16:10:54 +0200
+
 opi-control (0.9.12) vili; urgency=low
 
   *  Redirect all 404s to index page
