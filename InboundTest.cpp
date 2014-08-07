@@ -23,7 +23,7 @@ public:
 		dorun(true)
 	{
 		int fd = this->s.getSocketFd();
-		if( ! fcntl( fd,fcntl(fd, F_GETFD) | FD_CLOEXEC ) != 0 )
+		if( fcntl( fd,fcntl(fd, F_GETFD) | FD_CLOEXEC ) != 0 )
 		{
 			throw ErrnoException("Failed to update socket fd");
 		}

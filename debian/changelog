@@ -1,3 +1,10 @@
+opi-control (0.9.15) vili; urgency=low
+
+  * Make sure displayname is set on new user (#102)
+  * Fix bug on inbound test (#107)
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 07 Aug 2014 07:32:01 +0200
+
 opi-control (0.9.14) vili; urgency=low
 
   * Start service not stop it damn it
