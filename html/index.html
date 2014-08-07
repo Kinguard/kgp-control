@@ -168,6 +168,17 @@
 	<div id="page_user" class="page hidden">
 		<h1>Add first user</h1>
 		<form id="userform">
+			<div>	
+				<p class="form-group">
+				<label for 'displayname'>Real name</label>
+				<input type="text"
+					name="displayname"
+					title="Displayname"
+					data-validation="required"
+					data-validation-error-msg="Missing 'Real name'"
+					/>
+				</p>
+			</div>
 			<div>
 				<p class="form-group">
 				<label for 'username'>Username</label>
@@ -177,17 +188,6 @@
 					data-validation="required"
 					class="lowercase"
 					data-validation-error-msg="Missing 'username'"
-					/>
-				</p>
-			</div>
-			<div>	
-				<p class="form-group">
-				<label for 'displayname'>Real name</label>
-				<input type="text"
-					name="displayname"
-					title="Displayname"
-					data-validation="required"
-					data-validation-error-msg="Missing 'Real name'"
 					/>
 				</p>
 			</div>
