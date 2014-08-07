@@ -642,7 +642,7 @@ bool ControlApp::DoInit(const string& pwd, const string& unit_id)
 
 bool ControlApp::AddUser(const string user, const string display, const string password)
 {
-	logg << "Add user "<<user<<" "<< display<< " " << password << lend;
+	logg << "Add user "<<user<<" "<< display << lend;
 
 	if(! this->SecopUnlocked() )
 	{
@@ -653,7 +653,7 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 	Secop s;
 	s.SockAuth();
 
-	if( ! s.CreateUser(user, password) )
+	if( ! s.CreateUser(user, password, display) )
 	{
 		this->global_error = "Failed to create user (User exists?)";
 		return false;
