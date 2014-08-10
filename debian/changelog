@@ -1,3 +1,9 @@
+opi-control (0.9.16) vili; urgency=low
+
+  * Really(?) set cloexec on inbound tests.
+
+ -- Tor Krill <tor@openproducts.se>  Sun, 10 Aug 2014 21:51:02 +0200
+
 opi-control (0.9.15) vili; urgency=low
 
   * Make sure displayname is set on new user (#102)
