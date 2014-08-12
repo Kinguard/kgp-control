@@ -290,6 +290,7 @@ void ControlApp::Main()
 		ServiceHelper::Start( "dovecot" );
 		ServiceHelper::Start( "opi-authproxy" );
 		ServiceHelper::Start( "mysql" );
+		ServiceHelper::Start( "fetchmail" );
 		ServiceHelper::Start( "nginx" );
 	}
 	else if( this->state == 10 )
@@ -684,6 +685,8 @@ bool ControlApp::SetDNSName(const string &opiname)
 
 	this->opi_name = opiname;
 
+	this->WriteConfig();
+
 	return true;
 }
 
@@ -851,13 +854,16 @@ bool ControlApp::RegisterKeys( )
 			File::Write(DNS_PUB_PATH, dns.PubKeyAsPEM(), 0644 );
 		}
 
-		SecString spass(this->masterpassword.c_str(), this->masterpassword.size() );
-		SecVector<byte> key = PBKDF2( spass, 20);
-		vector<byte> ukey(key.begin(), key.end());
+		if( ! File::FileExists( BACKUP_PATH ) )
+		{
+			SecString spass(this->masterpassword.c_str(), this->masterpassword.size() );
+			SecVector<byte> key = PBKDF2( spass, 20);
+			vector<byte> ukey(key.begin(), key.end());
 
-		string  backuppass = Base64Encode( ukey );
+			string  backuppass = Base64Encode( ukey );
 
-		ControlApp::WriteBackupConfig(backuppass);
+			ControlApp::WriteBackupConfig(backuppass);
+		}
 
 		this->WriteConfig( );
 	}
@@ -941,8 +947,16 @@ void ControlApp::WriteConfig()
 	c["dns_key"] = DNS_PRIV_PATH;
 	c["sys_key"] = SYS_PRIV_PATH;
 	c["ca_path"] = "/etc/opi/op_ca.pem";
-	c["unit_id"] = this->unit_id;
-	c["opi_name"] = this->opi_name;
+
+	if( this->unit_id != "" )
+	{
+		c["unit_id"] = this->unit_id;
+	}
+
+	if( this->opi_name != "" )
+	{
+		c["opi_name"] = this->opi_name;
+	}
 
 	c.Sync(true, 0644);
 
