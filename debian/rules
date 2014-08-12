@@ -13,7 +13,7 @@ override_dh_auto_configure:
 	dh_auto_configure -- -DOPI_BUILD=deb
 
 override_dh_installinit:
-	dh_installinit -- defaults 99
+	dh_installinit --no-start -- defaults 99
 
 %:
 	dh $@ 
