@@ -14,6 +14,7 @@
 
 #include <libutils/FileUtils.h>
 #include <libutils/ConfigFile.h>
+#include <libutils/UserGroups.h>
 
 #include <functional>
 
@@ -663,6 +664,20 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 	if( ! s.AddGroupMember("admin", user) )
 	{
 		this->global_error = "Failed to make user admin";
+		return false;
+	}
+
+	// Add user to localdomain mailboxfile
+	list<string> lines = File::GetContent( LOCAL_MAILFILE );
+	lines.push_back( user+"@localdomain\t"+user+"/mail/" );
+	File::Write( LOCAL_MAILFILE, lines, 0600);
+	chown( LOCAL_MAILFILE, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
+
+	int ret = system( "/usr/sbin/postmap " LOCAL_MAILFILE );
+
+	if( (ret < 0) || WEXITSTATUS(ret) != 0 )
+	{
+		this->global_error = "Failed to create user mail mapping";
 		return false;
 	}
 

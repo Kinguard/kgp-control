@@ -21,6 +21,8 @@
 #define SYS_PRIV_PATH "/var/opi/etc/syspriv.pem"
 #define SYSCONFIG_PATH "/etc/opi/sysinfo.conf"
 
+#define LOCAL_MAILFILE "/var/opi/mail/conf/localmail"
+
 #define OP_HOST "https://auth.openproducts.com/"
 #define CONNTEST_HOST "http://conntest.op-i.me"
 #endif
