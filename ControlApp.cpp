@@ -869,16 +869,13 @@ bool ControlApp::RegisterKeys( )
 			File::Write(DNS_PUB_PATH, dns.PubKeyAsPEM(), 0644 );
 		}
 
-		if( ! File::FileExists( BACKUP_PATH ) )
-		{
-			SecString spass(this->masterpassword.c_str(), this->masterpassword.size() );
-			SecVector<byte> key = PBKDF2( spass, 20);
-			vector<byte> ukey(key.begin(), key.end());
+		SecString spass(this->masterpassword.c_str(), this->masterpassword.size() );
+		SecVector<byte> key = PBKDF2( spass, 20);
+		vector<byte> ukey(key.begin(), key.end());
 
-			string  backuppass = Base64Encode( ukey );
+		string  backuppass = Base64Encode( ukey );
 
-			ControlApp::WriteBackupConfig(backuppass);
-		}
+		ControlApp::WriteBackupConfig(backuppass);
 
 		this->WriteConfig( );
 	}
