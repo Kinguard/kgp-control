@@ -1,3 +1,9 @@
+opi-control (0.9.19) vili; urgency=low
+
+  * Initial add of led control
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 14 Aug 2014 23:53:14 +0200
+
 opi-control (0.9.18) vili; urgency=low
 
   * Always write backup config fix #0127

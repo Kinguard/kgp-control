@@ -3,6 +3,7 @@
 
 #include <libutils/Application.h>
 
+#include "LedControl.h"
 #include "WebServer.h"
 
 class ControlApp : public Utils::DaemonApplication
@@ -43,9 +44,19 @@ private:
 	void WriteConfig();
 	static void WriteBackupConfig(const string& password);
 
+	enum Ledstate {
+		Error,
+		Waiting,
+		Completed
+	};
+
+	void SetLedstate(enum Ledstate state);
+
 	bool DoLogin();
 
 	WebServerPtr ws;
+
+	LedControl leds;
 };
 
 #endif // CONTROLAPP_H

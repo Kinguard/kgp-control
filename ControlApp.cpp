@@ -273,6 +273,15 @@ void ControlApp::Main()
 
 	this->ws = WebServerPtr( new WebServer( this->state, std::bind(&ControlApp::WebCallback,this, _1)) );
 
+	if( this->state == 2 )
+	{
+		this->SetLedstate(Ledstate::Error);
+	}
+	else
+	{
+		this->SetLedstate( Ledstate::Waiting);
+	}
+
 	this->ws->Start();
 
 	this->ws->Join();
@@ -293,6 +302,8 @@ void ControlApp::Main()
 		ServiceHelper::Start( "mysql" );
 		ServiceHelper::Start( "fetchmail" );
 		ServiceHelper::Start( "nginx" );
+
+		this->SetLedstate( Ledstate::Completed);
 	}
 	else if( this->state == 10 )
 	{
@@ -996,4 +1007,25 @@ void ControlApp::WriteBackupConfig(const string &password)
 		<< "fs-passphrase: " << password<<endl;
 
 	File::Write(BACKUP_PATH, ss.str(), 0600 );
+}
+
+void ControlApp::SetLedstate(ControlApp::Ledstate state)
+{
+#ifdef OPI_BUILD_PACKAGE
+	switch( state )
+	{
+	case Ledstate::Error:
+		this->leds.SetTrigger("usr3", "heartbeat");
+		break;
+	case Ledstate::Waiting:
+		this->leds.SetTrigger("usr2", "heartbeat");
+		break;
+	case Ledstate::Completed:
+		this->leds.SetTrigger("usr2", "none");
+		this->leds.Brightness("usr2", true);
+		break;
+	default:
+		break;
+	}
+#endif
 }
