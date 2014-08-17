@@ -185,9 +185,8 @@
 				<input type="text" 	id="username"
 					name="username"
 					title="Username"
-					data-validation="required"
-					class="lowercase"
-					data-validation-error-msg="Missing 'username'"
+					data-validation-error-msg="Only lowercase 'a-z' allowed in username"
+					data-validation="custom" data-validation-regexp="^([a-z]+)$"
 					/>
 				</p>
 			</div>
@@ -235,10 +234,9 @@
 					id="opiname"
 					name="opiname"
 					title="OPI name"
-					data-validation="required"
 					data-validation="alphanumeric" data-validation-allowing="-_"
 					class="lowercase"
-					data-validation-error-msg="OPI name is required during setup"
+					data-validation-error-msg="OPI name is required during setup, (a-z -_ allowed)"
 				/>
 				<span id="opi_namestate" class="help-block form-error"></span>
 				</p>
