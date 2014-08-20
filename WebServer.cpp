@@ -206,6 +206,22 @@ int WebServer::handle_reinit(mg_connection *conn)
 	return MG_TRUE;
 }
 
+static bool validate_unlockdata(const Json::Value& v)
+{
+	if( ! v.isMember("masterpassword") || !v["masterpassword"].isString() )
+	{
+		return false;
+	}
+
+	if( ! v.isMember("save") || !v["save"].isBool() )
+	{
+		return false;
+	}
+
+	return true;
+}
+
+
 int WebServer::handle_unlock(mg_connection *conn)
 {
 	logg << Logger::Debug << "Got request for unlock"<<lend;
@@ -218,13 +234,14 @@ int WebServer::handle_unlock(mg_connection *conn)
 		return MG_TRUE;
 	}
 
-	if( req.isMember("masterpassword") && req["masterpassword"].isString() )
+	if( validate_unlockdata( req ) )
 	{
 		Json::Value ret;
 		if( WebServer::callback != nullptr ){
 			Json::Value cmd;
 			cmd["cmd"]="unlock";
 			cmd["password"]=req["masterpassword"];
+			cmd["save"]=req["save"];
 			ret = WebServer::callback( cmd );
 			WebServer::state = ret["state"].asInt();
 		}

@@ -31,8 +31,8 @@ private:
 
 	// Web communication
 	Json::Value WebCallback(Json::Value v);
-	bool DoUnlock(const string& pwd);
-	bool DoInit(const string &pwd, const string &unit_id, bool savepassword = true);
+	bool DoUnlock(const string& pwd, bool savepass);
+	bool DoInit(const string &pwd, const string &unit_id, bool savepassword );
 	bool AddUser(const std::string user, const std::string display, const std::string password);
 	bool SetDNSName( const std::string& opiname);
 	bool SecopUnlocked();

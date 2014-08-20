@@ -268,7 +268,7 @@ void ControlApp::Main()
 	{
 		if( this->GetPasswordUSB() )
 		{
-			if( this->DoUnlock( this->masterpassword ) )
+			if( this->DoUnlock( this->masterpassword, false ) )
 			{
 				this->state = 7;
 			}
@@ -435,7 +435,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 		}
 		else if( cmd == "unlock" )
 		{
-			if( this->DoUnlock(v["password"].asString() ) )
+			if( this->DoUnlock(v["password"].asString(), v["save"].asBool() ) )
 			{
 				this->state = 7;
 			}
@@ -498,7 +498,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 	return ret;
 }
 
-bool ControlApp::DoUnlock(const string &pwd)
+bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 {
 	logg << Logger::Debug << "Unlock sd card"<<lend;
 
@@ -576,6 +576,16 @@ bool ControlApp::DoUnlock(const string &pwd)
 		return false;
 	}
 
+	if( savepass )
+	{
+		logg << Logger::Debug << "Try saving password on successful unlock"<<lend;
+		this->masterpassword = pwd;
+		this->SetPasswordUSB();
+	}
+	else
+	{
+		logg << Logger::Debug << "Not saving password on successful unlock"<<lend;
+	}
 	return true;
 }
 
@@ -657,7 +667,12 @@ bool ControlApp::DoInit(const string& pwd, const string& unit_id, bool savepassw
 	// Possibly save password to usb device
 	if( ret && savepassword )
 	{
+		logg << Logger::Debug << "Try saving password on successful init"<<lend;
 		ret = this->SetPasswordUSB();
+	}
+	else
+	{
+		logg << Logger::Debug << "Not saving password on successful inir"<<lend;
 	}
 
 	if( ret )
@@ -984,6 +999,8 @@ bool ControlApp::GetCertificate(const string &opiname, const string &company)
 
 bool ControlApp::GetPasswordUSB()
 {
+	logg << Logger::Debug << "Get password from "<<OPI_PASSWD_DEVICE<<lend;
+
 	bool ret = false;
 
 	if( ! DiskHelper::DeviceExists( OPI_PASSWD_DEVICE ) )
@@ -1025,6 +1042,7 @@ bool ControlApp::GetPasswordUSB()
 
 bool ControlApp::SetPasswordUSB()
 {
+	logg << Logger::Debug << "Store password on "<<OPI_PASSWD_DEVICE<<lend;
 	bool ret = false;
 
 	if( ! DiskHelper::DeviceExists( OPI_PASSWD_DEVICE ) )
