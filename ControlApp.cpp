@@ -1015,7 +1015,7 @@ bool ControlApp::GetPasswordUSB()
 		logg << Logger::Info << "Failed to retrieve password "<< e.what()<<lend;
 	}
 
-	if( DiskHelper::IsMounted( OPI_PASSWD_DEVICE ) == "" )
+	if( DiskHelper::IsMounted( OPI_PASSWD_DEVICE ) != "" )
 	{
 		DiskHelper::Umount( OPI_PASSWD_DEVICE );
 	}
@@ -1062,7 +1062,7 @@ bool ControlApp::SetPasswordUSB()
 		this->global_error ="Failed to save password on device";
 	}
 
-	if( DiskHelper::IsMounted( OPI_PASSWD_DEVICE ) == "" )
+	if( DiskHelper::IsMounted( OPI_PASSWD_DEVICE ) != "" )
 	{
 		DiskHelper::Umount( OPI_PASSWD_DEVICE );
 	}
