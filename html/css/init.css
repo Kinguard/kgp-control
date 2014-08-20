@@ -67,6 +67,12 @@ form label {
 	width : 200px;
 	display : block;
 }
+form label.pwd_on_usb {
+	display : inline;
+}
+form input[type='checkbox'] {
+	float : right;
+}
 form p {
 	position : relative;
 }
