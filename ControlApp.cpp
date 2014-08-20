@@ -566,7 +566,6 @@ bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 				this->global_error = "Failed to unlock password database";
 				return false;
 			}
-			return true;
 		}
 	}
 	catch(std::runtime_error err)
@@ -580,7 +579,11 @@ bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 	{
 		logg << Logger::Debug << "Try saving password on successful unlock"<<lend;
 		this->masterpassword = pwd;
-		this->SetPasswordUSB();
+		if( ! this->SetPasswordUSB() )
+		{
+			logg << Logger::Error << "Failed to write password to USB device"<<lend;
+			return false;
+		}
 	}
 	else
 	{
