@@ -119,10 +119,16 @@ void FormatPartition(const string& device, const string& label )
 
 }
 
-void Mount(const string& device, const string& mountpoint, bool noatime, bool discard)
+void Mount(const string& device, const string& mountpoint, bool noatime, bool discard, const string &filesystem)
 {
 	stringstream ss;
-	ss << "/bin/mount -text4 ";
+	ss << "/bin/mount ";
+
+	if( filesystem != "" )
+	{
+		ss << "-t"<<filesystem<< " ";
+	}
+
 	if( noatime && discard )
 	{
 		ss << "-o noatime,discard ";

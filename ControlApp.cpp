@@ -11,6 +11,7 @@
 #include "InboundTest.h"
 #include "ConnTest.h"
 #include "Luks.h"
+#include "PasswordFile.h"
 
 #include <libutils/FileUtils.h>
 #include <libutils/ConfigFile.h>
@@ -39,6 +40,8 @@ using namespace CryptoHelper;
 #define STORAGE_PART	"/dev/sdg1"
 #endif
 
+#define OPI_PASSWD_DEVICE "/dev/sdh1"
+
 #define MOUNTPOINT		"/var/opi/"
 #define TMP_MOUNT		"/mnt/opi/"
 
@@ -51,6 +54,8 @@ using namespace CryptoHelper;
 #define OPI_MMC_PART	"mmcblk0p1"
 #define STORAGE_DEV		"/dev/mmcblk0"
 #define STORAGE_PART	"/dev/mmcblk0p1"
+
+#define OPI_PASSWD_DEVICE "/dev/sda1"
 
 #define TMP_MOUNT		"/mnt/opi/"
 #define MOUNTPOINT		"/var/opi/"
@@ -258,6 +263,18 @@ void ControlApp::Main()
 		this->state = 9;
 	}
 
+	// Try use password from USB if possible
+	if( this->state == 6 )
+	{
+		if( this->GetPasswordUSB() )
+		{
+			if( this->DoUnlock( this->masterpassword ) )
+			{
+				this->state = 7;
+			}
+		}
+	}
+
 	InboundTestPtr ibt;
 
 	if( this->state == 3 )
@@ -271,20 +288,23 @@ void ControlApp::Main()
 		this->connstatus = ct.DoTest();
 	}
 
-	this->ws = WebServerPtr( new WebServer( this->state, std::bind(&ControlApp::WebCallback,this, _1)) );
-
-	if( this->state == 2 )
+	if( this->state != 7 )
 	{
-		this->SetLedstate(Ledstate::Error);
-	}
-	else
-	{
-		this->SetLedstate( Ledstate::Waiting);
-	}
+		this->ws = WebServerPtr( new WebServer( this->state, std::bind(&ControlApp::WebCallback,this, _1)) );
 
-	this->ws->Start();
+		if( this->state == 2 )
+		{
+			this->SetLedstate(Ledstate::Error);
+		}
+		else
+		{
+			this->SetLedstate( Ledstate::Waiting);
+		}
 
-	this->ws->Join();
+		this->ws->Start();
+
+		this->ws->Join();
+	}
 
 	if( ibt )
 	{
@@ -366,7 +386,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 		string cmd = v["cmd"].asString();
 		if( cmd == "init" )
 		{
-			if( this->DoInit(v["password"].asString(), v["unit_id"].asString() ) )
+			if( this->DoInit(v["password"].asString(), v["unit_id"].asString(), v["save"].asBool() ) )
 			{
 				this->state = 4;
 			}
@@ -378,7 +398,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 		}
 		else if( cmd == "reinit" )
 		{
-			if( this->DoInit(v["password"].asString(), this->unit_id ) )
+			if( this->DoInit(v["password"].asString(), this->unit_id, v["save"].asBool() ) )
 			{
 				this->state = 4;
 			}
@@ -559,7 +579,7 @@ bool ControlApp::DoUnlock(const string &pwd)
 	return true;
 }
 
-bool ControlApp::DoInit(const string& pwd, const string& unit_id)
+bool ControlApp::DoInit(const string& pwd, const string& unit_id, bool savepassword)
 {
 	bool ret = true;
 
@@ -632,6 +652,12 @@ bool ControlApp::DoInit(const string& pwd, const string& unit_id)
 				ret = false;
 			}
 		}
+	}
+
+	// Possibly save password to usb device
+	if( ret && savepassword )
+	{
+		ret = this->SetPasswordUSB();
 	}
 
 	if( ret )
@@ -775,25 +801,25 @@ bool ControlApp::InitializeSD()
 
 	try
 	{
-	// Make sure device is not mounted (Should not happen)
-	if( DiskHelper::IsMounted( LUKSDEVICE ) != "" )
-	{
-		DiskHelper::Umount( LUKSDEVICE );
-	}
+		// Make sure device is not mounted (Should not happen)
+		if( DiskHelper::IsMounted( LUKSDEVICE ) != "" )
+		{
+			DiskHelper::Umount( LUKSDEVICE );
+		}
 
-	if( sd_isnew )
-	{
-		logg << Logger::Debug << "Sync mmc to SD"<<lend;
-		// Sync data from emmc to sd
-		DiskHelper::Mount( LUKSDEVICE , TMP_MOUNT );
+		if( sd_isnew )
+		{
+			logg << Logger::Debug << "Sync mmc to SD"<<lend;
+			// Sync data from emmc to sd
+			DiskHelper::Mount( LUKSDEVICE , TMP_MOUNT );
 
-		DiskHelper::SyncPaths(MOUNTPOINT, TMP_MOUNT);
+			DiskHelper::SyncPaths(MOUNTPOINT, TMP_MOUNT);
 
-		DiskHelper::Umount(LUKSDEVICE);
-	}
+			DiskHelper::Umount(LUKSDEVICE);
+		}
 
-	// Mount in final place
-	DiskHelper::Mount( LUKSDEVICE , MOUNTPOINT );
+		// Mount in final place
+		DiskHelper::Mount( LUKSDEVICE , MOUNTPOINT );
 	}
 	catch( ErrnoException& err)
 	{
@@ -954,6 +980,94 @@ bool ControlApp::GetCertificate(const string &opiname, const string &company)
 #endif
 
 	return true;
+}
+
+bool ControlApp::GetPasswordUSB()
+{
+	bool ret = false;
+
+	if( ! DiskHelper::DeviceExists( OPI_PASSWD_DEVICE ) )
+	{
+		return false;
+	}
+
+	try
+	{
+		if( ! File::DirExists("/mnt/usb") )
+		{
+			File::MkDir("/mnt/usb", 0755);
+		}
+
+		DiskHelper::Mount( OPI_PASSWD_DEVICE, "/mnt/usb", false, false, "");
+
+		if( File::DirExists( "/mnt/usb/opi") && File::FileExists("/mnt/usb/opi/opicred.bin") )
+		{
+			this->masterpassword = PasswordFile::Read("/mnt/usb/opi/opicred.bin");
+			ret = true;
+		}
+	}
+	catch( CryptoPP::Exception& e)
+	{
+		logg << Logger::Info << "Failed to retrieve password "<< e.what()<<lend;
+	}
+	catch( ErrnoException& e)
+	{
+		logg << Logger::Info << "Failed to retrieve password "<< e.what()<<lend;
+	}
+
+	if( DiskHelper::IsMounted( OPI_PASSWD_DEVICE ) == "" )
+	{
+		DiskHelper::Umount( OPI_PASSWD_DEVICE );
+	}
+
+	return ret;
+}
+
+bool ControlApp::SetPasswordUSB()
+{
+	bool ret = false;
+
+	if( ! DiskHelper::DeviceExists( OPI_PASSWD_DEVICE ) )
+	{
+		this->global_error ="Failed to save password on device (Device not found)";
+		return false;
+	}
+
+	try
+	{
+		if( ! File::DirExists("/mnt/usb") )
+		{
+			File::MkDir("/mnt/usb", 0755);
+		}
+
+		DiskHelper::Mount( OPI_PASSWD_DEVICE, "/mnt/usb", false, false, "");
+
+		if( ! File::DirExists( "/mnt/usb/opi" ) )
+		{
+			File::MkDir("/mnt/usb/opi", 0755);
+		}
+
+		PasswordFile::Write("/mnt/usb/opi/opicred.bin", this->masterpassword );
+
+		ret = true;
+	}
+	catch( CryptoPP::Exception& e)
+	{
+		logg << Logger::Info << "Failed to save password "<< e.what()<<lend;
+		this->global_error ="Failed to save password on device (Crypto error)";
+	}
+	catch( ErrnoException& e)
+	{
+		logg << Logger::Info << "Failed to save password "<< e.what()<<lend;
+		this->global_error ="Failed to save password on device";
+	}
+
+	if( DiskHelper::IsMounted( OPI_PASSWD_DEVICE ) == "" )
+	{
+		DiskHelper::Umount( OPI_PASSWD_DEVICE );
+	}
+
+	return ret;
 }
 
 void ControlApp::WriteConfig()
