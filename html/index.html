@@ -154,10 +154,11 @@
 			</div>
 			<div>	
 				<p class="form-group">
-				<label class="pwd_on_usb" for 'store_on_usb'>Store master password on USB</label>
+				<label class="pwd_on_usb" for='f_pwdform_save'>Store master password on USB</label>
 				<input 
 					type="checkbox" 
 					name="save"
+					id="f_pwdform_save"
 				/>
 				</p>
 			</div>
@@ -274,6 +275,16 @@
 					>
 					</p>
 				</div>
+				<div>	
+					<p class="form-group">
+					<label class="pwd_on_usb"  for='f_mpwd_save'>Store master password on USB</label>
+					<input
+						id="f_mpwd_save" 
+						type="checkbox" 
+						name="save"
+					/>
+					</p>
+				</div>
 				<div>
 					<button 
 						type="submit"
@@ -282,29 +293,31 @@
 					>
 					Continue</button>
 				</div>
-				<div>	
-					<p class="form-group">
-					<label class="pwd_on_usb"  for 'store_on_usb'>Store master password on USB</label>
-					<input 
-						type="checkbox" 
-						name="save"
-					/>
-					</p>
-				</div>
 		</form>
 	</div>
 
 	<div id="page_knownunit_id" class="page hidden">
 		<h1>Enter master password</h1>
-		<form id="masterpwdform">
+		<form id="masterpwdform_knownid">
 				<div>
 					<p class="form-group">
-					<label for "password">Password</label>
+					<label for="pwd_knownid">Password</label>
 					<input type="password"
 						title="masterpassword"
 						name="masterpassword"
 						data-validation="required"
+						id="pwd_knownid"
 					>
+					</p>
+				</div>
+				<div>	
+					<p class="form-group">
+					<label class="pwd_on_usb" for='f_mpwd_knownid_save'>Store master password on USB</label>
+					<input 
+						type="checkbox" 
+						name="save"
+						id="f_mpwd_knownid_save"
+					/>
 					</p>
 				</div>
 				<div>
@@ -314,15 +327,6 @@
 						href="/reinit"
 					>
 					Continue</button>
-				</div>
-				<div>	
-					<p class="form-group">
-					<label class="pwd_on_usb" for 'store_on_usb'>Store master password on USB</label>
-					<input 
-						type="checkbox" 
-						name="save"
-					/>
-					</p>
 				</div>
 				
 		</form>
@@ -401,13 +405,18 @@ function setState(state) {
 		if(i==state) {
 			$("#"+pages[i-1]).removeClass("hidden");
 			$("#"+pages[i-1]).find("input").filter(':visible:first').focus();
-			$.each($("form"),function() {
-				if($(this).attr('id') != "pwdform") {
-					// reset form to clear error markers.
-					// do not reset the pwdform since that will reset the hidden (and required) unit_id field.
-					$(this).get(0).reset();
-				}
-			});
+			if( state != 8) {
+				/* state 8 is show init in progress
+				 * and is set prior to the sending of the form
+				 * so it can not be allowed to reset the form */
+				$.each($("form"),function() {
+					if($(this).attr('id') != "pwdform") {
+						// reset form to clear error markers.
+						// do not reset the pwdform since that will reset the hidden (and required) unit_id field.
+						$(this).get(0).reset();
+					}
+				});
+			}
 		}
 	} 
 }
