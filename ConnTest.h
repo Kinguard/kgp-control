@@ -2,11 +2,11 @@
 #define CONNTEST_H
 
 #include "Config.h"
-#include "HttpClient.h"
+#include <libopi/HttpClient.h>
 
 #include <json/json.h>
 
-class ConnTest : public HttpClient
+class ConnTest : public OPI::HttpClient
 {
 public:
 	ConnTest();

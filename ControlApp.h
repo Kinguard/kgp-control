@@ -3,7 +3,7 @@
 
 #include <libutils/Application.h>
 
-#include "LedControl.h"
+#include <libopi/LedControl.h>
 #include "WebServer.h"
 
 class ControlApp : public Utils::DaemonApplication
@@ -58,7 +58,7 @@ private:
 
 	WebServerPtr ws;
 
-	LedControl leds;
+	OPI::LedControl leds;
 };
 
 #endif // CONTROLAPP_H

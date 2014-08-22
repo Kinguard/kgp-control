@@ -1,7 +1,7 @@
 #include "WebServer.h"
 #include "Config.h"
 #include "mongoose.h"
-#include "DnsServer.h"
+#include <libopi/DnsServer.h>
 
 #include <libutils/Logger.h>
 
@@ -336,7 +336,7 @@ int WebServer::handle_checkname(mg_connection *conn)
 
 	if( req.isMember("opiname") && req["opiname"].isString() )
 	{
-		DnsServer dns;
+		OPI::DnsServer dns;
 		int result_code;
 		Json::Value ret;
 		tie(result_code, ret) = dns.CheckOPIName(req["opiname"].asString() );

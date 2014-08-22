@@ -1,21 +1,22 @@
 #include "ControlApp.h"
 #include "Config.h"
 
-#include "Secop.h"
 #include "WebServer.h"
-#include "DiskHelper.h"
-#include "ServiceHelper.h"
-#include "CryptoHelper.h"
-#include "AuthServer.h"
-#include "DnsServer.h"
 #include "InboundTest.h"
 #include "ConnTest.h"
-#include "Luks.h"
 #include "PasswordFile.h"
 
 #include <libutils/FileUtils.h>
 #include <libutils/ConfigFile.h>
 #include <libutils/UserGroups.h>
+
+#include <libopi/Secop.h>
+#include <libopi/DiskHelper.h>
+#include <libopi/ServiceHelper.h>
+#include <libopi/CryptoHelper.h>
+#include <libopi/AuthServer.h>
+#include <libopi/DnsServer.h>
+#include <libopi/Luks.h>
 
 #include <functional>
 
@@ -24,7 +25,8 @@
 using namespace Utils;
 using namespace std::placeholders;
 
-using namespace CryptoHelper;
+using namespace OPI;
+using namespace OPI::CryptoHelper;
 
 #ifdef OPI_BUILD_LOCAL
 

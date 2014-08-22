@@ -2,14 +2,7 @@ project(opi-control)
 cmake_minimum_required(VERSION 2.8)
 
 include( FindPkgConfig )
-pkg_check_modules ( LIBUTILS REQUIRED libutils>=1.0 )
-pkg_check_modules ( LIBJSONCPP REQUIRED libjsoncpp>=1.0 )
-pkg_check_modules ( LIBSSL REQUIRED libssl )
-pkg_check_modules ( LIBUDEV REQUIRED libudev )
-pkg_check_modules ( LIBCRYPTSETUP REQUIRED libcryptsetup )
-pkg_check_modules ( LIBPARTED REQUIRED libparted>=2.3 )
-pkg_check_modules ( LIBCURL REQUIRED libcurl )
-pkg_check_modules ( LIBCRYPTO++ REQUIRED libcrypto++>=5.6.1 )
+pkg_check_modules ( LIBOPI REQUIRED libopi>=1.0 )
 
 set (OPI_CONTROL_VERSION_MAJOR 1)
 set (OPI_CONTROL_VERSION_MINOR 0)
@@ -39,22 +32,14 @@ add_definitions(
 aux_source_directory(. SRC_LIST)
 
 include_directories (
-		"${LIBJSONCPP_INCLUDE_DIRS}"
+		"${LIBOPI_INCLUDE_DIRS}"
 	)
 
 add_definitions( -std=c++11 )
 add_executable(${PROJECT_NAME} ${SRC_LIST})
 
 target_link_libraries( ${PROJECT_NAME}
-	-ljsoncpp
-	${LIBSSL_LDFLAGS}
-	${LIBJSONCPP_LDFLAGS}
-	${LIBUTILS_LDFLAGS}
-	${LIBUDEV_LDFLAGS}
-	${LIBCRYPTSETUP_LDFLAGS}
-	${LIBPARTED_LDFLAGS}
-	${LIBCURL_LDFLAGS}
-	${LIBCRYPTO++_LDFLAGS}
+	${LIBOPI_LDFLAGS}
 	)
 
 install( TARGETS opi-control DESTINATION sbin )
