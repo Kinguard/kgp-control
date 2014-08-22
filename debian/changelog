@@ -1,3 +1,9 @@
+opi-control (0.9.24) vili; urgency=low
+
+  * Use libopi instead of internal code
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 22 Aug 2014 13:28:00 +0200
+
 opi-control (0.9.23) vili; urgency=low
 
   * Fixed reinit bug #64 <pa@openproducts.se>
