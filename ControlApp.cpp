@@ -724,6 +724,8 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 		return false;
 	}
 
+	this->first_user = user;
+
 	// Add user to localdomain mailboxfile
 	list<string> lines = File::GetContent( LOCAL_MAILFILE );
 	lines.push_back( user+"@localdomain\t"+user+"/mail/" );
@@ -756,6 +758,24 @@ bool ControlApp::SetDNSName(const string &opiname)
 	}
 
 	this->opi_name = opiname;
+
+	// Add first user email on opidomain
+	list<string> lines = File::GetContent( ALIASES );
+	lines.push_back( this->first_user+"@"+opiname+".op-i.me\t"+this->first_user+"/mail/" );
+	File::Write( ALIASES, lines, 0600);
+	chown( ALIASES, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
+
+	int ret = system( "/usr/sbin/postmap " ALIASES );
+
+	File::Write( DOMAINFILE, opiname+".op-i.me\n", 0600);
+
+	if( (ret < 0) || WEXITSTATUS(ret) != 0 )
+	{
+		this->global_error = "Failed to create user mail mapping";
+		return false;
+	}
+
+	File::Write("/etc/mailname", opiname+".op-i.me", 0644);
 
 	this->WriteConfig();
 

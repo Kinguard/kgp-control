@@ -25,6 +25,7 @@ private:
 	string masterpassword;
 	string token;
 	string opi_name;
+	string first_user;
 
 	Json::Value connstatus;
 	string global_error;

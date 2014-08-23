@@ -1,3 +1,9 @@
+opi-control (0.9.25) vili; urgency=low
+
+  * Initial implementation of opi-email autogeneration
+
+ -- Tor Krill <tor@openproducts.se>  Sat, 23 Aug 2014 17:04:41 +0200
+
 opi-control (0.9.24) vili; urgency=low
 
   * Use libopi instead of internal code
