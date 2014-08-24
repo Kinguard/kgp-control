@@ -1,3 +1,9 @@
+opi-control (0.9.26) vili; urgency=low
+
+  * Initial implementation of redirect on port 80
+
+ -- Tor Krill <tor@openproducts.se>  Sun, 24 Aug 2014 21:56:30 +0200
+
 opi-control (0.9.25) vili; urgency=low
 
   * Initial implementation of opi-email autogeneration

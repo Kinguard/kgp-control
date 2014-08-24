@@ -278,6 +278,7 @@ void ControlApp::Main()
 	}
 
 	InboundTestPtr ibt;
+	TcpServerPtr redirector;
 
 	if( this->state == 3 )
 	{
@@ -288,6 +289,13 @@ void ControlApp::Main()
 		logg << Logger::Debug << "Doing connection tests"<<lend;
 		ConnTest ct;
 		this->connstatus = ct.DoTest();
+	}
+	else
+	{
+		logg << Logger::Debug << "Starting redirect service on port 80"<<lend;
+		redirector = TcpServerPtr( new TcpServer(80) );
+
+		redirector->Start();
 	}
 
 	if( this->state != 7 )
@@ -312,6 +320,12 @@ void ControlApp::Main()
 	{
 		logg << Logger::Debug << "Stopping inbound connection tests"<<lend;
 		ibt->Stop();
+	}
+
+	if( redirector )
+	{
+		logg << Logger::Debug << "Stopping redirect service"<<lend;
+		redirector->Stop();
 	}
 
 	if( this->state == 7 )
@@ -761,7 +775,7 @@ bool ControlApp::SetDNSName(const string &opiname)
 
 	// Add first user email on opidomain
 	list<string> lines = File::GetContent( ALIASES );
-	lines.push_back( this->first_user+"@"+opiname+".op-i.me\t"+this->first_user+"/mail/" );
+	lines.push_back( this->first_user+"@"+opiname+".op-i.me\t"+this->first_user+"/mail/\n" );
 	File::Write( ALIASES, lines, 0600);
 	chown( ALIASES, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
 
