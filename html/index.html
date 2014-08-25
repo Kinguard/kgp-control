@@ -426,9 +426,9 @@ function redirect(url,timeout) {
 	setTimeout(function() {
 		location.href = url;
 	},timeout*1000);
-}page_knownunit_id
+}
 
-function done() {
+function done(opiname) {
 	$.ajax({
 		  type: "POST",
 		  url: "/terminate",
@@ -444,7 +444,11 @@ function done() {
 				}
 				
 			} else {
+				if(location.href.indexOf("op-i.me") > 0) {
+					redirect("https://"+opiname+".op-i.me/admin",5);
+				} else {
 				redirect("/admin",5);
+				}
 			}
 		})
 		.fail(function() {
@@ -578,6 +582,9 @@ $(document).ready( function() {
 						}
 						
 					} else {
+						// set the opiname variable before the clearing all fields
+						// done by set state
+						opiname = $("#opiname").val();
 						setState(result.state);
 						if(result.url) {
 							try {
@@ -590,7 +597,7 @@ $(document).ready( function() {
 							if(result.state == 7 ) {
 								// this will send the "terminate" signal to opi-control
 								// then redirect to "/admin"
-								done();
+								done(opiname);
 							}
 						}	
 					}
