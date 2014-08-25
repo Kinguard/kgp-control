@@ -1,3 +1,9 @@
+opi-control (0.9.28) vili; urgency=low
+
+  * Add first user as recipient for admin mail
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 25 Aug 2014 17:02:49 +0200
+
 opi-control (0.9.27) vili; urgency=low
 
   * Fixed redirect to new opiname after completed setup

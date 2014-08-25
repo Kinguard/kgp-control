@@ -24,6 +24,7 @@
 #define LOCAL_MAILFILE	"/var/opi/mail/conf/localmail"
 #define DOMAINFILE		"/var/opi/mail/conf/domains"
 #define ALIASES			"/var/opi/mail/conf/vmailbox"
+#define VIRUAL_ALIASES	"/var/opi/mail/conf/virtual"
 
 #define OP_HOST "https://auth.openproducts.com/"
 #define CONNTEST_HOST "http://conntest.op-i.me"

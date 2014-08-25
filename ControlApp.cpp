@@ -742,9 +742,16 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 
 	// Add user to localdomain mailboxfile
 	list<string> lines = File::GetContent( LOCAL_MAILFILE );
-	lines.push_back( user+"@localdomain\t"+user+"/mail/" );
+	lines.push_back( user+"@localdomain\t"+user+"/mail/\n" );
 	File::Write( LOCAL_MAILFILE, lines, 0600);
 	chown( LOCAL_MAILFILE, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
+
+	// Add this user as receiver of administrative mail
+	lines = File::GetContent( VIRUAL_ALIASES );
+	lines.push_back( "/^postmaster@/\t"+user+"@localdomain\n" );
+	lines.push_back( "/^root@/\t"+user+"@localdomain\n" );
+	File::Write( VIRUAL_ALIASES, lines, 0600);
+	chown( VIRUAL_ALIASES, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
 
 	int ret = system( "/usr/sbin/postmap " LOCAL_MAILFILE );
 
