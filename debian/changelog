@@ -1,3 +1,9 @@
+opi-control (0.9.27) vili; urgency=low
+
+  * Fixed redirect to new opiname after completed setup
+
+ -- PA Nilsson <pa@openproducts.se>  Mon, 25 Aug 2014 14:50:55 +0200
+
 opi-control (0.9.26) vili; urgency=low
 
   * Initial implementation of redirect on port 80
