@@ -444,7 +444,7 @@ function done(opiname) {
 				}
 				
 			} else {
-				if(location.href.indexOf("op-i.me") > 0) {
+				if(opiname.length && location.href.indexOf("op-i.me") > 0) {
 					redirect("https://"+opiname+".op-i.me/admin",5);
 				} else {
 				redirect("/admin",5);
