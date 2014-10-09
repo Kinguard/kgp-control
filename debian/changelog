@@ -1,3 +1,9 @@
+opi-control (1.0.0) vili; urgency=low
+
+  * Improve user input sanitation #199 and move logging to syslog
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 09 Oct 2014 13:02:14 +0200
+
 opi-control (0.9.29) vili; urgency=low
 
   * Added check to see that there is an existing name in the opiname

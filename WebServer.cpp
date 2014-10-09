@@ -3,6 +3,7 @@
 #include "mongoose.h"
 #include <libopi/DnsServer.h>
 
+#include <libutils/String.h>
 #include <libutils/Logger.h>
 
 #include <string>
@@ -50,7 +51,6 @@ WebServer::WebServer(int initial_state, std::function<Json::Value(Json::Value)> 
 	routes[std::make_pair("/portstatus","GET")] = WebServer::handle_portstatus;
 	routes[std::make_pair("/terminate","POST")] = WebServer::handle_terminate;
 	routes[std::make_pair("/shutdown","POST")] = WebServer::handle_shutdown;
-
 }
 
 void WebServer::Stop()
@@ -103,7 +103,17 @@ static bool validate_initdata(const Json::Value& v)
 		return false;
 	}
 
+	if( String::Trimmed( v["masterpassword"].asString(), "\t ") == "" )
+	{
+		return false;
+	}
+
 	if( ! v.isMember("unit_id") || !v["unit_id"].isString() )
+	{
+		return false;
+	}
+
+	if( String::Trimmed( v["unit_id"].asString(), "\t ") == "" )
 	{
 		return false;
 	}
@@ -134,9 +144,9 @@ int WebServer::handle_init(mg_connection *conn)
 		Json::Value ret;
 		if( WebServer::callback != nullptr ){
 			Json::Value cmd;
-			cmd["cmd"]="init";
-			cmd["password"]=req["masterpassword"];
-			cmd["unit_id"] = req["unit_id"];
+			cmd["cmd"] = "init";
+			cmd["password"] = String::Trimmed( req["masterpassword"].asString(), "\t " );
+			cmd["unit_id"] = String::Trimmed( req["unit_id"].asString(), "\t ");
 			cmd["save"] = req["save"];
 			ret = WebServer::callback( cmd );
 			WebServer::state = ret["state"].asInt();
@@ -157,6 +167,11 @@ int WebServer::handle_init(mg_connection *conn)
 static bool validate_reinitdata(const Json::Value& v)
 {
 	if( ! v.isMember("masterpassword") || !v["masterpassword"].isString() )
+	{
+		return false;
+	}
+
+	if( String::Trimmed( v["masterpassword"].asString(), "\t ") == "" )
 	{
 		return false;
 	}
@@ -188,9 +203,9 @@ int WebServer::handle_reinit(mg_connection *conn)
 		Json::Value ret;
 		if( WebServer::callback != nullptr ){
 			Json::Value cmd;
-			cmd["cmd"]="reinit";
-			cmd["password"]=req["masterpassword"];
-			cmd["save"]=req["save"];
+			cmd["cmd"] = "reinit";
+			cmd["password"] = String::Trimmed( req["masterpassword"].asString(), "\t ");
+			cmd["save"] = req["save"];
 			ret = WebServer::callback( cmd );
 			WebServer::state = ret["state"].asInt();
 		}
@@ -209,6 +224,11 @@ int WebServer::handle_reinit(mg_connection *conn)
 static bool validate_unlockdata(const Json::Value& v)
 {
 	if( ! v.isMember("masterpassword") || !v["masterpassword"].isString() )
+	{
+		return false;
+	}
+
+	if( String::Trimmed( v["masterpassword"].asString(), "\t ") == "" )
 	{
 		return false;
 	}
@@ -239,9 +259,9 @@ int WebServer::handle_unlock(mg_connection *conn)
 		Json::Value ret;
 		if( WebServer::callback != nullptr ){
 			Json::Value cmd;
-			cmd["cmd"]="unlock";
-			cmd["password"]=req["masterpassword"];
-			cmd["save"]=req["save"];
+			cmd["cmd"] = "unlock";
+			cmd["password"] = String::Trimmed( req["masterpassword"].asString(), "\t " );
+			cmd["save"] = req["save"];
 			ret = WebServer::callback( cmd );
 			WebServer::state = ret["state"].asInt();
 		}
@@ -272,12 +292,22 @@ static bool validate_user(const Json::Value& v)
 		return false;
 	}
 
+	if( String::Trimmed( v["username"].asString(), "\t " ) == "" )
+	{
+		return false;
+	}
+
 	if( ! v.isMember("displayname") || !v["displayname"].isString() )
 	{
 		return false;
 	}
 
 	if( ! v.isMember("password") || !v["password"].isString() )
+	{
+		return false;
+	}
+
+	if( String::Trimmed( v["password"].asString(), "\t " ) == "" )
 	{
 		return false;
 	}
@@ -302,10 +332,10 @@ int WebServer::handle_user(mg_connection *conn)
 		Json::Value ret;
 		if( WebServer::callback != nullptr ){
 			Json::Value cmd;
-			cmd["cmd"]="adduser";
-			cmd["username"]=req["username"];
-			cmd["displayname"]=req["displayname"];
-			cmd["password"]=req["password"];
+			cmd["cmd"] = "adduser";
+			cmd["username"] = String::Trimmed( req["username"].asString(), "\t " );
+			cmd["displayname"] = String::Trimmed( req["displayname"].asString(), "\t " );
+			cmd["password"] = String::Trimmed( req["password"].asString(), "\t " );
 			ret = WebServer::callback( cmd );
 			WebServer::state = ret["state"].asInt();
 		}
@@ -334,25 +364,23 @@ int WebServer::handle_checkname(mg_connection *conn)
 		return MG_TRUE;
 	}
 
-	if( req.isMember("opiname") && req["opiname"].isString() )
+	if( req.isMember("opiname") && req["opiname"].isString() && String::Trimmed( req["opiname"].asString(), "\t " ) != ""  )
 	{
 		OPI::DnsServer dns;
 		int result_code;
 		Json::Value ret;
-		tie(result_code, ret) = dns.CheckOPIName(req["opiname"].asString() );
+		tie(result_code, ret) = dns.CheckOPIName( String::Trimmed( req["opiname"].asString(), "\t " ) );
 
 		if( result_code == 200 || result_code == 403 )
 		{
-
 			mg_send_header( conn, "Content-Type", "application/json");
 			mg_printf_data( conn, "{\"available\":%d}", result_code==200?1:0);
 		}
 		else
 		{
-			logg << Logger::Debug << "Request for dns check name failed"<<lend;
+			logg << Logger::Info << "Request for dns check name failed"<<lend;
 			mg_printf_data( conn, "Operation failed");
 			mg_send_status(conn, 502);
-
 		}
 	}
 	else
@@ -361,6 +389,7 @@ int WebServer::handle_checkname(mg_connection *conn)
 		mg_printf_data( conn, "Invalid argument!");
 		mg_send_status(conn, 400);
 	}
+
 	return MG_TRUE;
 }
 
@@ -375,13 +404,13 @@ int WebServer::handle_selectname(mg_connection *conn)
 		// True in the sense that we handled the req.
 		return MG_TRUE;
 	}
-	if( req.isMember("opiname") && req["opiname"].isString() )
+	if( req.isMember("opiname") && req["opiname"].isString() && String::Trimmed( req["opiname"].asString(), "\t " ) != "" )
 	{
 		Json::Value ret;
 		if( WebServer::callback != nullptr ){
 			Json::Value cmd;
-			cmd["cmd"]="opiname";
-			cmd["opiname"]=req["opiname"];
+			cmd["cmd"] = "opiname";
+			cmd["opiname"] = String::Trimmed( req["opiname"].asString(), "\t " );
 			ret = WebServer::callback( cmd );
 			WebServer::state = ret["state"].asInt();
 		}
@@ -394,8 +423,8 @@ int WebServer::handle_selectname(mg_connection *conn)
 		mg_printf_data( conn, "Invalid argument!");
 		mg_send_status(conn, 400);
 	}
-	return MG_TRUE;
 
+	return MG_TRUE;
 }
 
 int WebServer::handle_portstatus(mg_connection *conn)
@@ -404,7 +433,8 @@ int WebServer::handle_portstatus(mg_connection *conn)
 
 
 	Json::Value ret;
-	if( WebServer::callback != nullptr ){
+	if( WebServer::callback != nullptr )
+	{
 		Json::Value cmd;
 		cmd["cmd"]="portstatus";
 		ret = WebServer::callback( cmd );
@@ -433,8 +463,8 @@ int WebServer::handle_terminate(mg_connection *conn)
 		Json::Value ret;
 		if( WebServer::callback != nullptr ){
 			Json::Value cmd;
-			cmd["cmd"]="terminate";
-			cmd["shutdown"]=req["shutdown"];
+			cmd["cmd"] = "terminate";
+			cmd["shutdown"] = req["shutdown"];
 			ret = WebServer::callback( cmd );
 			WebServer::state = ret["state"].asInt();
 		}
@@ -448,7 +478,6 @@ int WebServer::handle_terminate(mg_connection *conn)
 	}
 
 	return MG_TRUE;
-
 }
 
 int WebServer::handle_shutdown(mg_connection *conn)
@@ -468,8 +497,8 @@ int WebServer::handle_shutdown(mg_connection *conn)
 		Json::Value ret;
 		if( WebServer::callback != nullptr ){
 			Json::Value cmd;
-			cmd["cmd"]="shutdown";
-			cmd["action"]=req["action"];
+			cmd["cmd"] = "shutdown";
+			cmd["action"] = req["action"];
 			ret = WebServer::callback( cmd );
 			WebServer::state = ret["state"].asInt();
 		}
@@ -483,14 +512,14 @@ int WebServer::handle_shutdown(mg_connection *conn)
 	}
 
 	return MG_TRUE;
-
 }
 
 int WebServer::ev_handler(mg_connection *conn, mg_event ev)
 {
 	int result = MG_FALSE;
 
-	if (ev == MG_REQUEST) {
+	if (ev == MG_REQUEST)
+	{
 #if 0
 		mg_printf_data(conn, "URI      [%s]\n", conn->uri);
 		mg_printf_data(conn, "Querystr [%s]\n", conn->query_string);
@@ -505,12 +534,13 @@ int WebServer::ev_handler(mg_connection *conn, mg_event ev)
 			result = WebServer::routes[val](conn);
 		}
 
-	}else if (ev == MG_AUTH) {
+	}
+	else if (ev == MG_AUTH)
+	{
 		result = MG_TRUE;
 	}
 
 	return result;
-
 }
 
 bool WebServer::parse_json(mg_connection *conn, Json::Value &val)
@@ -519,7 +549,7 @@ bool WebServer::parse_json(mg_connection *conn, Json::Value &val)
 
 	if( ! Json::Reader().parse(postdata, val) )
 	{
-		logg << Logger::Debug << "Failed to parse input"<<lend;
+		logg << Logger::Info << "Failed to parse input"<<lend;
 		mg_printf_data( conn, "Unable to parse input");
 		mg_send_status(conn, 400);
 

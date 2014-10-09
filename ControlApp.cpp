@@ -20,6 +20,7 @@
 
 #include <functional>
 
+#include <syslog.h>
 #include <unistd.h>
 
 using namespace Utils;
@@ -73,10 +74,18 @@ ControlApp::ControlApp() : DaemonApplication("opi-control","/var/run","root","ro
 
 void ControlApp::Startup()
 {
-	logg << Logger::Debug << "Starting up!"<< lend;
+	// Divert logger to syslog
+	openlog( "opi-control", LOG_PERROR, LOG_DAEMON);
+	logg.SetOutputter( [](const string& msg){ syslog(LOG_INFO, "%s",msg.c_str());});
+	logg.SetLogName("");
+
+	logg << Logger::Info << "Starting"<<lend;
+
 	Utils::SigHandler::Instance().AddHandler(SIGTERM, std::bind(&ControlApp::SigTerm, this, _1) );
 	Utils::SigHandler::Instance().AddHandler(SIGINT, std::bind(&ControlApp::SigTerm, this, _1) );
 	Utils::SigHandler::Instance().AddHandler(SIGHUP, std::bind(&ControlApp::SigHup, this, _1) );
+
+	this->options.AddOption( Option('D', "debug", Option::ArgNone,"0","Debug logging") );
 
 	curl_global_init(CURL_GLOBAL_DEFAULT);
 }
@@ -198,6 +207,11 @@ bool ControlApp::DoLogin()
 
 void ControlApp::Main()
 {
+	if( this->options["debug"] == "1" )
+	{
+		logg << Logger::Info << "Increase logging to debug level "<<lend;
+		logg.SetLevel(Logger::Debug);
+	}
 
 	logg << Logger::Debug << "Checking device: "<< STORAGE_DEV <<lend;
 

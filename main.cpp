@@ -10,7 +10,7 @@ int main(int argc, char** argv)
 	int ret = 0;
 	try{
 
-		logg.SetLevel(Logger::Debug);
+		logg.SetLevel(Logger::Info);
 
 		ControlApp c;
 
