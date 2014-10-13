@@ -1,3 +1,9 @@
+opi-control (1.0.2) vili; urgency=low
+
+  * Remove form around cancel button
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 13 Oct 2014 17:45:53 +0200
+
 opi-control (1.0.1) vili; urgency=low
 
   * Minor html cleanups
