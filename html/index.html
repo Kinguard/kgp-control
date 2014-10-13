@@ -2,23 +2,20 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>OPI Setup</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta charset="utf-8">
+	<title>OPI Setup</title>
+	<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+	<meta http-equiv="Pragma" content="no-cache">
+	<meta http-equiv="Expires" content="0">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
     
-<!--
-    <link rel="stylesheet" href="https://localhost/css/app.css">
-    <script src="https://localhost/js/jquery.min.js"></script>
-    <script src="https://localhost/js/form-validator/jquery.form-validator.min.js"></script>
-    
--->
-    <link rel="stylesheet" href="css/app.css">
-    <link rel="stylesheet" href="css/init.css">
-    <link rel="stylesheet" href="css/jquery.qtip.min.css">
-    <script src="js/jquery.min.js"></script>
-    <script src="js/jquery.qtip.min.js"></script>
-    <script src="js/helptexts.js"></script>
-    <script src="js/form-validator/jquery.form-validator.min.js"></script>
+	<link rel="stylesheet" href="css/app.css">
+	<link rel="stylesheet" href="css/init.css">
+	<link rel="stylesheet" href="css/jquery.qtip.min.css">
+	<script src="js/jquery.min.js"></script>
+	<script src="js/jquery.qtip.min.js"></script>
+	<script src="js/helptexts.js"></script>
+	<script src="js/form-validator/jquery.form-validator.min.js"></script>
 
 </head>
 <body class="claro" id="theBody">
@@ -82,14 +79,15 @@
 			</form>
 		</div>
 		<div class="sd-buttons">
-			<button 
-				type="cancel" 
-				id="sd-btn-cancel" 
-				class="fullwidth">
-				Cancel
-			</button>
+			<form>
+				<button
+					type="cancel"
+					id="sd-btn-cancel"
+					class="fullwidth">
+					Cancel
+				</button>
+			</form>
 		</div>
-		</form>
 	</div>
 
 	<div id="page_sderror" class="page hidden">
@@ -117,7 +115,7 @@
 		<form id="pwdform">
 			<div id="div_unit_id">
 				<p class="form-group">
-				<label for 'unit_id'>OPI activation code</label>
+				<label for='unit_id'>OPI activation code</label>
 				<input
 					title = "unit_id"
 					type ="text"
@@ -130,7 +128,7 @@
 			</div>
 			<div>					
 				<p class="form-group">
-				<label for 'masterpassword_confirmation'>Password</label>
+				<label for='masterpassword_confirmation'>Password</label>
 				<input
 					title="Master"
 					type="password" 
@@ -142,7 +140,7 @@
 			</div>
 			<div>	
 				<p class="form-group">
-				<label for 'masterpassword'>Confirm Password</label>
+				<label for='masterpassword'>Confirm Password</label>
 				<input 
 					type="password" 
 					name="masterpassword"
@@ -180,7 +178,7 @@
 		<form id="userform">
 			<div>	
 				<p class="form-group">
-				<label for 'displayname'>Real name</label>
+				<label for='displayname'>Real name</label>
 				<input type="text"
 					name="displayname"
 					title="Displayname"
@@ -191,7 +189,7 @@
 			</div>
 			<div>
 				<p class="form-group">
-				<label for 'username'>Username</label>
+				<label for='username'>Username</label>
 				<input type="text" 	id="username"
 					name="username"
 					title="Username"
@@ -202,7 +200,7 @@
 			</div>
 			<div>	
 				<p class="form-group">
-				<label for 'password'>Password</label>
+				<label for='password'>Password</label>
 				<input type="password"
 					title="userpassword"
 					name="password_confirmation"
@@ -214,7 +212,7 @@
 			</div>
 			<div>	
 				<p class="form-group">
-				<label for 'password'>Confirm password</label>
+				<label for='password'>Confirm password</label>
 				<input type="password"
 					name="password"
 					data-validation="confirmation"
@@ -238,7 +236,7 @@
 		<form id="opinameform">
 			<div>
 				<p class="form-group">
-				<label for "opiname">OPI name</label>
+				<label for="opiname">OPI name</label>
 				<input 
 					type="text" 	
 					id="opiname"
@@ -267,7 +265,7 @@
 		<form id="masterpwdform">
 				<div>
 					<p class="form-group">
-					<label for "password">Password</label>
+					<label for="password">Password</label>
 					<input type="password"
 						title="masterpassword"
 						name="masterpassword"
