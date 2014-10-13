@@ -1,3 +1,9 @@
+opi-control (1.0.1) vili; urgency=low
+
+  * Minor html cleanups
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 13 Oct 2014 16:06:53 +0200
+
 opi-control (1.0.0) vili; urgency=low
 
   * Improve user input sanitation #199 and move logging to syslog
