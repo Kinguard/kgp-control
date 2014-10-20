@@ -1,3 +1,9 @@
+opi-control (1.0.3) vili; urgency=low
+
+  * Added more cache disable
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 20 Oct 2014 16:04:08 +0200
+
 opi-control (1.0.2) vili; urgency=low
 
   * Remove form around cancel button
