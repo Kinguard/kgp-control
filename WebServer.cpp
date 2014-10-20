@@ -531,6 +531,7 @@ int WebServer::ev_handler(mg_connection *conn, mg_event ev)
 
 		if( WebServer::routes.find(val) != WebServer::routes.end() )
 		{
+			mg_send_header( conn, "Cache-Control", "no-cache");
 			result = WebServer::routes[val](conn);
 		}
 
