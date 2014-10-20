@@ -1532,6 +1532,7 @@ static void send_http_error(struct connection *conn, int code,
       struct mg_connection *c = &conn->mg_conn;
       c->status_code = 302;
       mg_printf(c, "HTTP/1.1 %d Moved\r\n"
+				"Cache-Control: no-cache\r\n"
                 "Location: %.*s?code=%d&orig_uri=%s&query_string=%s\r\n\r\n",
                 c->status_code, b.len, b.ptr, code, c->uri,
                 c->query_string == NULL ? "" : c->query_string);
