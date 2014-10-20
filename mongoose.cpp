@@ -1552,6 +1552,7 @@ static void send_http_error(struct connection *conn, int code,
   }
   headers_len = mg_snprintf(headers, sizeof(headers),
                             "HTTP/1.1 %d %s\r\nContent-Length: %d\r\n"
+							"Cache-Control:  no-cache\r\n"
                             "Content-Type: text/plain\r\n\r\n",
                             code, message, body_len);
   ns_send(conn->ns_conn, headers, headers_len);
@@ -2918,6 +2919,7 @@ static void open_file_endpoint(struct connection *conn, const char *path,
                   "Content-Length: %" INT64_FMT "\r\n"
                   "Connection: %s\r\n"
                   "Accept-Ranges: bytes\r\n"
+				  "Cache-Control:  no-cache\r\n"
                   "%s%s\r\n",
                   conn->mg_conn.status_code, msg, date, lm, etag,
                   (int) mime_vec.len, mime_vec.ptr, conn->cl,
