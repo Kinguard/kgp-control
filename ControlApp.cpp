@@ -297,7 +297,7 @@ void ControlApp::Main()
 	if( this->state == 3 )
 	{
 		logg << Logger::Debug << "Starting inbound connection tests"<<lend;
-		ibt = InboundTestPtr(new InboundTest( {25,80,143, 993 }));
+		ibt = InboundTestPtr(new InboundTest( {25,80,143, 587, 993, 2525 }));
 		ibt->Start();
 
 		logg << Logger::Debug << "Doing connection tests"<<lend;
