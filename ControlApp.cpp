@@ -9,6 +9,7 @@
 #include <libutils/FileUtils.h>
 #include <libutils/ConfigFile.h>
 #include <libutils/UserGroups.h>
+#include <libutils/Process.h>
 
 #include <libopi/Secop.h>
 #include <libopi/DiskHelper.h>
@@ -430,6 +431,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 		{
 			if( this->DoInit(v["password"].asString(), this->unit_id, v["save"].asBool() ) )
 			{
+				Process::Exec("/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinit");
 				this->state = 4;
 			}
 			else
@@ -955,6 +957,9 @@ bool ControlApp::RegisterKeys( )
 			data["privkey"] = Base64Encode(ob.GetPrivKeyAsDER());
 			s.AppAddIdentifier("op-backend", data);
 		}
+		// Todo: if keys in secop, does not mean they are on disk.
+		// perhaps move that part out here to make sure keys exist
+		// on disk.
 
 		string priv_path = File::GetPath( DNS_PRIV_PATH );
 		if( ! File::DirExists( priv_path ) )
