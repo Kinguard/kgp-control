@@ -377,7 +377,20 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 		{
 			if( this->DoInit(v["password"].asString(), v["unit_id"].asString(), v["save"].asBool() ) )
 			{
-				this->state = 4;
+				Secop s;
+				s.SockAuth();
+				vector<string> users = s.GetUsers();
+
+				if( users.size() > 0 )
+				{
+					// We have users on SD, skip register user
+					this->state = 5;
+				}
+				else
+				{
+					this->state = 4;
+				}
+				// TODO: try reuse opi-name and opi_unitid
 			}
 			else
 			{
