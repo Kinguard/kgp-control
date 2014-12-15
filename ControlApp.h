@@ -44,6 +44,7 @@ private:
 	bool GetCertificate(const string& opiname, const string& company="OPI");
 	bool GetPasswordUSB();
 	bool SetPasswordUSB();
+	bool GuessOPIName();
 	void WriteConfig();
 	static void WriteBackupConfig(const string& password);
 

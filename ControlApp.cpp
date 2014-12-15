@@ -384,7 +384,16 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 				if( users.size() > 0 )
 				{
 					// We have users on SD, skip register user
-					this->state = 5;
+					if( this->GuessOPIName() && this->SetDNSName( this->opi_name ) )
+					{
+						// We have a opi-name in mailconfig and register succeded
+						// Skip to end
+						this->state = 7;
+					}
+					else
+					{
+						this->state = 5;
+					}
 				}
 				else
 				{
@@ -781,24 +790,31 @@ bool ControlApp::SetDNSName(const string &opiname)
 
 	this->opi_name = opiname;
 
-	// Add first user email on opidomain
-	OPI::MailConfig mc;
-	mc.ReadConfig();
-	mc.SetAddress(this->opi_name+".op-i.me",this->first_user,this->first_user);
-	mc.WriteConfig();
-
-	chown( ALIASES, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
-
-	bool ret;
-	tie(ret, ignore) = Process::Exec("/usr/sbin/postmap " ALIASES);
-
-	if( !ret )
+	/*
+	 * If we have no first user this indicates old SD card with info and users
+	 * skip adding in this case.
+	 */
+	if( this->first_user != "" )
 	{
-		this->global_error = "Failed to create user mail mapping";
-		return false;
-	}
+		// Add first user email on opidomain
+		OPI::MailConfig mc;
+		mc.ReadConfig();
+		mc.SetAddress(this->opi_name+".op-i.me",this->first_user,this->first_user);
+		mc.WriteConfig();
 
-	File::Write("/etc/mailname", opiname+".op-i.me", 0644);
+		chown( ALIASES, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
+
+		bool ret;
+		tie(ret, ignore) = Process::Exec("/usr/sbin/postmap " ALIASES);
+
+		if( !ret )
+		{
+			this->global_error = "Failed to create user mail mapping";
+			return false;
+		}
+
+		File::Write("/etc/mailname", opiname+".op-i.me", 0644);
+	}
 
 	this->WriteConfig();
 
@@ -1137,6 +1153,32 @@ bool ControlApp::SetPasswordUSB()
 	}
 
 	return ret;
+}
+
+bool ControlApp::GuessOPIName()
+{
+	OPI::MailConfig mc;
+
+	mc.ReadConfig();
+	list<string> names;
+	list<string> domains = mc.GetDomains();
+	for( const string& domain: domains )
+	{
+		list<string> parts=String::Split(domain, ".",2);
+		if( parts.back() == "op-i.me" )
+		{
+			names.push_back(parts.front());
+		}
+	}
+
+	if( names.size() != 1 )
+	{
+		return false;
+	}
+
+	this->opi_name = names.front();
+
+	return true;
 }
 
 void ControlApp::WriteConfig()

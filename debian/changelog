@@ -1,3 +1,9 @@
+opi-control (1.0.5) vili; urgency=low
+
+  * Try figure out opi-name from email config and use in setup
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 15 Dec 2014 16:25:25 +0100
+
 opi-control (1.0.4) vili; urgency=low
 
   * Add inbound tests for ports 587 and 2525
