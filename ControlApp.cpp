@@ -18,6 +18,7 @@
 #include <libopi/AuthServer.h>
 #include <libopi/DnsServer.h>
 #include <libopi/Luks.h>
+#include <libopi/MailConfig.h>
 
 #include <functional>
 
@@ -94,66 +95,16 @@ void ControlApp::Startup()
 bool ControlApp::DoLogin()
 {
 	AuthServer s( this->unit_id);
-
 	RSAWrapper c;
-
-	Secop secop;
-	secop.SockAuth();
-
-	list<map<string,string>> ids =  secop.AppGetIdentifiers("op-backend");
-
-	if( ids.size() == 0 )
-	{
-		logg << Logger::Error << "Failed to get keys from secop"<<lend;
-		this->global_error ="Failed to retrieve krypto keys";
-		return false;
-	}
-
-	bool found = false;
-	for(auto id : ids )
-	{
-		if( id.find("type") != id.end() )
-		{
-			if( id["type"] == "backendkeys" )
-			{
-				// Key found
-				c.LoadPrivKeyFromDER( Base64Decode( id["privkey"]) );
-				c.LoadPubKeyFromDER( Base64Decode( id["pubkey"]) );
-				found = true;
-				break;
-			}
-		}
-	}
-
-	if( ! found )
-	{
-		logg << Logger::Error << "failed to load keys from secop"<<lend;
-		this->global_error ="Failed to load krypto keys";
-		return false;
-	}
-
-	string challenge;
 	int resultcode;
+	Json::Value ret;
 
-	tie(resultcode,challenge) = s.GetChallenge();
-
-	if( resultcode != 200 )
-	{
-		logg << Logger::Error << "Unknown reply of server "<<resultcode<< lend;
-		this->global_error ="Failed to connect with OP server";
-		return false;
-	}
-
-
-	string signedchallenge = Base64Encode( c.SignMessage( challenge ) );
-
-	Json::Value rep;
-	tie(resultcode, rep) = s.SendSignedChallenge( signedchallenge );
+	tie(resultcode, ret) = s.Login();
 
 	if( resultcode != 200 && resultcode != 403 )
 	{
 		logg << Logger::Error << "Unexpected reply from server "<< resultcode <<lend;
-		this->global_error ="Unexpected reply from OP server";
+		this->global_error ="Unexpected reply from OP server ("+ ret["desc"].asString()+")";
 		return false;
 	}
 
@@ -161,8 +112,15 @@ bool ControlApp::DoLogin()
 	{
 		logg << Logger::Debug << "Send Secret"<<lend;
 
+		if( ! ret.isMember("reply") || ! ret["reply"].isMember("challange")  )
+		{
+			logg << Logger::Error << "Missing argument from server "<< resultcode <<lend;
+			this->global_error ="Missing argument in reply from server";
+			return false;
+		}
+
 		// Got new challenge to encrypt with master
-		string challenge = rep["challange"].asString();
+		string challenge = ret["reply"]["challange"].asString();
 
 		SecVector<byte> key = PBKDF2(SecString(this->masterpassword.c_str(), this->masterpassword.size() ), 32 );
 
@@ -170,16 +128,16 @@ bool ControlApp::DoLogin()
 
 		string cryptchal = Base64Encode( aes.Encrypt( challenge ) );
 
-		tie(resultcode, rep) = s.SendSecret(cryptchal, Base64Encode(c.PubKeyAsPEM()) );
+		tie(resultcode, ret) = s.SendSecret(cryptchal, Base64Encode(c.PubKeyAsPEM()) );
 		if( resultcode != 200 )
 		{
 			this->global_error ="Failed to communicate with OP server";
 			return false;
 		}
 
-		if( rep.isMember("token") && rep["token"].isString() )
+		if( ret.isMember("token") && ret["token"].isString() )
 		{
-			this->token = rep["token"].asString();
+			this->token = ret["token"].asString();
 		}
 		else
 		{
@@ -191,9 +149,9 @@ bool ControlApp::DoLogin()
 	}
 	else
 	{
-		if( rep.isMember("token") && rep["token"].isString() )
+		if( ret.isMember("token") && ret["token"].isString() )
 		{
-			this->token = rep["token"].asString();
+			this->token = ret["token"].asString();
 		}
 		else
 		{
@@ -360,13 +318,13 @@ void ControlApp::Main()
 	{
 		logg << Logger::Debug << "Power off opi"<<lend;
 
-		system("/sbin/poweroff");
+		Process::Exec("/sbin/poweroff");
 	}
 	else if( this->state == 11 )
 	{
 		logg << Logger::Debug << "Reboot opi"<<lend;
 
-		system("/sbin/reboot");
+		Process::Exec("/sbin/reboot");
 	}
 
 	logg << Logger::Debug << "OPI control finnished " <<lend;
@@ -757,21 +715,35 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 	this->first_user = user;
 
 	// Add user to localdomain mailboxfile
-	list<string> lines = File::GetContent( LOCAL_MAILFILE );
-	lines.push_back( user+"@localdomain\t"+user+"/mail/\n" );
-	File::Write( LOCAL_MAILFILE, lines, 0600);
+	OPI::MailMapFile mmf( LOCAL_MAILFILE );
+	mmf.ReadConfig();
+	mmf.SetAddress("localdomain", user, user);
+	mmf.WriteConfig();
+
 	chown( LOCAL_MAILFILE, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
 
 	// Add this user as receiver of administrative mail
-	lines = File::GetContent( VIRUAL_ALIASES );
-	lines.push_back( "/^postmaster@/\t"+user+"@localdomain\n" );
-	lines.push_back( "/^root@/\t"+user+"@localdomain\n" );
-	File::Write( VIRUAL_ALIASES, lines, 0600);
-	chown( VIRUAL_ALIASES, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
+	try
+	{
+		OPI::MailAliasFile mf( VIRTUAL_ALIASES );
 
-	int ret = system( "/usr/sbin/postmap " LOCAL_MAILFILE );
+		mf.AddUser("/^postmaster@/",user+"@localdomain");
+		mf.AddUser("/^root@/",user+"@localdomain");
 
-	if( (ret < 0) || WEXITSTATUS(ret) != 0 )
+		mf.WriteConfig();
+	}
+	catch( runtime_error& err)
+	{
+		this->global_error = string("Failed to create user mail mapping (")+err.what()+")";
+		return false;
+	}
+
+	chown( VIRTUAL_ALIASES, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
+
+	bool ret;
+	tie(ret,ignore) = Process::Exec( "/usr/sbin/postmap " LOCAL_MAILFILE );
+
+	if( !ret )
 	{
 		this->global_error = "Failed to create user mail mapping";
 		return false;
@@ -797,16 +769,17 @@ bool ControlApp::SetDNSName(const string &opiname)
 	this->opi_name = opiname;
 
 	// Add first user email on opidomain
-	list<string> lines = File::GetContent( ALIASES );
-	lines.push_back( this->first_user+"@"+opiname+".op-i.me\t"+this->first_user+"/mail/\n" );
-	File::Write( ALIASES, lines, 0600);
+	OPI::MailConfig mc;
+	mc.ReadConfig();
+	mc.SetAddress(this->opi_name+".op-i.me",this->first_user,this->first_user);
+	mc.WriteConfig();
+
 	chown( ALIASES, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
 
-	int ret = system( "/usr/sbin/postmap " ALIASES );
+	bool ret;
+	tie(ret, ignore) = Process::Exec("/usr/sbin/postmap " ALIASES);
 
-	File::Write( DOMAINFILE, opiname+".op-i.me\n", 0600);
-
-	if( (ret < 0) || WEXITSTATUS(ret) != 0 )
+	if( !ret )
 	{
 		this->global_error = "Failed to create user mail mapping";
 		return false;

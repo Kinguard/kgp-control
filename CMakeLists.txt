@@ -2,7 +2,7 @@ project(opi-control)
 cmake_minimum_required(VERSION 2.8)
 
 include( FindPkgConfig )
-pkg_check_modules ( LIBOPI REQUIRED libopi>=1.0 )
+pkg_check_modules ( LIBOPI REQUIRED libopi>=1.5.1 )
 
 set (OPI_CONTROL_VERSION_MAJOR 1)
 set (OPI_CONTROL_VERSION_MINOR 0)
