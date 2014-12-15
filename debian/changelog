@@ -1,3 +1,12 @@
+opi-control (1.0.4) vili; urgency=low
+
+  * Add inbound tests for ports 587 and 2525
+  * Call run-parts on reinit to let apps do fixups
+  * Use more standard functions from libopi mail etc
+  * Dont add users on setup if users present on SD
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 15 Dec 2014 14:01:26 +0100
+
 opi-control (1.0.3) vili; urgency=low
 
   * Added more cache disable
