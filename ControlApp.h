@@ -5,6 +5,7 @@
 
 #include <libopi/LedControl.h>
 #include "WebServer.h"
+#include "EventHandler.h"
 
 class ControlApp : public Utils::DaemonApplication
 {
@@ -61,6 +62,8 @@ private:
 	WebServerPtr ws;
 
 	OPI::LedControl leds;
+
+	EventHandler evhandler;
 };
 
 #endif // CONTROLAPP_H

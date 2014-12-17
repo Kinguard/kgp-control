@@ -312,20 +312,27 @@ void ControlApp::Main()
 		ServiceHelper::Start( "fetchmail" );
 		ServiceHelper::Start( "nginx" );
 
+		// Add event to be called when done
+		this->evhandler.AddEvent( 90, std::bind(
+									  Process::Exec,
+									  "/bin/run-parts --lsbsysinit  -- /etc/opi-control/completed" ));
+
 		this->SetLedstate( Ledstate::Completed);
 	}
 	else if( this->state == 10 )
 	{
-		logg << Logger::Debug << "Power off opi"<<lend;
+		logg << Logger::Debug << "Register power off opi"<<lend;
 
-		Process::Exec("/sbin/poweroff");
+		this->evhandler.AddEvent( 99, bind(Process::Exec, "/sbin/poweroff") );
 	}
 	else if( this->state == 11 )
 	{
-		logg << Logger::Debug << "Reboot opi"<<lend;
-
-		Process::Exec("/sbin/reboot");
+		logg << Logger::Debug << "Register reboot opi"<<lend;
+		this->evhandler.AddEvent( 99, bind(Process::Exec, "/sbin/reboot") );
 	}
+
+	logg << Logger::Debug << "Calling all eventhandlers"<< lend;
+	this->evhandler.CallEvents();
 
 	logg << Logger::Debug << "OPI control finnished " <<lend;
 }
@@ -394,6 +401,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 					{
 						this->state = 5;
 					}
+					this->evhandler.AddEvent( 50, bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinstall"));
 				}
 				else
 				{
@@ -411,7 +419,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 		{
 			if( this->DoInit(v["password"].asString(), this->unit_id, v["save"].asBool() ) )
 			{
-				Process::Exec("/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinit");
+				this->evhandler.AddEvent( 50, bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinit"));
 				this->state = 4;
 			}
 			else

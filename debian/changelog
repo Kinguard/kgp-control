@@ -1,3 +1,9 @@
+opi-control (1.0.6) vili; urgency=low
+
+  * Add events for reinstall and completed startup
+
+ -- Tor Krill <tor@openproducts.se>  Wed, 17 Dec 2014 15:58:36 +0100
+
 opi-control (1.0.5) vili; urgency=low
 
   * Try figure out opi-name from email config and use in setup
