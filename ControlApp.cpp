@@ -293,12 +293,14 @@ void ControlApp::Main()
 	{
 		logg << Logger::Debug << "Stopping inbound connection tests"<<lend;
 		ibt->Stop();
+		ibt.reset();
 	}
 
 	if( redirector )
 	{
 		logg << Logger::Debug << "Stopping redirect service"<<lend;
 		redirector->Stop();
+		redirector.reset();
 	}
 
 	if( this->state == 7 )
@@ -695,7 +697,7 @@ bool ControlApp::DoInit(const string& pwd, const string& unit_id, bool savepassw
 	}
 	else
 	{
-		logg << Logger::Debug << "Not saving password on successful inir"<<lend;
+		logg << Logger::Debug << "Not saving password on successful init"<<lend;
 	}
 
 	if( ret )
