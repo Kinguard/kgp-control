@@ -1,3 +1,9 @@
+opi-control (1.0.7) vili; urgency=low
+
+  * Make sure redirectors and inbound tests are disposed early.
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 18 Dec 2014 12:30:18 +0100
+
 opi-control (1.0.6) vili; urgency=low
 
   * Add events for reinstall and completed startup
