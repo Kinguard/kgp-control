@@ -95,7 +95,6 @@ void ControlApp::Startup()
 bool ControlApp::DoLogin()
 {
 	AuthServer s( this->unit_id);
-	RSAWrapper c;
 	int resultcode;
 	Json::Value ret;
 
@@ -122,13 +121,14 @@ bool ControlApp::DoLogin()
 		// Got new challenge to encrypt with master
 		string challenge = ret["reply"]["challange"].asString();
 
-		SecVector<byte> key = PBKDF2(SecString(this->masterpassword.c_str(), this->masterpassword.size() ), 32 );
+		RSAWrapperPtr c = AuthServer::GetKeysFromSecop();
 
+		SecVector<byte> key = PBKDF2(SecString(this->masterpassword.c_str(), this->masterpassword.size() ), 32 );
 		AESWrapper aes( key );
 
 		string cryptchal = Base64Encode( aes.Encrypt( challenge ) );
 
-		tie(resultcode, ret) = s.SendSecret(cryptchal, Base64Encode(c.PubKeyAsPEM()) );
+		tie(resultcode, ret) = s.SendSecret(cryptchal, Base64Encode(c->PubKeyAsPEM()) );
 		if( resultcode != 200 )
 		{
 			this->global_error ="Failed to communicate with OP server";
