@@ -1,3 +1,9 @@
+opi-control (1.0.9) vili; urgency=low
+
+  * Updated error message #200
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 19 Dec 2014 15:14:59 +0100
+
 opi-control (1.0.8) vili; urgency=low
 
   * Fix bug on missing key

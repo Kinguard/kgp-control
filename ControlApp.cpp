@@ -131,7 +131,14 @@ bool ControlApp::DoLogin()
 		tie(resultcode, ret) = s.SendSecret(cryptchal, Base64Encode(c->PubKeyAsPEM()) );
 		if( resultcode != 200 )
 		{
-			this->global_error ="Failed to communicate with OP server";
+			if( resultcode == 403)
+			{
+				this->global_error ="Failed to authenticate with OP server. Wrong activation code or password.";
+			}
+			else
+			{
+				this->global_error ="Failed to communicate with OP server";
+			}
 			return false;
 		}
 
