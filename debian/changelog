@@ -1,3 +1,11 @@
+opi-control (1.0.8) vili; urgency=low
+
+  * Fix bug on missing key
+  * Fix crash on faulty mailconfig #243
+  * Increase timeout on redirect to nginx #247
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 19 Dec 2014 12:41:14 +0100
+
 opi-control (1.0.7) vili; urgency=low
 
   * Make sure redirectors and inbound tests are disposed early.
