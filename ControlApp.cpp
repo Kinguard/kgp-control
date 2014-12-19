@@ -492,7 +492,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			{
 				this->state = 11;
 				ret["url"]="/";
-				ret["timeout"]=45;
+				ret["timeout"]=50;
 				this->ws->Stop();
 			}
 			else
@@ -746,13 +746,21 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 
 	this->first_user = user;
 
-	// Add user to localdomain mailboxfile
-	OPI::MailMapFile mmf( LOCAL_MAILFILE );
-	mmf.ReadConfig();
-	mmf.SetAddress("localdomain", user, user);
-	mmf.WriteConfig();
+	try
+	{
+		// Add user to localdomain mailboxfile
+		OPI::MailMapFile mmf( LOCAL_MAILFILE );
+		mmf.ReadConfig();
+		mmf.SetAddress("localdomain", user, user);
+		mmf.WriteConfig();
 
-	chown( LOCAL_MAILFILE, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
+		chown( LOCAL_MAILFILE, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
+	}
+	catch( runtime_error& err)
+	{
+		this->global_error = string("Failed to add user mailbox (")+err.what()+")";
+		return false;
+	}
 
 	// Add this user as receiver of administrative mail
 	try
@@ -806,24 +814,33 @@ bool ControlApp::SetDNSName(const string &opiname)
 	 */
 	if( this->first_user != "" )
 	{
-		// Add first user email on opidomain
-		OPI::MailConfig mc;
-		mc.ReadConfig();
-		mc.SetAddress(this->opi_name+".op-i.me",this->first_user,this->first_user);
-		mc.WriteConfig();
-
-		chown( ALIASES, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
-
-		bool ret;
-		tie(ret, ignore) = Process::Exec("/usr/sbin/postmap " ALIASES);
-
-		if( !ret )
+		try
 		{
-			this->global_error = "Failed to create user mail mapping";
+			// Add first user email on opidomain
+			OPI::MailConfig mc;
+			mc.ReadConfig();
+			mc.SetAddress(this->opi_name+".op-i.me",this->first_user,this->first_user);
+			mc.WriteConfig();
+
+			chown( ALIASES, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
+
+			bool ret;
+			tie(ret, ignore) = Process::Exec("/usr/sbin/postmap " ALIASES);
+
+			if( !ret )
+			{
+				this->global_error = "Failed to create user mail mapping";
+				return false;
+			}
+
+			File::Write("/etc/mailname", opiname+".op-i.me", 0644);
+		}
+		catch(runtime_error& err)
+		{
+			logg << Logger::Error << "Failed to add first user email"<<err.what()<<lend;
+			this->global_error = "Failed to update mailsettings for user";
 			return false;
 		}
-
-		File::Write("/etc/mailname", opiname+".op-i.me", 0644);
 	}
 
 	this->WriteConfig();
@@ -1167,30 +1184,37 @@ bool ControlApp::SetPasswordUSB()
 
 bool ControlApp::GuessOPIName()
 {
-	OPI::MailConfig mc;
-
-	mc.ReadConfig();
-	list<string> names;
-	list<string> domains = mc.GetDomains();
-	for( const string& domain: domains )
+	try
 	{
-		list<string> parts=String::Split(domain, ".",2);
-		if( parts.back() == "op-i.me" )
+		OPI::MailConfig mc;
+
+		mc.ReadConfig();
+		list<string> names;
+		list<string> domains = mc.GetDomains();
+		for( const string& domain: domains )
 		{
-			names.push_back(parts.front());
+			list<string> parts=String::Split(domain, ".",2);
+			if( parts.back() == "op-i.me" )
+			{
+				names.push_back(parts.front());
+			}
 		}
-	}
 
-	if( names.size() != 1 )
+		if( names.size() != 1 )
+		{
+			return false;
+		}
+
+		this->opi_name = names.front();
+
+		return true;
+	}
+	catch(runtime_error& err)
 	{
+		logg << Logger::Notice << "Failed to guess OPIName: "<< err.what()<<lend;
 		return false;
 	}
-
-	this->opi_name = names.front();
-
-	return true;
 }
-
 void ControlApp::WriteConfig()
 {
 	string path = File::GetPath( SYSCONFIG_PATH );
