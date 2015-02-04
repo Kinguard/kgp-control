@@ -43,6 +43,7 @@ WebServer::WebServer(int initial_state, std::function<Json::Value(Json::Value)> 
 	routes[std::make_pair("/configure","POST")] = WebServer::handle_init;
 	routes[std::make_pair("/init","POST")] = WebServer::handle_init;
 	routes[std::make_pair("/reinit","POST")] = WebServer::handle_reinit;
+	routes[std::make_pair("/restore","POST")] = WebServer::handle_restore;
 	routes[std::make_pair("/unlock","POST")] = WebServer::handle_unlock;
 	routes[std::make_pair("/status","GET")] = WebServer::handle_status;
 	routes[std::make_pair("/user","POST")] = WebServer::handle_user;
@@ -217,6 +218,60 @@ int WebServer::handle_reinit(mg_connection *conn)
 		mg_printf_data( conn, "Missing argument!");
 		mg_send_status(conn, 400);
 	}
+
+	return MG_TRUE;
+}
+
+
+static bool validate_restoredata(const Json::Value& v)
+{
+	if( ! v.isMember("path") || !v["path"].isString() )
+	{
+		return false;
+	}
+
+	if( ! v.isMember("restore") || !v["restore"].isBool() )
+	{
+		return false;
+	}
+
+	return true;
+}
+
+
+int WebServer::handle_restore(mg_connection *conn)
+{
+	logg << Logger::Debug << "Got request for restore"<<lend;
+
+	Json::Value req;
+
+	if( ! WebServer::parse_json(conn, req) )
+	{
+		// True in the sense that we handled the req.
+		return MG_TRUE;
+	}
+
+	if(   validate_restoredata( req )  )
+	{
+		Json::Value ret;
+		if( WebServer::callback != nullptr ){
+			Json::Value cmd;
+			cmd["cmd"] = "restore";
+			cmd["path"] = req["path"].asString();
+			cmd["restore"] = req["restore"];
+			ret = WebServer::callback( cmd );
+			WebServer::state = ret["state"].asInt();
+		}
+		mg_send_header( conn, "Content-Type", "application/json");
+		mg_printf_data( conn, ret.toStyledString().c_str());
+	}
+	else
+	{
+		mg_printf_data( conn, "Missing argument!");
+		mg_send_status(conn, 400);
+	}
+
+
 
 	return MG_TRUE;
 }

@@ -1,3 +1,9 @@
+opi-control (1.0.10) vili; urgency=medium
+
+  * Initial stab at restore backup
+
+ -- Tor Krill <tor@openproducts.se>  Wed, 04 Feb 2015 23:18:05 +0100
+
 opi-control (1.0.9) vili; urgency=low
 
   * Updated error message #200

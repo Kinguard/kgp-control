@@ -182,6 +182,7 @@ void ControlApp::Main()
 	logg << Logger::Debug << "Checking device: "<< STORAGE_DEV <<lend;
 
 	this->state = 3;
+	this->skiprestore = false;
 
 	if( File::FileExists(SYSCONFIG_PATH))
 	{
@@ -391,50 +392,118 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 		string cmd = v["cmd"].asString();
 		if( cmd == "init" )
 		{
-			if( this->DoInit(v["password"].asString(), v["unit_id"].asString(), v["save"].asBool() ) )
-			{
-				Secop s;
-				s.SockAuth();
-				vector<string> users = s.GetUsers();
+			this->masterpassword = v["password"].asString();
 
-				if( users.size() > 0 )
+			// First check if we should try a restore
+			Json::Value tmpret;
+			if( ! this->skiprestore && (( tmpret = this->CheckRestore() ) != Json::nullValue ) )
+			{
+				this->state = 12;
+				ret = tmpret;
+			}
+			else
+			{
+				// No restore possible, continue
+				if( this->DoInit( v["unit_id"].asString(), v["save"].asBool() ) )
 				{
-					// We have users on SD, skip register user
-					if( this->GuessOPIName() && this->SetDNSName( this->opi_name ) )
+					Secop s;
+					s.SockAuth();
+					vector<string> users = s.GetUsers();
+
+					if( users.size() > 0 )
 					{
-						// We have a opi-name in mailconfig and register succeded
-						// Skip to end
-						this->state = 7;
+						// We have users on SD, skip register user
+						if( this->GuessOPIName() && this->SetDNSName( this->opi_name ) )
+						{
+							// We have a opi-name in mailconfig and register succeded
+							// Skip to end
+							this->state = 7;
+						}
+						else
+						{
+							this->state = 5;
+						}
+						this->evhandler.AddEvent( 50, bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinstall"));
 					}
 					else
 					{
-						this->state = 5;
+						this->state = 4;
 					}
-					this->evhandler.AddEvent( 50, bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinstall"));
+					// TODO: try reuse opi-name and opi_unitid
 				}
 				else
 				{
-					this->state = 4;
+					status = false;
+					this->state = 3;
 				}
-				// TODO: try reuse opi-name and opi_unitid
 			}
-			else
-			{
-				status = false;
-				this->state = 3;
-			}
+
 		}
 		else if( cmd == "reinit" )
 		{
-			if( this->DoInit(v["password"].asString(), this->unit_id, v["save"].asBool() ) )
+			this->masterpassword = v["password"].asString();
+
+			// First check if we should try a restore
+			Json::Value tmpret;
+			if( (! this->skiprestore && (( tmpret = this->CheckRestore()) ) != Json::nullValue ) )
 			{
-				this->evhandler.AddEvent( 50, bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinit"));
-				this->state = 4;
+				this->state = 12;
+				ret = tmpret;
 			}
 			else
 			{
-				status = false;
-				this->state = 3;
+				// No restore possible, continue
+				if( this->DoInit( this->unit_id, v["save"].asBool() ) )
+				{
+					this->evhandler.AddEvent( 50, bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinit"));
+					this->state = 4;
+				}
+				else
+				{
+					status = false;
+					this->state = 3;
+				}
+			}
+		}
+		else if( cmd == "restore" )
+		{
+			if( v["restore"].asBool() )
+			{
+				if( this->DoRestore( v["path"].asString() ) )
+				{
+					// We are done
+					this->state = 7;
+				}
+				else
+				{
+					status = false;
+					this->global_error = "Restore failed";
+
+					// Figure out what state to return to
+					if( ! Luks::isLuks( OPI_MMC_PART ) )
+					{
+						this->state = 9;
+					}
+					else
+					{
+						this->state = 3;
+					}
+				}
+			}
+			else
+			{
+				// Mark that user don't want to restore
+				this->skiprestore = true;
+
+				// Figure out what state to return to
+				if( ! Luks::isLuks( OPI_MMC_PART ) )
+				{
+					this->state = 9;
+				}
+				else
+				{
+					this->state = 3;
+				}
 			}
 		}
 		else if( cmd == "adduser" )
@@ -621,12 +690,11 @@ bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 	return true;
 }
 
-bool ControlApp::DoInit(const string& pwd, const string& unit_id, bool savepassword)
+bool ControlApp::DoInit(const string& unit_id, bool savepassword)
 {
 	bool ret = true;
 
 	this->unit_id = unit_id;
-	this->masterpassword = pwd;
 
 	if ( ! this->InitializeSD() )
 	{
@@ -1022,13 +1090,7 @@ bool ControlApp::RegisterKeys( )
 			File::Write(DNS_PUB_PATH, dns.PubKeyAsPEM(), 0644 );
 		}
 
-		SecString spass(this->masterpassword.c_str(), this->masterpassword.size() );
-		SecVector<byte> key = PBKDF2( spass, 20);
-		vector<byte> ukey(key.begin(), key.end());
-
-		string  backuppass = Base64Encode( ukey );
-
-		ControlApp::WriteBackupConfig(backuppass);
+		ControlApp::WriteBackupConfig( this->GetBackupPassword());
 
 		this->WriteConfig( );
 	}
@@ -1039,6 +1101,15 @@ bool ControlApp::RegisterKeys( )
 		return false;
 	}
 	return true;
+}
+
+string ControlApp::GetBackupPassword()
+{
+	SecString spass(this->masterpassword.c_str(), this->masterpassword.size() );
+	SecVector<byte> key = PBKDF2( spass, 20);
+	vector<byte> ukey(key.begin(), key.end());
+
+	return Base64Encode( ukey );
 }
 
 bool ControlApp::GetCertificate(const string &opiname, const string &company)
@@ -1273,6 +1344,64 @@ void ControlApp::WriteBackupConfig(const string &password)
 		<< "fs-passphrase: " << password<<endl;
 
 	File::Write(BACKUP_PATH, ss.str(), 0600 );
+}
+
+Json::Value ControlApp::CheckRestore()
+{
+
+	if( Luks::isLuks( OPI_MMC_PART ) )
+	{
+		// We never do a restore if we have a luks partition on sd
+		return Json::nullValue;
+	}
+
+	if( this->masterpassword == "" )
+	{
+		// Need password to be able to get backups
+		return Json::nullValue;
+	}
+
+	if( ! this->backuphelper )
+	{
+		this->backuphelper = BackupHelperPtr( new BackupHelper( this->GetBackupPassword() ) );
+	}
+	else
+	{
+		// Entered password might have been changed
+		this->backuphelper->SetPassword( this->GetBackupPassword() );
+	}
+
+	Json::Value retval;
+	bool hasdata = false;
+	// Check local
+	if( this->backuphelper->MountLocal() )
+	{
+		list<string> local = this->backuphelper->GetLocalBackups();
+		for( const auto& val: local)
+		{
+			hasdata = true;
+			retval["local"].append(val);
+		}
+	}
+
+	// Check remote
+	if( this->backuphelper->MountRemote() )
+	{
+		list<string> remote = this->backuphelper->GetRemoteBackups();
+		for( const auto& val: remote)
+		{
+			hasdata = true;
+			retval["remote"].append(val);
+		}
+	}
+
+	return hasdata ? retval : Json::nullValue ;
+
+}
+
+bool ControlApp::DoRestore(const string &path)
+{
+	return this->backuphelper->RestoreBackup( path );
 }
 
 void ControlApp::SetLedstate(ControlApp::Ledstate state)
