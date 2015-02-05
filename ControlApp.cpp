@@ -1440,6 +1440,7 @@ bool ControlApp::SetupRestoreEnv()
 			 << resultcode
 			 << ") '" << ret["Message"].asString()<<"'"
 			 <<lend;
+		logg << "Response : "<< ret.toStyledString()<<lend;
 		return false;
 	}
 
