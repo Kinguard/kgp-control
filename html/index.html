@@ -45,6 +45,7 @@
 	<button type="button" class="navbutton" opi-page="9" id="b9" title="">9</button>
 	<button type="button" class="navbutton" opi-page="10" id="b10" title="">10</button>
 	<button type="button" class="navbutton" opi-page="11" id="b11" title="">11</button>
+	<button type="button" class="navbutton" opi-page="12" id="b12" title="">12</button>
 	</div>
 	<div id="page_error" class="page hidden">
 	<h1>Error - Unable to retrieve status</h1>
@@ -328,6 +329,46 @@
 		</form>
 	</div>
 	
+	<div id="page_restorebackup" class="page hidden">
+		<h1>Restore data</h1>
+		<p>
+		Data backups found, please select a source to restore from.
+		</p>
+		<form id="restore_backup">
+				<div>
+					<p class="form-group">
+					<select 
+						title="source"
+						name="path"
+						id="restore_paths"
+						data-validation="required"
+						data-validation-error-msg="Data source must be selected"
+					>
+					<option disabled>Available sources</option>	
+					</select>
+					</p>
+				</div>
+				<button 
+					type="submit"
+					id="btnRestore"
+					href="/restore"
+					name="restore"
+					value="1"
+					class = "width_50 right"
+				>
+				Restore data</button>
+		</form>
+		<form id="cancel_restore">
+					<button 
+						type="submit"
+						href="/restore"
+						class = "width_50 left"
+						name = "restore"
+						value = "0"
+					>
+					Skip restore</button>
+		</form>
+	</div>	
 	<div id="validation_error" class="hidden">
 		<div id="validation_error_msg"></div>
 	</div>
@@ -348,12 +389,20 @@
 
 current_state = 0;
 
+// set dummy paths
+var restore_paths = Array();
+restore_paths['local'] = ["/path/1","/path/2"];
+restore_paths['remote'] = ["/path/3","/path/4"];
 $("button[type='cancel']").click(function() {
 	setState(current_state);
 });
 
 $(".navbutton").click(function() {
 	setState($(this).attr('opi-page'));
+	// only to populate with dummy data
+	if($(this).attr('opi-page') == 12) {
+		populate_paths(restore_paths);
+	}
 });
 
 $("#btn-shutdown").click(function() {
@@ -373,6 +422,35 @@ function getQueryVariable(variable)
 	return(false);
 }
 
+function populate_paths(paths) {
+	$("#restore_paths").empty();
+	$("#restore_paths").append("<option disabled selected>Available sources</option>");	
+
+	if(paths.remote.length > 0) {
+		$("#restore_paths").append(
+				"<optgroup label='-- OpenProducts remote server --'></optgroup>"
+		)
+		$.each(paths.remote,function(index,value) {
+			label = "label='This is a date string " + index +"'";
+			$("#restore_paths").append(
+					"<option "+label+">"+value+"</option>"
+			);
+		});
+	}
+	if(paths.local.length > 0) {
+		$("#restore_paths").append(
+				"<optgroup label='-- Local (USB) --'></optgroup>"
+		)
+		$.each(paths.local,function(index,value) {
+			label = "label='This is a date string " + index +"'";
+			$("#restore_paths").append(
+				"<option "+label+">"+value+"</option>"
+			);
+		});
+
+	}
+	
+}
 
 function setState(state) {
 	current_state = state;
@@ -387,7 +465,8 @@ function setState(state) {
 		"page_initprogress",
 		"page_knownunit_id",
 		"page_shutdownprogress",
-		"page_rebootprogress"];
+		"page_rebootprogress",
+		"page_restorebackup"];
 	
 	if( state < 1 || state > pages.length)
 	{
@@ -400,7 +479,7 @@ function setState(state) {
 	{
 		if(i==state) {
 			$("#"+pages[i-1]).removeClass("hidden");
-			$("#"+pages[i-1]).find("input").filter(':visible:first').focus();
+			$("#"+pages[i-1]).find("input, select").filter(':visible:first').focus();
 			if( state != 8) {
 				/* state 8 is show init in progress
 				 * and is set prior to the sending of the form
@@ -544,7 +623,7 @@ $(document).ready( function() {
 				setState(8);
 			}
 			  // collect the form data while iterating over the inputs
-			  formdata = $form.find("input");
+			  formdata = $form.find("input, select, button");
 			  var data = {};
 			  for (var i = 0, ii = formdata.length; i < ii; ++i) {
 			    var input = formdata[i];
@@ -582,6 +661,11 @@ $(document).ready( function() {
 						// done by set state
 						opiname = $("#opiname").val();
 						setState(result.state);
+						if(result.state == 12) {
+							// make paths globally available
+							var paths = {local:result.local, remote:result.remote};
+							populate_paths(paths);
+						}
 						if(result.url) {
 							try {
 								redirect(result.url,result.timeout);
