@@ -1436,7 +1436,10 @@ bool ControlApp::SetupRestoreEnv()
 		unlink( SYS_PUB_PATH );
 		unlink( TMP_PRIV );
 		unlink( TMP_PUB );
-		logg << Logger::Notice << "Failed to send secret "<< resultcode<<lend;
+		logg << Logger::Notice << "Failed to send secret ("
+			 << resultcode
+			 << ") '" << ret["Message"].asString()<<"'"
+			 <<lend;
 		return false;
 	}
 
