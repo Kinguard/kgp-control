@@ -1348,6 +1348,7 @@ void ControlApp::WriteBackupConfig(const string &password)
 
 bool ControlApp::SetupRestoreEnv()
 {
+	logg << Logger::Debug << "Setting up environment for restore"<<lend;
 	// Make sure we have environment to work from.
 	// TODO: Lot of duplicated code here :(
 	// Generate temporary keys to use
@@ -1377,6 +1378,7 @@ bool ControlApp::SetupRestoreEnv()
 	{
 		unlink( TMP_PRIV );
 		unlink( TMP_PUB );
+		logg << Logger::Notice << "Failed to symlink private key"<<lend;
 		return false;
 	}
 
@@ -1385,6 +1387,7 @@ bool ControlApp::SetupRestoreEnv()
 		unlink( SYS_PRIV_PATH );
 		unlink( TMP_PRIV );
 		unlink( TMP_PUB );
+		logg << Logger::Notice << "Failed to symlink public key"<<lend;
 		return false;
 	}
 
@@ -1400,6 +1403,7 @@ bool ControlApp::SetupRestoreEnv()
 		unlink( SYS_PUB_PATH );
 		unlink( TMP_PRIV );
 		unlink( TMP_PUB );
+		logg << Logger::Notice << "Failed to get challenge " << resultcode <<lend;
 		return false;
 	}
 
@@ -1413,6 +1417,7 @@ bool ControlApp::SetupRestoreEnv()
 		unlink( SYS_PUB_PATH );
 		unlink( TMP_PRIV );
 		unlink( TMP_PUB );
+		logg << Logger::Notice << "Failed to send challenge " << resultcode <<lend;
 		return false;
 	}
 
@@ -1431,6 +1436,7 @@ bool ControlApp::SetupRestoreEnv()
 		unlink( SYS_PUB_PATH );
 		unlink( TMP_PRIV );
 		unlink( TMP_PUB );
+		logg << Logger::Notice << "Failed to send secret "<< resultcode<<lend;
 		return false;
 	}
 
