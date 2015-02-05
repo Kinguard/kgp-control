@@ -52,6 +52,7 @@ private:
 	static void WriteBackupConfig(const string& password);
 
 	// Helpers for restore backup
+	bool SetupRestoreEnv();
 	Json::Value CheckRestore();
 	bool DoRestore(const string& path);
 	OPI::BackupHelperPtr backuphelper;

@@ -1346,6 +1346,97 @@ void ControlApp::WriteBackupConfig(const string &password)
 	File::Write(BACKUP_PATH, ss.str(), 0600 );
 }
 
+bool ControlApp::SetupRestoreEnv()
+{
+	// Make sure we have environment to work from.
+	// TODO: Lot of duplicated code here :(
+	// Generate temporary keys to use
+	RSAWrapper ob;
+	ob.GenerateKeys();
+
+#define TMP_PRIV "/tmp/tmpkey.priv"
+#define TMP_PUB "/tmp/tmpkey.pub"
+
+	// Write to disk
+	string priv_path = File::GetPath( TMP_PRIV );
+	if( ! File::DirExists( priv_path ) )
+	{
+		File::MkPath( priv_path, 0755);
+	}
+
+	string pub_path = File::GetPath( TMP_PUB );
+	if( ! File::DirExists( pub_path ) )
+	{
+		File::MkPath( pub_path, 0755);
+	}
+
+	File::Write(TMP_PRIV, ob.PrivKeyAsPEM(), 0600 );
+	File::Write(TMP_PUB, ob.PubKeyAsPEM(), 0644 );
+
+	if( symlink( TMP_PRIV , SYS_PRIV_PATH ) )
+	{
+		unlink( TMP_PRIV );
+		unlink( TMP_PUB );
+		return false;
+	}
+
+	if( symlink( TMP_PUB , SYS_PUB_PATH ) )
+	{
+		unlink( SYS_PRIV_PATH );
+		unlink( TMP_PRIV );
+		unlink( TMP_PUB );
+		return false;
+	}
+
+	AuthServer s(this->unit_id);
+
+	string challenge;
+	int resultcode;
+	tie(resultcode,challenge) = s.GetChallenge();
+
+	if( resultcode != 200 )
+	{
+		unlink( SYS_PRIV_PATH );
+		unlink( SYS_PUB_PATH );
+		unlink( TMP_PRIV );
+		unlink( TMP_PUB );
+		return false;
+	}
+
+	string signedchal = CryptoHelper::Base64Encode( ob.SignMessage( challenge ) );
+	Json::Value ret;
+	tie(resultcode, ret) = s.SendSignedChallenge( signedchal );
+
+	if( resultcode != 403 )
+	{
+		unlink( SYS_PRIV_PATH );
+		unlink( SYS_PUB_PATH );
+		unlink( TMP_PRIV );
+		unlink( TMP_PUB );
+		return false;
+	}
+
+	challenge = ret["reply"]["challange"].asString();
+
+	SecVector<byte> key = PBKDF2(SecString(this->masterpassword.c_str(), this->masterpassword.size() ), 32 );
+	AESWrapper aes( key );
+
+	string cryptchal = Base64Encode( aes.Encrypt( challenge ) );
+
+	tie(resultcode, ret) = s.SendSecret(cryptchal, Base64Encode( ob.PubKeyAsPEM() ) );
+
+	if( resultcode != 200 )
+	{
+		unlink( SYS_PRIV_PATH );
+		unlink( SYS_PUB_PATH );
+		unlink( TMP_PRIV );
+		unlink( TMP_PUB );
+		return false;
+	}
+
+	return true;
+}
+
 Json::Value ControlApp::CheckRestore()
 {
 
@@ -1363,6 +1454,10 @@ Json::Value ControlApp::CheckRestore()
 
 	if( ! this->backuphelper )
 	{
+		if( ! this->SetupRestoreEnv() )
+		{
+			return Json::nullValue;
+		}
 		this->backuphelper = BackupHelperPtr( new BackupHelper( this->GetBackupPassword() ) );
 	}
 	else
