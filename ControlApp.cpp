@@ -1421,7 +1421,7 @@ bool ControlApp::SetupRestoreEnv()
 		return false;
 	}
 
-	challenge = ret["reply"]["challange"].asString();
+	challenge = ret["challange"].asString();
 
 	SecVector<byte> key = PBKDF2(SecString(this->masterpassword.c_str(), this->masterpassword.size() ), 32 );
 	AESWrapper aes( key );
