@@ -230,7 +230,7 @@ static bool validate_restoredata(const Json::Value& v)
 		return false;
 	}
 
-	if( ! v.isMember("restore") || !v["restore"].isIntegral() )
+	if( ! v.isMember("restore") || !v["restore"].isString() )
 	{
 		return false;
 	}
@@ -258,7 +258,7 @@ int WebServer::handle_restore(mg_connection *conn)
 			Json::Value cmd;
 			cmd["cmd"] = "restore";
 			cmd["path"] = req["path"].asString();
-			cmd["restore"] = req["restore"].asInt() == 1;
+			cmd["restore"] = req["restore"].asString() == "1";
 			ret = WebServer::callback( cmd );
 			WebServer::state = ret["state"].asInt();
 		}
