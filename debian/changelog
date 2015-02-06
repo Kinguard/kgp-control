@@ -1,3 +1,9 @@
+opi-control (1.0.12) vili; urgency=medium
+
+  * Restore path somewhat working
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 06 Feb 2015 17:33:40 +0100
+
 opi-control (1.0.11) vili; urgency=medium
 
   * Start implement web ui for restore, pa@openproducts.se
