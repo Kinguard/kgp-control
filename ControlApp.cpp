@@ -1462,6 +1462,9 @@ Json::Value ControlApp::CheckRestore()
 		return Json::nullValue;
 	}
 
+	// Make sure we have no leftovers from earlier attempts
+	this->CleanupRestoreEnv();
+
 	if( ! this->backuphelper )
 	{
 		if( ! this->SetupRestoreEnv() )
@@ -1502,6 +1505,20 @@ Json::Value ControlApp::CheckRestore()
 
 	return hasdata ? retval : Json::nullValue ;
 
+}
+
+void ControlApp::CleanupRestoreEnv()
+{
+	if( this->backuphelper )
+	{
+		this->backuphelper->UmountLocal();
+		this->backuphelper->UmountRemote();
+	}
+
+	unlink( SYS_PRIV_PATH );
+	unlink( SYS_PUB_PATH );
+	unlink( TMP_PRIV );
+	unlink( TMP_PUB );
 }
 
 bool ControlApp::DoRestore(const string &path)

@@ -54,6 +54,7 @@ private:
 	// Helpers for restore backup
 	bool SetupRestoreEnv();
 	Json::Value CheckRestore();
+	void CleanupRestoreEnv();
 	bool DoRestore(const string& path);
 	OPI::BackupHelperPtr backuphelper;
 	bool skiprestore; // User opted to not do restore
