@@ -393,6 +393,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 		if( cmd == "init" )
 		{
 			this->masterpassword = v["password"].asString();
+			this->unit_id = v["unit_id"].asString();
 
 			// First check if we should try a restore
 			Json::Value tmpret;
@@ -404,7 +405,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			else
 			{
 				// No restore possible, continue
-				if( this->DoInit( v["unit_id"].asString(), v["save"].asBool() ) )
+				if( this->DoInit( v["save"].asBool() ) )
 				{
 					Secop s;
 					s.SockAuth();
@@ -453,7 +454,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			else
 			{
 				// No restore possible, continue
-				if( this->DoInit( this->unit_id, v["save"].asBool() ) )
+				if( this->DoInit( v["save"].asBool() ) )
 				{
 					this->evhandler.AddEvent( 50, bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinit"));
 					this->state = 4;
@@ -471,13 +472,20 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			{
 				if( this->DoRestore( v["path"].asString() ) )
 				{
-					// We are done
-					this->state = 7;
+					if( this->DoInit( false ) )
+					{
+						// We are done
+						this->state = 7;
+					}
 				}
-				else
+
+				// Clean up after restore, umount etc
+				this->CleanupRestoreEnv();
+
+				if( this->state != 7 )
 				{
+					// Restore failed return to previous state
 					status = false;
-					this->global_error = "Restore failed";
 
 					// Figure out what state to return to
 					if( ! Luks::isLuks( OPI_MMC_PART ) )
@@ -690,11 +698,9 @@ bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 	return true;
 }
 
-bool ControlApp::DoInit(const string& unit_id, bool savepassword)
+bool ControlApp::DoInit( bool savepassword )
 {
 	bool ret = true;
-
-	this->unit_id = unit_id;
 
 	if ( ! this->InitializeSD() )
 	{
@@ -1527,7 +1533,52 @@ void ControlApp::CleanupRestoreEnv()
 
 bool ControlApp::DoRestore(const string &path)
 {
-	return this->backuphelper->RestoreBackup( path );
+	logg << Logger::Debug << "Do restore backup"<<lend;
+	// Setup SD-card
+	if( ! this->InitializeSD() )
+	{
+		this->global_error ="Restore backup - failed to initialize SD card";
+		return false;
+	}
+
+	try
+	{
+		// We need access to underlying info of SD card
+		// move mount
+		// Make sure device is not mounted (Should not happen)
+		if( DiskHelper::IsMounted( LUKSDEVICE ) != "" )
+		{
+			DiskHelper::Umount( LUKSDEVICE );
+		}
+
+		DiskHelper::Mount( LUKSDEVICE , TMP_MOUNT );
+	}
+	catch( ErrnoException& err)
+	{
+		logg << Logger::Error << "Failed to mount SD for backup: "<< err.what()<<lend;
+		this->global_error = "Restore backup - Failed to access SD card";
+		return false;
+	}
+
+	if( !this->backuphelper->RestoreBackup( path ) )
+	{
+		DiskHelper::Umount( LUKSDEVICE );
+		this->global_error = "Restore Backup - restore failed";
+		return false;
+	}
+
+	try
+	{
+		DiskHelper::Umount( LUKSDEVICE );
+	}
+	catch( ErrnoException& err)
+	{
+		logg << Logger::Error << "Failed to umount SD after backup: "<< err.what()<<lend;
+		this->global_error = "Restore backup - Failed to remove SD card";
+		return false;
+	}
+
+	return true;
 }
 
 void ControlApp::SetLedstate(ControlApp::Ledstate state)

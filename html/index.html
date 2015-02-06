@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html>
 <head>
@@ -359,6 +358,7 @@
 				Restore data</button>
 		</form>
 		<form id="cancel_restore">
+					<input type="hidden" name="path" value=""/>
 					<button 
 						type="submit"
 						href="/restore"
@@ -383,8 +383,6 @@
 </section>
 </div>
 
-
-</body>
 <script>
 
 current_state = 0;
@@ -426,29 +424,34 @@ function populate_paths(paths) {
 	$("#restore_paths").empty();
 	$("#restore_paths").append("<option disabled selected>Available sources</option>");	
 
-	if(paths.remote.length > 0) {
-		$("#restore_paths").append(
-				"<optgroup label='-- OpenProducts remote server --'></optgroup>"
-		)
-		$.each(paths.remote,function(index,value) {
-			label = "label='This is a date string " + index +"'";
+	try {
+		if(paths.remote.length > 0) {
 			$("#restore_paths").append(
-					"<option "+label+">"+value+"</option>"
-			);
-		});
-	}
-	if(paths.local.length > 0) {
-		$("#restore_paths").append(
-				"<optgroup label='-- Local (USB) --'></optgroup>"
-		)
-		$.each(paths.local,function(index,value) {
-			label = "label='This is a date string " + index +"'";
-			$("#restore_paths").append(
-				"<option "+label+">"+value+"</option>"
-			);
-		});
+					"<optgroup label='-- OpenProducts remote server --'></optgroup>"
+			)
+			$.each(paths.remote,function(index,value) {
+				label = "label='This is a date string " + index +"'";
+				$("#restore_paths").append(
+						"<option "+label+">"+value+"</option>"
+				);
+			});
+		}
+	} catch(e){}
 
-	}
+	try {
+		if(paths.local.length > 0) {
+			$("#restore_paths").append(
+					"<optgroup label='-- Local (USB) --'></optgroup>"
+			)
+			$.each(paths.local,function(index,value) {
+				label = "label='This is a date string " + index +"'";
+				$("#restore_paths").append(
+					"<option "+label+">"+value+"</option>"
+				);
+			});
+
+		}
+	} catch(e){}
 	
 }
 
@@ -556,13 +559,13 @@ $("input").keyup(function() {
 
 $(document).ready( function() {
 	var unit_id;
-	
+
 	// fix margin if we are running in a small browser.
 	if($(window).width() < 760) {
 		margin = ($(window).width() - 400)/2; 
 		$("#login").css("marginLeft",margin+"px");
 	}
-	
+
 	$("input[type='text']").addClass("form-control");
 	$("input[type='password']").addClass("form-control");
 	$("button").addClass("btn").addClass("btn-primary");
@@ -574,47 +577,46 @@ $(document).ready( function() {
 			$("#unit_id").val(unit_id);
 			$("#div_unit_id").addClass("hidden");
 		}
-	}
-	 
+	}	 
 	
-    $('input[title]').qtip({
-        show: 'focus',
-        hide: 'blur',
-        position : {
-	        my: 'left bottom',
-	        at: 'top right'
-        }
-    });
-    $.each($('input[title]'), function() {
-    	if(helptext[$(this).attr("name")]) {
-    		$(this).attr("title", helptext[$(this).attr("name")]);
-    	}
-    });
+	$('input[title]').qtip({
+		show: 'focus',
+		hide: 'blur',
+		position : {
+			my: 'left bottom',
+			at: 'top right'
+		}
+	});
 
-	
+	$.each($('input[title]'), function() {
+		if(helptext[$(this).attr("name")]) {
+			$(this).attr("title", helptext[$(this).attr("name")]);
+		}
+	});
+
 	$.validate( {
 		modules : 'security',
 		onModulesLoaded : function() {
 			/*
-		    var optionalConfig = {
-		      fontSize: '10px',
-		      padding: '0px',
-		      bad : 'WEAK PASSWORD',
-		      weak : 'WEAK PASSWORD',
-		      good : 'FAIR PASSWORD',
-		      strong : 'STRONG PASSWORD',
-		    };
+			var optionalConfig = {
+				fontSize: '10px',
+				padding: '0px',
+				bad : 'WEAK PASSWORD',
+				weak : 'WEAK PASSWORD',
+				good : 'FAIR PASSWORD',
+				strong : 'STRONG PASSWORD',
+			};
 			*/
-		    var optionalConfig = {
-				      fontSize: '10px',
-				      padding: '0px',
-				      bad : '',
-				      weak : '',
-				      good : '',
-				      strong : '',
-				    };
-		    //$('input[name="masterpassword_confirmation"]').displayPasswordStrength(optionalConfig);
-		    //$('input[name="password_confirmation"]').displayPasswordStrength(optionalConfig);
+			var optionalConfig = {
+				fontSize: '10px',
+				padding: '0px',
+				bad : '',
+				weak : '',
+				good : '',
+				strong : '',
+			};
+			//$('input[name="masterpassword_confirmation"]').displayPasswordStrength(optionalConfig);
+			//$('input[name="password_confirmation"]').displayPasswordStrength(optionalConfig);
 		},
 		onSuccess : function($form) {
 			url = $form.find("button[type='submit']").attr('href');
@@ -622,74 +624,76 @@ $(document).ready( function() {
 				// trying to init, show init info to user
 				setState(8);
 			}
-			  // collect the form data while iterating over the inputs
-			  formdata = $form.find("input, select, button");
-			  var data = {};
-			  for (var i = 0, ii = formdata.length; i < ii; ++i) {
-			    var input = formdata[i];
-			    if (input.name) {
-                    if( input.type == "checkbox" ) {
-                    	data[input.name] = input.checked;
-                    } else {
-                        data[input.name] = input.value;
-                    }
-			    }
-			  }
-			  if(button = $form.children('button')) {
-				  data[button.attr('name')] = button.val(); 
-			  }
-			  $("#spinner-bg").removeClass("hidden");
-			$.ajax({
-				  type: "POST",
-				  url: url,
-				  contentType : "application/json",
-				  data: JSON.stringify(data),
-				})
-				.done(function( result ) {
-					if(result.status != true) {
-						$("#validation_error").removeClass("hidden");
-						try {
-							$("#validation_error_msg").text(result.errmsg);
-							setState(result.state);
-						} catch(err) {
-							$("#validation_error_msg").text(err.message);
-						    console.log(err.message);
-						}
-						
+			// collect the form data while iterating over the inputs
+			formdata = $form.find("input, select, button");
+			var data = {};
+			for (var i = 0, ii = formdata.length; i < ii; ++i) {
+				var input = formdata[i];
+				if (input.name) {
+					if( input.type == "checkbox" ) {
+						data[input.name] = input.checked;
 					} else {
-						// set the opiname variable before the clearing all fields
-						// done by set state
-						opiname = $("#opiname").val();
+						data[input.name] = input.value;
+					}
+				}
+			}
+			if(button = $form.children('button')) {
+				data[button.attr('name')] = button.val(); 
+			}
+			$("#spinner-bg").removeClass("hidden");
+			$.ajax({
+				type: "POST",
+				url: url,
+				contentType : "application/json",
+				data: JSON.stringify(data),
+			})
+			.done(function( result ) {
+				if(result.status != true) {
+					$("#validation_error").removeClass("hidden");
+					try {
+						$("#validation_error_msg").text(result.errmsg);
 						setState(result.state);
-						if(result.state == 12) {
-							// make paths globally available
-							var paths = {local:result.local, remote:result.remote};
-							populate_paths(paths);
-						}
-						if(result.url) {
+					} catch(err) {
+						$("#validation_error_msg").text(err.message);
+						console.log(err.message);
+					}
+						
+				} else {
+					// set the opiname variable before the clearing all fields
+					// done by set state
+					opiname = $("#opiname").val();
+					setState(result.state);
+					if(result.state == 12) {
+						// make paths globally available
+						var paths = {local:result.local, remote:result.remote};
+						populate_paths(paths);
+					}
+
+					if(result.url) {
 							try {
 								redirect(result.url,result.timeout);
 							} catch(err) {
 								setState(1);
 								console.log(err.message);
 							}
-						} else {
-							if(result.state == 7 ) {
-								// this will send the "terminate" signal to opi-control
-								// then redirect to "/admin"
-								done(opiname);
-							}
-						}	
-					}
+					} else {
+						if(result.state == 7 ) {
+							// this will send the "terminate" signal to opi-control
+							// then redirect to "/admin"
+							done(opiname);
+						}
+					}	
+				}
 				})
-				.fail(function() {
-					setState(1);
-				})
-				.always(function(result){
-					if(!result.url) {
-						$("#spinner-bg").addClass("hidden");
-					}
-				});
+			.fail(function() {
+				setState(1);
+			})
+			.always(function(result){
+				if(!result.url) {
+					$("#spinner-bg").addClass("hidden");
+				}
+			});
+
 			return false;
 		},
 		onError : function($form) {
@@ -698,7 +702,7 @@ $(document).ready( function() {
 		}
 
 	});
-	
+
 	$.get("/status",function(data) {
 		//console.log(data);
 		setState(data.state);
@@ -710,4 +714,5 @@ $(document).ready( function() {
 	
 });
 </script>
+</body>
 </html>
