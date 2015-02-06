@@ -188,7 +188,7 @@ static bool validate_reinitdata(const Json::Value& v)
 
 int WebServer::handle_reinit(mg_connection *conn)
 {
-	// Almost like init but from an initialized unut
+	// Almost like init but from an initialized unit
 	logg << Logger::Debug << "Got request for reinit"<<lend;
 
 	Json::Value req;

@@ -1449,6 +1449,7 @@ bool ControlApp::SetupRestoreEnv()
 
 Json::Value ControlApp::CheckRestore()
 {
+	logg << Logger::Debug << "Check if restore should be performed"<<lend;
 
 	if( Luks::isLuks( OPI_MMC_PART ) )
 	{
@@ -1462,11 +1463,12 @@ Json::Value ControlApp::CheckRestore()
 		return Json::nullValue;
 	}
 
-	// Make sure we have no leftovers from earlier attempts
-	this->CleanupRestoreEnv();
 
 	if( ! this->backuphelper )
 	{
+		// Make sure we have no leftovers from earlier attempts
+		this->CleanupRestoreEnv();
+
 		if( ! this->SetupRestoreEnv() )
 		{
 			return Json::nullValue;
@@ -1509,6 +1511,8 @@ Json::Value ControlApp::CheckRestore()
 
 void ControlApp::CleanupRestoreEnv()
 {
+	logg << Logger::Debug << "Clean up restore environment"<<lend;
+
 	if( this->backuphelper )
 	{
 		this->backuphelper->UmountLocal();
