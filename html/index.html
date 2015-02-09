@@ -430,7 +430,7 @@ function populate_paths(paths) {
 					"<optgroup label='-- OpenProducts remote server --'></optgroup>"
 			)
 			$.each(paths.remote,function(index,value) {
-				label = "label='This is a date string " + index +"'";
+				label = "label='Backup from "+ value.substring(value.lastIndexOf("/")+1,value.lastIndexOf("_")) +"'";
 				$("#restore_paths").append(
 						"<option "+label+">"+value+"</option>"
 				);
@@ -444,7 +444,7 @@ function populate_paths(paths) {
 					"<optgroup label='-- Local (USB) --'></optgroup>"
 			)
 			$.each(paths.local,function(index,value) {
-				label = "label='This is a date string " + index +"'";
+				label = "label='Backup from " + value.substring(value.lastIndexOf("/")+1,value.lastIndexOf("_")) +"'";
 				$("#restore_paths").append(
 					"<option "+label+">"+value+"</option>"
 				);

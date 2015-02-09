@@ -35,6 +35,7 @@ nav button span {
 }
 .width_50 {
 	width : 48%;
+	padding : 15px 15px;
 }
 .btn-right {
 	float : right;
@@ -106,4 +107,22 @@ form p {
 //	background : rgb(255, 192, 203);
 	color : red;
 	text-align : center;
+}
+#page_restorebackup select {
+	width : 100%;
+	padding : 10px;
+}
+#page_restorebackup form {
+	display : inline;	
+}
+#page_restorebackup form optgroup {
+	font-style: italic;
+	font-size: 14px;
+}
+
+button.left {
+	float : left;
+}
+button.right {
+	float : right;
 }
