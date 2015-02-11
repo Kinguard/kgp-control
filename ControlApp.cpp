@@ -1380,6 +1380,10 @@ bool ControlApp::SetupRestoreEnv()
 	File::Write(TMP_PRIV, ob.PrivKeyAsPEM(), 0600 );
 	File::Write(TMP_PUB, ob.PubKeyAsPEM(), 0644 );
 
+	// Remove possible old keys
+	unlink( SYS_PRIV_PATH );
+	unlink( SYS_PUB_PATH );
+
 	if( symlink( TMP_PRIV , SYS_PRIV_PATH ) )
 	{
 		unlink( TMP_PRIV );
