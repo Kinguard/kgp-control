@@ -1525,8 +1525,16 @@ void ControlApp::CleanupRestoreEnv()
 		this->backuphelper->UmountRemote();
 	}
 
-	unlink( SYS_PRIV_PATH );
-	unlink( SYS_PUB_PATH );
+	if( File::LinkExists( SYS_PRIV_PATH ) )
+	{
+		unlink( SYS_PRIV_PATH );
+	}
+
+	if( File::LinkExists( SYS_PUB_PATH ) )
+	{
+		unlink( SYS_PUB_PATH );
+	}
+
 	unlink( TMP_PRIV );
 	unlink( TMP_PUB );
 }
