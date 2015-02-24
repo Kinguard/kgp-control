@@ -2,11 +2,13 @@
 #define CONTROLAPP_H
 
 #include <libutils/Application.h>
+#include <libutils/Mutex.h>
 
 #include <libopi/LedControl.h>
 #include <libopi/BackupHelper.h>
 #include "WebServer.h"
 #include "EventHandler.h"
+#include "ControlState.h"
 
 class ControlApp : public Utils::DaemonApplication
 {
@@ -21,6 +23,8 @@ public:
 	void SigHup(int signo);
 
 	virtual ~ControlApp();
+
+	friend class ControlState;
 private:
 	int state;
 	string unit_id;
@@ -70,7 +74,7 @@ private:
 	bool DoLogin();
 
 	WebServerPtr ws;
-
+	ControlStatePtr statemachine;
 	OPI::LedControl leds;
 
 	EventHandler evhandler;

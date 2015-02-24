@@ -1,4 +1,3 @@
-#include "ControlApp.h"
 #include "Config.h"
 
 #include "WebServer.h"
@@ -25,48 +24,14 @@
 #include <syslog.h>
 #include <unistd.h>
 
+#include "ControlApp.h"
+
 using namespace Utils;
 using namespace std::placeholders;
 
 using namespace OPI;
 using namespace OPI::CryptoHelper;
 
-#ifdef OPI_BUILD_LOCAL
-
-#ifdef USE_SDB
-#define OPI_MMC_DEV	"sdb"
-#define OPI_MMC_PART	"sdb1"
-#define STORAGE_DEV	"/dev/sdb"
-#define STORAGE_PART	"/dev/sdb1"
-#else
-#define OPI_MMC_DEV	"sdg"
-#define OPI_MMC_PART	"sdg1"
-#define STORAGE_DEV	"/dev/sdg"
-#define STORAGE_PART	"/dev/sdg1"
-#endif
-
-#define OPI_PASSWD_DEVICE "/dev/sdh1"
-
-#define MOUNTPOINT		"/var/opi/"
-#define TMP_MOUNT		"/mnt/opi/"
-
-#define LUKSDEVICE		"/dev/mapper/opi"
-#endif
-
-#ifdef OPI_BUILD_PACKAGE
-#define DO_SANITY_CHECKS
-#define OPI_MMC_DEV		"mmcblk0"
-#define OPI_MMC_PART	"mmcblk0p1"
-#define STORAGE_DEV		"/dev/mmcblk0"
-#define STORAGE_PART	"/dev/mmcblk0p1"
-
-#define OPI_PASSWD_DEVICE "/dev/sda1"
-
-#define TMP_MOUNT		"/mnt/opi/"
-#define MOUNTPOINT		"/var/opi/"
-
-#define LUKSDEVICE		"/dev/mapper/opi"
-#endif
 
 //#define DEBUG (logg << Logger::Debug)
 
@@ -181,7 +146,7 @@ void ControlApp::Main()
 
 	logg << Logger::Debug << "Checking device: "<< STORAGE_DEV <<lend;
 
-	this->state = 3;
+	this->state = ControlState::State::InitCheckRestore; // 3
 	this->skiprestore = false;
 
 	if( File::FileExists(SYSCONFIG_PATH))
@@ -192,7 +157,7 @@ void ControlApp::Main()
 
 		if( unit_id != "" )
 		{
-			this->state = 6;
+			this->state = ControlState::State::AskUnlock;  // 6
 			this->unit_id = unit_id;
 		}
 
@@ -223,7 +188,7 @@ void ControlApp::Main()
 	if( ! DiskHelper::DeviceExists( "/dev/mmcblk1" ) )
 	{
 		logg << Logger::Error << "No SD card present"<<lend;
-		this->state = 2;
+		this->state = ControlState::State::Error; // 2
 	}
 
 #endif
@@ -231,29 +196,29 @@ void ControlApp::Main()
 	if( ! DiskHelper::DeviceExists( STORAGE_DEV ) )
 	{
 		logg << Logger::Error << "Device not present"<<lend;
-		this->state = 2;
+		this->state = ControlState::State::Error; // 2
 	}
 	else if( DiskHelper::DeviceSize( OPI_MMC_DEV ) == 0 )
 	{
 		logg << Logger::Error << "No space on device"<< lend;
-		this->state = 2;
+		this->state = ControlState::State::Error; // 2
 	}
 
 	// We have a valid config and a device but device is not a luks container
-	if( this->state == 6 && ! Luks::isLuks( OPI_MMC_PART ) )
+	if( this->state == ControlState::State::AskUnlock /* 6 */ && ! Luks::isLuks( OPI_MMC_PART ) )
 	{
 		logg << Logger::Debug << "Config correct but no luksdevice do initialization"<<lend;
-		this->state = 9;
+		this->state = ControlState::State::ReInitCheckrestore; // 9
 	}
 
 	// Try use password from USB if possible
-	if( this->state == 6 )
+	if( this->state == ControlState::State::AskUnlock /* 6 */ )
 	{
 		if( this->GetPasswordUSB() )
 		{
 			if( this->DoUnlock( this->masterpassword, false ) )
 			{
-				this->state = 7;
+				this->state = ControlState::State::Completed; // 7
 			}
 		}
 	}
@@ -261,7 +226,7 @@ void ControlApp::Main()
 	InboundTestPtr ibt;
 	TcpServerPtr redirector;
 
-	if( this->state == 3 )
+	if( this->state == ControlState::State::InitCheckRestore /* 3 */ )
 	{
 		logg << Logger::Debug << "Starting inbound connection tests"<<lend;
 		ibt = InboundTestPtr(new InboundTest( {25,80,143, 587, 993, 2525 }));
@@ -279,11 +244,14 @@ void ControlApp::Main()
 		redirector->Start();
 	}
 
-	if( this->state != 7 )
+	if( this->state != ControlState::State::Completed /* 7 */ )
 	{
+
+		this->statemachine = ControlStatePtr( new ControlState( this ) );
+
 		this->ws = WebServerPtr( new WebServer( this->state, std::bind(&ControlApp::WebCallback,this, _1)) );
 
-		if( this->state == 2 )
+		if( this->state == ControlState::State::Error /* 2 */ )
 		{
 			this->SetLedstate(Ledstate::Error);
 		}
@@ -311,7 +279,7 @@ void ControlApp::Main()
 		redirector.reset();
 	}
 
-	if( this->state == 7 )
+	if( this->state == ControlState::State::Completed /* 7 */ )
 	{
 		// We should have reached a positive end of init, start services
 		logg << Logger::Debug << "Init completed, start servers"<<lend;
@@ -329,13 +297,13 @@ void ControlApp::Main()
 
 		this->SetLedstate( Ledstate::Completed);
 	}
-	else if( this->state == 10 )
+	else if( this->state == ControlState::State::ShutDown /* 10 */ )
 	{
 		logg << Logger::Debug << "Register power off opi"<<lend;
 
 		this->evhandler.AddEvent( 99, bind(Process::Exec, "/sbin/poweroff") );
 	}
-	else if( this->state == 11 )
+	else if( this->state == ControlState::State::Reboot /* 11 */ )
 	{
 		logg << Logger::Debug << "Register reboot opi"<<lend;
 		this->evhandler.AddEvent( 99, bind(Process::Exec, "/sbin/reboot") );
@@ -387,9 +355,90 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 
 	Json::Value ret;
 	bool status = true;
+
+	this->statemachine->ResetReturnData();
+
 	if( v.isMember("cmd") )
 	{
 		string cmd = v["cmd"].asString();
+
+		try
+		{
+			if( cmd == "init" )
+			{
+				this->masterpassword = v["password"].asString();
+				this->unit_id = v["unit_id"].asString();
+
+				this->statemachine->Init( v["save"].asBool() );
+			}
+			else if( cmd == "reinit" )
+			{
+				this->masterpassword = v["password"].asString();
+
+				this->statemachine->ReInit( v["save"].asBool() );
+			}
+			else if( cmd == "restore" )
+			{
+				this->statemachine->Restore(v["restore"].asBool(), v["path"].asString() );
+			}
+			else if( cmd == "adduser" )
+			{
+			}
+			else if( cmd == "opiname" )
+			{
+			}
+			else if( cmd == "unlock" )
+			{
+				this->statemachine->Unlock( v["password"].asString(), v["save"].asBool()  );
+			}
+			else if( cmd == "terminate" )
+			{
+				this->statemachine->Terminate();
+			}
+			else if( cmd == "shutdown" )
+			{
+				this->statemachine->ShutDown( v["action"].asString() );
+			}
+			else if( cmd == "portstatus" )
+			{
+				return this->connstatus;
+			}
+			else
+			{
+				status = false;
+				this->global_error = "Unknown command";
+			}
+		}
+		catch( std::runtime_error& err)
+		{
+			status = false;
+			logg << Logger::Error << "Statemachine failed "<< err.what() << lend;
+			this->global_error = string("Internal error (") + err.what() +")";
+		}
+
+		if( status )
+		{
+			// Statemachine run, i.e no error, return result
+			this->state = this->statemachine->State();
+			tie(status, ret) = this->statemachine->RetValue();
+		}
+
+		ret["status"]=status;
+		ret["state"]=this->state;
+		if(!status)
+		{
+			ret["errmsg"]=this->global_error;
+		}
+	}
+	else
+	{
+		ret["status"] = false;
+		ret["state"] = this->state;
+		ret["errmsg"] = "Internal error (Missing command)";
+	}
+
+	return ret;
+#if 0
 		if( cmd == "init" )
 		{
 			this->masterpassword = v["password"].asString();
@@ -397,7 +446,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 
 			// First check if we should try a restore
 			Json::Value tmpret;
-			if( ! this->skiprestore && (( tmpret = this->CheckRestore() ) != Json::nullValue ) )
+			if( ( tmpret = this->CheckRestore() ) != Json::nullValue  )
 			{
 				this->state = 12;
 				ret = tmpret;
@@ -446,7 +495,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 
 			// First check if we should try a restore
 			Json::Value tmpret;
-			if( (! this->skiprestore && (( tmpret = this->CheckRestore()) ) != Json::nullValue ) )
+			if( ( tmpret = this->CheckRestore()) != Json::nullValue )
 			{
 				this->state = 12;
 				ret = tmpret;
@@ -602,6 +651,8 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 	}
 	ret["state"]=state;
 	return ret;
+#endif
+
 }
 
 bool ControlApp::DoUnlock(const string &pwd, bool savepass)
@@ -1460,6 +1511,11 @@ bool ControlApp::SetupRestoreEnv()
 Json::Value ControlApp::CheckRestore()
 {
 	logg << Logger::Debug << "Check if restore should be performed"<<lend;
+
+	if( this->skiprestore )
+	{
+		return Json::nullValue;
+	}
 
 	if( Luks::isLuks( OPI_MMC_PART ) )
 	{
