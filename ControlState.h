@@ -24,7 +24,6 @@ public:
 class ControlState : public StateMachine
 {
 public:
-	ControlState(ControlApp* app);
 
 	struct State
 	{
@@ -36,25 +35,29 @@ public:
 			ReInit,				//  4
 			AskRestore,			//  5
 			Restore,			//  6
-			AddUser,			//  7
+			AskAddUser,			//  7
 			OpiName,			//  8
-			AskUnlock,			//  9
-			Unlock,				// 10
-			Terminate,			// 11
-			ShutDown,			// 12
-			Reboot,				// 13
-			Completed,			// 14
-			Idle,				// 15
-			Error,				// 16
+			AddUser,			//  9
+			AskUnlock,			// 10
+			Unlock,				// 11
+			Terminate,			// 12
+			ShutDown,			// 13
+			Reboot,				// 14
+			Completed,			// 15
+			Idle,				// 16
+			Error,				// 17
+			AskOpiName,			// 18
 		};
 	};
+
+	ControlState(ControlApp* app, uint8_t state = State::Idle);
 
 	// External events
 	void Init(bool savepassword);
 	void ReInit(bool savepassword);
 	void Restore(bool dorestore, const string& path);
-	void AddUser();
-	void OpiName();
+	void AddUser(const string& username, const string& displayname, const string& password);
+	void OpiName(const string& opiname);
 	void Unlock(const string& password, bool save);
 	void Terminate();
 	void ShutDown(const string& action);
@@ -64,7 +67,7 @@ public:
 	uint8_t State();
 	tuple<bool, Json::Value> RetValue();
 
-	~ControlState();
+	virtual ~ControlState();
 protected:
 	void StIdle(EventData* data);
 	void StInitCheckRestore(EventData* data);
@@ -73,7 +76,9 @@ protected:
 	void StReInit(EventData* data);
 	void StRestore(EventData* data);
 	void StAskRestore(EventData* data);
+	void StAskAddUser(EventData* data);
 	void StAddUser(EventData* data);
+	void StAskOpiName(EventData* data);
 	void StOpiName(EventData* data);
 	void StAskUnlock(EventData* data);
 	void StDoUnlock(EventData* data);

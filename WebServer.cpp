@@ -440,7 +440,7 @@ int WebServer::handle_checkname(mg_connection *conn)
 	}
 	else
 	{
-		logg << Logger::Debug << "Request for add user had invalid arguments"<<lend;
+		logg << Logger::Debug << "Request for check opiname arguments"<<lend;
 		mg_printf_data( conn, "Invalid argument!");
 		mg_send_status(conn, 400);
 	}
@@ -474,7 +474,7 @@ int WebServer::handle_selectname(mg_connection *conn)
 	}
 	else
 	{
-		logg << Logger::Debug << "Request for add user had invalid arguments"<<lend;
+		logg << Logger::Debug << "Request for select opiname had invalid arguments"<<lend;
 		mg_printf_data( conn, "Invalid argument!");
 		mg_send_status(conn, 400);
 	}
@@ -575,6 +575,24 @@ int WebServer::ev_handler(mg_connection *conn, mg_event ev)
 
 	if (ev == MG_REQUEST)
 	{
+#if 1
+		if( conn->uri )
+		{
+			logg << Logger::Debug << "URI      ["<< conn->uri << "]"<<lend;
+		}
+		if( conn->query_string )
+		{
+			logg << Logger::Debug << "Querystr ["<< conn->query_string << "]"<<lend;
+		}
+		if( conn->request_method )
+		{
+			logg << Logger::Debug << "Method   ["<< conn->request_method << "]"<<lend;
+		}
+		if( conn->http_version )
+		{
+			logg << Logger::Debug << "Version  ["<< conn->http_version << "]"<<lend;
+		}
+#endif
 #if 0
 		mg_printf_data(conn, "URI      [%s]\n", conn->uri);
 		mg_printf_data(conn, "Querystr [%s]\n", conn->query_string);

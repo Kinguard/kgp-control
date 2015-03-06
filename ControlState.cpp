@@ -32,7 +32,7 @@ private:
 	Logger::LogLevel level;
 };
 
-ControlState::ControlState(ControlApp *app): app(app)
+ControlState::ControlState(ControlApp *app, uint8_t state): app(app)
 {
 	this->statemap =
 	{
@@ -49,9 +49,13 @@ ControlState::ControlState(ControlApp *app): app(app)
 		{ State::ShutDown,			std::bind( &ControlState::StShutDown, this, std::placeholders::_1 )},
 		{ State::Reboot,			std::bind( &ControlState::StReboot, this, std::placeholders::_1 )},
 		{ State::Completed,			std::bind( &ControlState::StCompleted, this, std::placeholders::_1 )},
+		{ State::AskAddUser,		std::bind( &ControlState::StAskAddUser, this, std::placeholders::_1 )},
+		{ State::AddUser,			std::bind( &ControlState::StAddUser, this, std::placeholders::_1 )},
+		{ State::AskOpiName,		std::bind( &ControlState::StAskOpiName, this, std::placeholders::_1 )},
+		{ State::OpiName,			std::bind( &ControlState::StOpiName, this, std::placeholders::_1 )},
 	};
 
-	this->state = State::Idle;
+	this->TriggerEvent( state, nullptr);
 }
 
 /*
@@ -76,11 +80,18 @@ void ControlState::ReInit(bool savepassword)
 {
 	ScopedLog l("Reinit");
 
-	if( ! this->ValidState( {State::Idle, State::ReInit} ) )
+	if( ! this->ValidState( {State::Idle, State::ReInit, State::AskRestore} ) )
 	{
 		this->TriggerEvent( StateMachine::EVENT_ERROR, nullptr );
 		return;
 	}
+
+	if( this->state == State::AskRestore )
+	{
+		logg << Logger::Debug << "Got duplicate reinit"<<lend;
+		this->TriggerEvent(StateMachine::EVENT_IGNORED,nullptr);
+	}
+
 	ControlData *data = new ControlData;
 	data->data["savepassword"] = savepassword;
 
@@ -103,6 +114,40 @@ void ControlState::Restore(bool dorestore, const string &path)
 	data->data["path"] = path;
 
 	this->TriggerEvent( State::Restore, data );
+}
+
+void ControlState::AddUser(const string &username, const string &displayname, const string &password)
+{
+	ScopedLog l("AddUser");
+
+	if( ! this->ValidState( {State::AskAddUser } ) )
+	{
+		this->TriggerEvent( StateMachine::EVENT_ERROR, nullptr );
+		return;
+	}
+
+	ControlData *data = new ControlData;
+	data->data["username"] = username;
+	data->data["displayname"] = displayname;
+	data->data["password"] = password;
+
+	this->TriggerEvent( State::AddUser, data );
+}
+
+void ControlState::OpiName(const string &opiname)
+{
+	ScopedLog l("OpiName");
+
+	if( ! this->ValidState( {State::AskOpiName } ) )
+	{
+		this->TriggerEvent( StateMachine::EVENT_ERROR, nullptr );
+		return;
+	}
+
+	ControlData *data = new ControlData;
+	data->data["opiname"] = opiname;
+
+	this->TriggerEvent( State::OpiName, data );
 }
 
 void ControlState::Unlock(const string &password, bool save)
@@ -251,7 +296,7 @@ void ControlState::StInit(EventData *data)
 
 void ControlState::StReInitCheckrestore(EventData *data)
 {
-	ScopedLog l("StInitCheckrestore");
+	ScopedLog l("StReInitCheckrestore");
 
 	ControlData *arg = dynamic_cast<ControlData*>(data);
 
@@ -273,7 +318,18 @@ void ControlState::StReInit(EventData *data)
 {
 	ScopedLog l("StReInit");
 
-	//TODO: Implement
+	ControlData *arg = dynamic_cast<ControlData*>(data);
+
+	if( this->app->DoInit(arg->data["save"].asBool() ) )
+	{
+		this->app->evhandler.AddEvent( 50, bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinit") );
+		this->RegisterEvent( State::AskAddUser, nullptr);
+	}
+	else
+	{
+		this->status = false;
+		this->RegisterEvent( State::InitCheckRestore, new ControlData( arg->data ) );
+	}
 }
 
 void ControlState::StRestore(EventData *data)
@@ -320,11 +376,11 @@ void ControlState::StRestore(EventData *data)
 		// Figure out what state to return to
 		if( ! Luks::isLuks( OPI_MMC_PART ) )
 		{
-			this->RegisterEvent( State::ReInit, nullptr);
+			this->RegisterEvent( State::ReInit, new ControlData( arg->data ) );
 		}
 		else
 		{
-			this->RegisterEvent( State::Init, nullptr);
+			this->RegisterEvent( State::Init, new ControlData( arg->data ) );
 		}
 	}
 }
@@ -333,6 +389,52 @@ void ControlState::StAskRestore(EventData *data)
 {
 	ScopedLog l("StAskRestore");
 
+}
+
+void ControlState::StAskAddUser(EventData *data)
+{
+	ScopedLog l("StAskAddUser");
+
+}
+
+void ControlState::StAddUser(EventData *data)
+{
+	ScopedLog l("StAddUser");
+
+	ControlData *arg = dynamic_cast<ControlData*>(data);
+
+	if( this->app->AddUser(arg->data["username"].asString(), arg->data["displayname"].asString(), arg->data["password"].asString()) )
+	{
+		this->RegisterEvent( State::AskOpiName, nullptr);
+	}
+	else
+	{
+		this->status = false;
+		this->RegisterEvent( State::AskAddUser, nullptr);
+	}
+}
+
+void ControlState::StAskOpiName(EventData *data)
+{
+	ScopedLog l("StAskOpiName");
+
+}
+
+void ControlState::StOpiName(EventData *data)
+{
+	ScopedLog l("StOpiName");
+
+	ControlData *arg = dynamic_cast<ControlData*>(data);
+
+	if( this->app->SetDNSName(arg->data["opiname"].asString() ) )
+	{
+		this->RegisterEvent( State::Completed, nullptr);
+	}
+	else
+	{
+		this->status = false;
+		this->RegisterEvent( State::AskOpiName, nullptr);
+	}
 }
 
 void ControlState::StAskUnlock(EventData *data)
@@ -363,6 +465,8 @@ void ControlState::StTerminate(EventData *data)
 	ScopedLog l("StTerminate");
 
 	this->app->ws->Stop();
+
+	this->RegisterEvent( State::Completed, nullptr );
 }
 
 void ControlState::StShutDown(EventData *data)
@@ -370,6 +474,7 @@ void ControlState::StShutDown(EventData *data)
 	ScopedLog l("StShutdown");
 
 	this->app->ws->Stop();
+
 }
 
 void ControlState::StReboot(EventData *data)

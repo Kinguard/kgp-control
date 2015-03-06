@@ -383,9 +383,11 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			}
 			else if( cmd == "adduser" )
 			{
+				this->statemachine->AddUser( v["username"].asString(), v["displayname"].asString(), v["password"].asString());
 			}
 			else if( cmd == "opiname" )
 			{
+				this->statemachine->OpiName( v["opiname"].asString() );
 			}
 			else if( cmd == "unlock" )
 			{
