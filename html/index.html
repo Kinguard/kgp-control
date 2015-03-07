@@ -45,6 +45,11 @@
 	<button type="button" class="navbutton" opi-page="10" id="b10" title="">10</button>
 	<button type="button" class="navbutton" opi-page="11" id="b11" title="">11</button>
 	<button type="button" class="navbutton" opi-page="12" id="b12" title="">12</button>
+        <button type="button" class="navbutton" opi-page="13" id="b13" title="">13</button>
+        <button type="button" class="navbutton" opi-page="14" id="b14" title="">14</button>
+        <button type="button" class="navbutton" opi-page="15" id="b15" title="">15</button>
+        <button type="button" class="navbutton" opi-page="16" id="b16" title="">16</button>
+        <button type="button" class="navbutton" opi-page="17" id="b17" title="">17</button>
 	</div>
 	<div id="page_error" class="page hidden">
 	<h1>Error - Unable to retrieve status</h1>
@@ -398,7 +403,7 @@ $("button[type='cancel']").click(function() {
 $(".navbutton").click(function() {
 	setState($(this).attr('opi-page'));
 	// only to populate with dummy data
-	if($(this).attr('opi-page') == 12) {
+	if($(this).attr('opi-page') == 5) {
 		populate_paths(restore_paths);
 	}
 });
@@ -453,36 +458,73 @@ function populate_paths(paths) {
 	
 }
 
+
+var pages = {
+	0:"page_error",
+	3:"page_knownunit_id",
+	4:"page_knownunit_id",
+	5:"page_restorebackup",
+	7:"page_user",
+	10:"page_unlockpassword",
+	13:"page_shutdownprogress",
+	14:"page_rebootprogress",
+	15:"page_postinit",
+	17:"page_sderror",
+	18:"page_opiname",
+	99:"page_knownunit_id", // Local state not used on server side
+
+/*
+	2:"page_password",
+	3:"page_user",
+	4:"page_opiname",
+	5:"page_unlockpassword",
+	6:"page_postinit",
+	7:"page_initprogress",
+	8:"page_knownunit_id",
+	9:"page_shutdownprogress",
+	10:"page_rebootprogress",
+	11:"page_restorebackup"
+*/
+};
+
+/*
+var pages = {
+	1:"page_error",
+	2:"page_shutdown",
+	3:"page_sderror",
+	4:"page_initprogress",
+	5:"page_shutdownprogress",
+	6:"page_rebootprogress",
+	7:"page_password",
+	8:"page_user",
+	9:"page_opiname",
+	10:"page_unlockpassword",
+	11:"page_knownunit_id",
+	12:"page_restorebackup",
+	13:"page_postinit",
+}
+*/
+
 function setState(state) {
-	current_state = state;
-	var pages = [
-		"page_error", 
-		"page_sderror", 
-		"page_password",
-		"page_user",
-		"page_opiname",
-		"page_unlockpassword",
-		"page_postinit",
-		"page_initprogress",
-		"page_knownunit_id",
-		"page_shutdownprogress",
-		"page_rebootprogress",
-		"page_restorebackup"];
-	
-	if( state < 1 || state > pages.length)
+
+	if( ! pages.hasOwnProperty( state ) )
 	{
 		console.log("Unknown state! "+state);
-		state = 1;
+		state = 0;
 	}
 
+	current_state = state;
+
 	$(".page").addClass("hidden");
-	for( i=1; i <= pages.length; ++i)
+
+	for( var page in pages )
 	{
-		if(i==state) {
-			$("#"+pages[i-1]).removeClass("hidden");
-			$("#"+pages[i-1]).find("input, select").filter(':visible:first').focus();
-			if( state != 8) {
-				/* state 8 is show init in progress
+		if( state == page ) 
+		{
+			$("#"+pages[page]).removeClass("hidden");
+			$("#"+pages[page]).find("input, select").filter(':visible:first').focus();
+			if( page != 99) {
+				/* state 99 is show init in progress
 				 * and is set prior to the sending of the form
 				 * so it can not be allowed to reset the form */
 				$.each($("form"),function() {
@@ -494,7 +536,8 @@ function setState(state) {
 				});
 			}
 		}
-	} 
+	}
+
 }
 
 function redirect(url,timeout) {
@@ -620,7 +663,7 @@ $(document).ready( function() {
 			url = $form.find("button[type='submit']").attr('href');
 			if( (url == "/init") || (url == "/reinit") ) {
 				// trying to init, show init info to user
-				setState(8);
+				setState(99);
 			}
 			// collect the form data while iterating over the inputs
 			formdata = $form.find("input, select, button");
@@ -661,7 +704,7 @@ $(document).ready( function() {
 					// done by set state
 					opiname = $("#opiname").val();
 					setState(result.state);
-					if(result.state == 12) {
+					if(result.state == 5) {
 						// make paths globally available
 						var paths = {local:result.local, remote:result.remote};
 						populate_paths(paths);
@@ -675,7 +718,7 @@ $(document).ready( function() {
 								console.log(err.message);
 							}
 					} else {
-						if(result.state == 7 ) {
+						if(result.state == 15 ) {
 							// this will send the "terminate" signal to opi-control
 							// then redirect to "/admin"
 							done(opiname);
