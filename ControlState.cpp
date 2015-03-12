@@ -1,6 +1,7 @@
 #include "ControlState.h"
 
 #include <libutils/Process.h>
+#include <libutils/Thread.h>
 #include <libopi/Secop.h>
 #include <libopi/Luks.h>
 
@@ -36,23 +37,25 @@ ControlState::ControlState(ControlApp *app, uint8_t state): app(app)
 {
 	this->statemap =
 	{
-		{ State::Idle,				std::bind( &ControlState::StIdle, this, std::placeholders::_1 )},
-		{ State::InitCheckRestore,	std::bind( &ControlState::StInitCheckRestore, this, std::placeholders::_1 )},
-		{ State::Init,				std::bind( &ControlState::StInit, this, std::placeholders::_1 )},
+		{ State::Idle,					std::bind( &ControlState::StIdle, this, std::placeholders::_1 )},
+		{ State::InitCheckRestore,		std::bind( &ControlState::StInitCheckRestore, this, std::placeholders::_1 )},
+		{ State::Init,					std::bind( &ControlState::StInit, this, std::placeholders::_1 )},
 		{ State::ReInitCheckrestore,	std::bind( &ControlState::StReInitCheckrestore, this, std::placeholders::_1 )},
-		{ State::ReInit,			std::bind( &ControlState::StReInit, this, std::placeholders::_1 )},
-		{ State::AskRestore,		std::bind( &ControlState::StAskRestore, this, std::placeholders::_1 )},
-		{ State::Restore,			std::bind( &ControlState::StRestore, this, std::placeholders::_1 )},
-		{ State::AskUnlock,			std::bind( &ControlState::StAskUnlock, this, std::placeholders::_1 )},
-		{ State::Unlock,			std::bind( &ControlState::StDoUnlock, this, std::placeholders::_1 )},
-		{ State::Terminate,			std::bind( &ControlState::StTerminate, this, std::placeholders::_1 )},
-		{ State::ShutDown,			std::bind( &ControlState::StShutDown, this, std::placeholders::_1 )},
-		{ State::Reboot,			std::bind( &ControlState::StReboot, this, std::placeholders::_1 )},
-		{ State::Completed,			std::bind( &ControlState::StCompleted, this, std::placeholders::_1 )},
-		{ State::AskAddUser,		std::bind( &ControlState::StAskAddUser, this, std::placeholders::_1 )},
-		{ State::AddUser,			std::bind( &ControlState::StAddUser, this, std::placeholders::_1 )},
-		{ State::AskOpiName,		std::bind( &ControlState::StAskOpiName, this, std::placeholders::_1 )},
-		{ State::OpiName,			std::bind( &ControlState::StOpiName, this, std::placeholders::_1 )},
+		{ State::ReInit,				std::bind( &ControlState::StReInit, this, std::placeholders::_1 )},
+		{ State::AskRestore,			std::bind( &ControlState::StAskRestore, this, std::placeholders::_1 )},
+		{ State::Restore,				std::bind( &ControlState::StRestore, this, std::placeholders::_1 )},
+		{ State::AskUnlock,				std::bind( &ControlState::StAskUnlock, this, std::placeholders::_1 )},
+		{ State::Unlock,				std::bind( &ControlState::StDoUnlock, this, std::placeholders::_1 )},
+		{ State::Terminate,				std::bind( &ControlState::StTerminate, this, std::placeholders::_1 )},
+		{ State::ShutDown,				std::bind( &ControlState::StShutDown, this, std::placeholders::_1 )},
+		{ State::Reboot,				std::bind( &ControlState::StReboot, this, std::placeholders::_1 )},
+		{ State::Completed,				std::bind( &ControlState::StCompleted, this, std::placeholders::_1 )},
+		{ State::AskAddUser,			std::bind( &ControlState::StAskAddUser, this, std::placeholders::_1 )},
+		{ State::AddUser,				std::bind( &ControlState::StAddUser, this, std::placeholders::_1 )},
+		{ State::AskOpiName,			std::bind( &ControlState::StAskOpiName, this, std::placeholders::_1 )},
+		{ State::OpiName,				std::bind( &ControlState::StOpiName, this, std::placeholders::_1 )},
+		{ State::AskInitCheckRestore,	std::bind( &ControlState::StAskInitCheckRestore, this, std::placeholders::_1 )},
+		{ State::AskReInitCheckRestore,	std::bind( &ControlState::StAskReInitCheckRestore, this, std::placeholders::_1 )},
 	};
 
 	this->TriggerEvent( state, nullptr);
@@ -65,7 +68,7 @@ void ControlState::Init(bool savepassword)
 {
 	ScopedLog l("Init");
 
-	if( ! this->ValidState( {State::Idle, State::Init} ) )
+	if( ! this->ValidState( {State::Idle, State::Init, State::AskInitCheckRestore} ) )
 	{
 		this->TriggerEvent( StateMachine::EVENT_ERROR, nullptr );
 		return;
@@ -80,7 +83,7 @@ void ControlState::ReInit(bool savepassword)
 {
 	ScopedLog l("Reinit");
 
-	if( ! this->ValidState( {State::Idle, State::ReInit, State::AskRestore} ) )
+	if( ! this->ValidState( {State::Idle, State::ReInit, State::AskRestore, State::AskReInitCheckRestore } ) )
 	{
 		this->TriggerEvent( StateMachine::EVENT_ERROR, nullptr );
 		return;
@@ -90,6 +93,7 @@ void ControlState::ReInit(bool savepassword)
 	{
 		logg << Logger::Debug << "Got duplicate reinit"<<lend;
 		this->TriggerEvent(StateMachine::EVENT_IGNORED,nullptr);
+		return;
 	}
 
 	ControlData *data = new ControlData;
@@ -236,6 +240,12 @@ void ControlState::StIdle(EventData *data)
 
 }
 
+void ControlState::StAskInitCheckRestore(EventData *data)
+{
+	ScopedLog l("StAskInitCheckrestore");
+
+}
+
 void ControlState::StInitCheckRestore(EventData *data)
 {
 	ScopedLog l("StInitCheckrestore");
@@ -294,6 +304,12 @@ void ControlState::StInit(EventData *data)
 
 }
 
+void ControlState::StAskReInitCheckRestore(EventData *data)
+{
+	ScopedLog l("StAskReInitCheckrestore");
+
+}
+
 void ControlState::StReInitCheckrestore(EventData *data)
 {
 	ScopedLog l("StReInitCheckrestore");
@@ -332,6 +348,9 @@ void ControlState::StReInit(EventData *data)
 	}
 }
 
+// Not nice at all :(
+static Thread::Function f;
+
 void ControlState::StRestore(EventData *data)
 {
 	ScopedLog l("StRestore");
@@ -340,33 +359,9 @@ void ControlState::StRestore(EventData *data)
 
 	if( arg->data["restore"].asBool() )
 	{
-		if( this->app->DoRestore( arg->data["path"].asString() ) )
-		{
-			if( this->app->DoInit( false ) )
-			{
-				this->RegisterEvent( State::Completed, nullptr);
-			}
-		}
+		f = std::bind(&ControlState::DoRestore, this, arg->data["path"].asString());
 
-		// Clean up after restore, umount etc
-		this->app->CleanupRestoreEnv();
-
-		if( this->state != State::Completed )
-		{
-			// Restore failed return to previous state
-			// TODO: howto handle failure?
-			//status = false;
-
-			// Figure out what state to return to
-			if( ! Luks::isLuks( OPI_MMC_PART ) )
-			{
-				this->RegisterEvent( State::ReInit, nullptr);
-			}
-			else
-			{
-				this->RegisterEvent( State::Init, nullptr);
-			}
-		}
+		Thread::Async( &f );
 	}
 	else
 	{
@@ -491,6 +486,40 @@ void ControlState::StCompleted(EventData *data)
 {
 	ScopedLog l("StCompleted");
 
+}
+
+void ControlState::DoRestore(const string &path)
+{
+	ScopedLog l("Detached restore");
+
+	if( this->app->DoRestore( path ) )
+	{
+		if( this->app->DoInit( false ) )
+		{
+			// Trigger not register since we call this outside of process context
+			this->TriggerEvent( State::Completed, nullptr);
+		}
+	}
+
+	// Clean up after restore, umount etc
+	this->app->CleanupRestoreEnv();
+
+	if( this->state != State::Completed )
+	{
+		// Restore failed return to previous state
+		// TODO: howto handle failure?
+		//status = false;
+
+		// Figure out what state to return to
+		if( ! Luks::isLuks( OPI_MMC_PART ) )
+		{
+			this->TriggerEvent( State::ReInit, nullptr);
+		}
+		else
+		{
+			this->TriggerEvent( State::Init, nullptr);
+		}
+	}
 }
 
 bool ControlState::ValidState(vector<uint8_t> vals)

@@ -31,15 +31,13 @@ using namespace std;
 
 std::map<std::pair<std::string,std::string>, std::function<int(mg_connection *)> > WebServer::routes;
 std::function<Json::Value(Json::Value)> WebServer::callback;
-int WebServer::state;
 
-WebServer::WebServer(int initial_state, std::function<Json::Value(Json::Value)> cb):
+WebServer::WebServer(std::function<Json::Value(Json::Value)> cb):
 	Utils::Thread(false),
 	doRun(true),
 	server(NULL)
 {
 	WebServer::callback = cb;
-	WebServer::state = initial_state;
 	routes[std::make_pair("/configure","POST")] = WebServer::handle_init;
 	routes[std::make_pair("/init","POST")] = WebServer::handle_init;
 	routes[std::make_pair("/reinit","POST")] = WebServer::handle_reinit;
@@ -150,7 +148,6 @@ int WebServer::handle_init(mg_connection *conn)
 			cmd["unit_id"] = String::Trimmed( req["unit_id"].asString(), "\t ");
 			cmd["save"] = req["save"];
 			ret = WebServer::callback( cmd );
-			WebServer::state = ret["state"].asInt();
 		}
 		mg_send_header( conn, "Content-Type", "application/json");
 		mg_printf_data( conn, ret.toStyledString().c_str());
@@ -208,7 +205,6 @@ int WebServer::handle_reinit(mg_connection *conn)
 			cmd["password"] = String::Trimmed( req["masterpassword"].asString(), "\t ");
 			cmd["save"] = req["save"];
 			ret = WebServer::callback( cmd );
-			WebServer::state = ret["state"].asInt();
 		}
 		mg_send_header( conn, "Content-Type", "application/json");
 		mg_printf_data( conn, ret.toStyledString().c_str());
@@ -260,7 +256,6 @@ int WebServer::handle_restore(mg_connection *conn)
 			cmd["path"] = req["path"].asString();
 			cmd["restore"] = req["restore"].asString() == "1";
 			ret = WebServer::callback( cmd );
-			WebServer::state = ret["state"].asInt();
 		}
 		mg_send_header( conn, "Content-Type", "application/json");
 		mg_printf_data( conn, ret.toStyledString().c_str());
@@ -318,7 +313,6 @@ int WebServer::handle_unlock(mg_connection *conn)
 			cmd["password"] = String::Trimmed( req["masterpassword"].asString(), "\t " );
 			cmd["save"] = req["save"];
 			ret = WebServer::callback( cmd );
-			WebServer::state = ret["state"].asInt();
 		}
 		mg_send_header( conn, "Content-Type", "application/json");
 		mg_printf_data( conn, ret.toStyledString().c_str() );
@@ -334,8 +328,19 @@ int WebServer::handle_unlock(mg_connection *conn)
 
 int WebServer::handle_status(mg_connection *conn)
 {
+
+
+	Json::Value ret;
+	if( WebServer::callback != nullptr )
+	{
+		Json::Value cmd;
+		cmd["cmd"]="status";
+		ret = WebServer::callback( cmd );
+	}
+
 	mg_send_header( conn, "Content-Type", "application/json");
-	mg_printf_data( conn, "{\"state\":%d}", WebServer::state );
+	mg_printf_data( conn, ret.toStyledString().c_str() );
+
 	return MG_TRUE;
 }
 
@@ -392,7 +397,6 @@ int WebServer::handle_user(mg_connection *conn)
 			cmd["displayname"] = String::Trimmed( req["displayname"].asString(), "\t " );
 			cmd["password"] = String::Trimmed( req["password"].asString(), "\t " );
 			ret = WebServer::callback( cmd );
-			WebServer::state = ret["state"].asInt();
 		}
 		mg_send_header( conn, "Content-Type", "application/json");
 		mg_printf_data( conn, ret.toStyledString().c_str() );
@@ -467,7 +471,6 @@ int WebServer::handle_selectname(mg_connection *conn)
 			cmd["cmd"] = "opiname";
 			cmd["opiname"] = String::Trimmed( req["opiname"].asString(), "\t " );
 			ret = WebServer::callback( cmd );
-			WebServer::state = ret["state"].asInt();
 		}
 		mg_send_header( conn, "Content-Type", "application/json");
 		mg_printf_data( conn, ret.toStyledString().c_str() );
@@ -521,7 +524,6 @@ int WebServer::handle_terminate(mg_connection *conn)
 			cmd["cmd"] = "terminate";
 			cmd["shutdown"] = req["shutdown"];
 			ret = WebServer::callback( cmd );
-			WebServer::state = ret["state"].asInt();
 		}
 		mg_send_header( conn, "Content-Type", "application/json");
 		mg_printf_data( conn, ret.toStyledString().c_str() );
@@ -555,7 +557,6 @@ int WebServer::handle_shutdown(mg_connection *conn)
 			cmd["cmd"] = "shutdown";
 			cmd["action"] = req["action"];
 			ret = WebServer::callback( cmd );
-			WebServer::state = ret["state"].asInt();
 		}
 		mg_send_header( conn, "Content-Type", "application/json");
 		mg_printf_data( conn, ret.toStyledString().c_str() );

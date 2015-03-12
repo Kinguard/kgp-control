@@ -55,6 +55,11 @@
 	<h1>Error - Unable to retrieve status</h1>
 	<p>OPI replied with an unknown error</p>
 	</div>
+
+	<div id="page_restoreinprogress" class="page hidden">
+		<h1>Restore in progress</h1>
+		<p>OPI restore in progress, please wait</p>
+	</div>
 	
 	<div id="page_shutdown" class="page hidden">
 		<center><h1>Confirm shutdown of OPI</h1></center>
@@ -461,9 +466,10 @@ function populate_paths(paths) {
 
 var pages = {
 	0:"page_error",
-	3:"page_knownunit_id",
-	4:"page_knownunit_id",
+	// 3:"page_knownunit_id",
+	// 4:"page_knownunit_id",
 	5:"page_restorebackup",
+	6:"page_restoreinprogress",
 	7:"page_user",
 	10:"page_unlockpassword",
 	13:"page_shutdownprogress",
@@ -471,6 +477,8 @@ var pages = {
 	15:"page_postinit",
 	17:"page_sderror",
 	18:"page_opiname",
+	19:"page_knownunit_id",
+	20:"page_knownunit_id",
 	99:"page_knownunit_id", // Local state not used on server side
 
 /*

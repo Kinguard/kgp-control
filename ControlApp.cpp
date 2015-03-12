@@ -146,7 +146,7 @@ void ControlApp::Main()
 
 	logg << Logger::Debug << "Checking device: "<< STORAGE_DEV <<lend;
 
-	this->state = ControlState::State::InitCheckRestore; // 3
+	this->state = ControlState::State::AskInitCheckRestore; // 3
 	this->skiprestore = false;
 
 	if( File::FileExists(SYSCONFIG_PATH))
@@ -208,7 +208,7 @@ void ControlApp::Main()
 	if( this->state == ControlState::State::AskUnlock /* 6 */ && ! Luks::isLuks( OPI_MMC_PART ) )
 	{
 		logg << Logger::Debug << "Config correct but no luksdevice do initialization"<<lend;
-		this->state = ControlState::State::ReInitCheckrestore; // 9
+		this->state = ControlState::State::AskReInitCheckRestore; // 9
 	}
 
 	// Try use password from USB if possible
@@ -226,7 +226,7 @@ void ControlApp::Main()
 	InboundTestPtr ibt;
 	TcpServerPtr redirector;
 
-	if( this->state == ControlState::State::InitCheckRestore /* 3 */ )
+	if( this->state == ControlState::State::AskInitCheckRestore /* 3 */ )
 	{
 		logg << Logger::Debug << "Starting inbound connection tests"<<lend;
 		ibt = InboundTestPtr(new InboundTest( {25,80,143, 587, 993, 2525 }));
@@ -247,9 +247,9 @@ void ControlApp::Main()
 	if( this->state != ControlState::State::Completed /* 7 */ )
 	{
 
-		this->statemachine = ControlStatePtr( new ControlState( this ) );
+		this->statemachine = ControlStatePtr( new ControlState( this, this->state ) );
 
-		this->ws = WebServerPtr( new WebServer( this->state, std::bind(&ControlApp::WebCallback,this, _1)) );
+		this->ws = WebServerPtr( new WebServer( std::bind(&ControlApp::WebCallback,this, _1)) );
 
 		if( this->state == ControlState::State::Error /* 2 */ )
 		{
@@ -404,6 +404,12 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			else if( cmd == "portstatus" )
 			{
 				return this->connstatus;
+			}
+			else if( cmd == "status" )
+			{
+				Json::Value ret;
+				ret["state"] = this->statemachine->State();
+				return ret;
 			}
 			else
 			{

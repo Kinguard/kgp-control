@@ -29,24 +29,26 @@ public:
 	{
 		enum
 		{
-			InitCheckRestore=1,	//  1
-			Init,				//  2
-			ReInitCheckrestore,	//  3
-			ReInit,				//  4
-			AskRestore,			//  5
-			Restore,			//  6
-			AskAddUser,			//  7
-			OpiName,			//  8
-			AddUser,			//  9
-			AskUnlock,			// 10
-			Unlock,				// 11
-			Terminate,			// 12
-			ShutDown,			// 13
-			Reboot,				// 14
-			Completed,			// 15
-			Idle,				// 16
-			Error,				// 17
-			AskOpiName,			// 18
+			InitCheckRestore=1,		//  1
+			Init,					//  2
+			ReInitCheckrestore,		//  3
+			ReInit,					//  4
+			AskRestore,				//  5
+			Restore,				//  6
+			AskAddUser,				//  7
+			OpiName,				//  8
+			AddUser,				//  9
+			AskUnlock,				// 10
+			Unlock,					// 11
+			Terminate,				// 12
+			ShutDown,				// 13
+			Reboot,					// 14
+			Completed,				// 15
+			Idle,					// 16
+			Error,					// 17
+			AskOpiName,				// 18
+			AskReInitCheckRestore,	// 19
+			AskInitCheckRestore,	// 20
 		};
 	};
 
@@ -70,8 +72,10 @@ public:
 	virtual ~ControlState();
 protected:
 	void StIdle(EventData* data);
+	void StAskInitCheckRestore(EventData* data);
 	void StInitCheckRestore(EventData* data);
 	void StInit(EventData* data);
+	void StAskReInitCheckRestore(EventData* data);
 	void StReInitCheckrestore(EventData* data);
 	void StReInit(EventData* data);
 	void StRestore(EventData* data);
@@ -88,6 +92,9 @@ protected:
 	void StCompleted(EventData* data);
 
 private:
+
+	void DoRestore(const string& path);
+
 	bool ValidState(vector<uint8_t> vals);
 	bool status;
 	Json::Value retvalue;
