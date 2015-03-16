@@ -555,6 +555,26 @@ function redirect(url,timeout) {
 	},timeout*1000);
 }
 
+function poll_restore()
+{
+
+	$.get("/status",function(data) {
+		setState(data.state);
+	})
+	.fail(function() {
+		console.log("Poll restore request failed");
+	});
+
+	if( current_state != 15 ) // Completed
+	{
+		setTimeout( poll_restore, 5000 );
+	}
+	else
+	{
+		done("");
+	}
+}
+
 function done(opiname) {
 	$.ajax({
 		  type: "POST",
@@ -716,6 +736,11 @@ $(document).ready( function() {
 						// make paths globally available
 						var paths = {local:result.local, remote:result.remote};
 						populate_paths(paths);
+					}
+
+					if( result.state == 6 ) // Restore in progress
+					{
+						poll_restore();
 					}
 
 					if(result.url) {
