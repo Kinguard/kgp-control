@@ -38,6 +38,7 @@ ControlState::ControlState(ControlApp *app, uint8_t state): app(app)
 	this->statemap =
 	{
 		{ State::Idle,					std::bind( &ControlState::StIdle, this, std::placeholders::_1 )},
+		{ State::Error,					std::bind( &ControlState::StError, this, std::placeholders::_1 )},
 		{ State::InitCheckRestore,		std::bind( &ControlState::StInitCheckRestore, this, std::placeholders::_1 )},
 		{ State::Init,					std::bind( &ControlState::StInit, this, std::placeholders::_1 )},
 		{ State::ReInitCheckrestore,	std::bind( &ControlState::StReInitCheckrestore, this, std::placeholders::_1 )},
@@ -83,16 +84,9 @@ void ControlState::ReInit(bool savepassword)
 {
 	ScopedLog l("Reinit");
 
-	if( ! this->ValidState( {State::Idle, State::ReInit, State::AskRestore, State::AskReInitCheckRestore } ) )
+	if( ! this->ValidState( {State::Idle, State::ReInit, State::AskReInitCheckRestore } ) )
 	{
 		this->TriggerEvent( StateMachine::EVENT_ERROR, nullptr );
-		return;
-	}
-
-	if( this->state == State::AskRestore )
-	{
-		logg << Logger::Debug << "Got duplicate reinit"<<lend;
-		this->TriggerEvent(StateMachine::EVENT_IGNORED,nullptr);
 		return;
 	}
 
@@ -293,7 +287,7 @@ void ControlState::StInit(EventData *data)
 		}
 		else
 		{
-			this->RegisterEvent( State::AddUser, nullptr );
+			this->RegisterEvent( State::AskAddUser, nullptr );
 		}
 		// TODO: try reuse opi-name and opi_unitid
 	}
@@ -488,6 +482,14 @@ void ControlState::StCompleted(EventData *data)
 
 }
 
+void ControlState::StError(EventData *data)
+{
+	ScopedLog l("StError");
+
+}
+
+// Todo: We really should have more internal states here
+// this is getting overly complicated
 void ControlState::DoRestore(const string &path)
 {
 	ScopedLog l("Detached restore");
@@ -496,19 +498,61 @@ void ControlState::DoRestore(const string &path)
 	{
 		if( this->app->DoInit( false ) )
 		{
-			// Trigger not register since we call this outside of process context
-			this->TriggerEvent( State::Completed, nullptr);
+			Secop s;
+			s.SockAuth();
+			vector<string> users = s.GetUsers();
+
+			if( users.size() > 0 )
+			{
+
+				if( this->app->GuessOPIName() )
+				{
+					if( this->app->SetDNSName( this->app->opi_name ) )
+					{
+						// Trigger not register since we call this outside of process context
+						this->TriggerEvent( State::Completed, nullptr);
+					}
+					else
+					{
+						logg << Logger::Error << "Failed to set DNS-name ("
+							<< this->app->opi_name << "): "
+							<< this->app->global_error
+							<< lend;
+						this->TriggerEvent( State::AskOpiName, nullptr);
+					}
+				}
+				else
+				{
+					logg << Logger::Debug << "Unable to guess opiname"<<lend;
+					this->TriggerEvent( State::AskOpiName, nullptr);
+				}
+			}
+			else
+			{
+				logg << Logger::Debug << "No users in system not able to set name"<<lend;
+				this->TriggerEvent( State::AskAddUser, nullptr);
+			}
+
 		}
+		else
+		{
+			// Init failed
+			logg << Logger::Error << "Init failed" << lend;
+			this->status = false;
+			this->TriggerEvent( State::Error, nullptr);
+		}
+
+		// Clean up after restore, umount etc
+		this->app->CleanupRestoreEnv();
 	}
-
-	// Clean up after restore, umount etc
-	this->app->CleanupRestoreEnv();
-
-	if( this->state != State::Completed )
+	else
 	{
 		// Restore failed return to previous state
 		// TODO: howto handle failure?
 		//status = false;
+
+		// Clean up after restore, umount etc
+		this->app->CleanupRestoreEnv();
 
 		// Figure out what state to return to
 		if( ! Luks::isLuks( OPI_MMC_PART ) )
@@ -520,6 +564,7 @@ void ControlState::DoRestore(const string &path)
 			this->TriggerEvent( State::Init, nullptr);
 		}
 	}
+
 }
 
 bool ControlState::ValidState(vector<uint8_t> vals)

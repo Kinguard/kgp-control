@@ -28,6 +28,8 @@ public:
 
 	TcpServer(int port);
 
+	int Port();
+
 	void Stop();
 
 	virtual void Run();

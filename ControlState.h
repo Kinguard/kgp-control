@@ -90,6 +90,7 @@ protected:
 	void StShutDown(EventData* data);
 	void StReboot(EventData* data);
 	void StCompleted(EventData* data);
+	void StError(EventData* data);
 
 private:
 

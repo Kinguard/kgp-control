@@ -1102,7 +1102,7 @@ typedef pid_t process_id_t;
 #endif
 
 #ifndef MONGOOSE_IDLE_TIMEOUT_SECONDS
-#define MONGOOSE_IDLE_TIMEOUT_SECONDS 30
+#define MONGOOSE_IDLE_TIMEOUT_SECONDS 90
 #endif
 
 #ifdef MONGOOSE_NO_SOCKETPAIR

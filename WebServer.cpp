@@ -576,7 +576,7 @@ int WebServer::ev_handler(mg_connection *conn, mg_event ev)
 
 	if (ev == MG_REQUEST)
 	{
-#if 1
+#if 0
 		if( conn->uri )
 		{
 			logg << Logger::Debug << "URI      ["<< conn->uri << "]"<<lend;

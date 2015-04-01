@@ -61,6 +61,11 @@ TcpServer::TcpServer(int port):
 	}
 }
 
+int TcpServer::Port()
+{
+	return this->port;
+}
+
 void TcpServer::Stop()
 {
 	this->dorun = false;
@@ -69,7 +74,7 @@ void TcpServer::Stop()
 
 void TcpServer::Run()
 {
-	logg << Logger::Debug << "Test server starting at " << this->port << lend;
+	logg << Logger::Debug << "Inbound test server starting at " << this->port << lend;
 	string msg("{\"connection\" : \"success\"}\n");
 	while( dorun )
 	{
@@ -97,6 +102,7 @@ InboundTest::InboundTest(const vector<int> &ports)
 	{
 		try
 		{
+			logg << Logger::Debug << "Create ibound test server at port "<< port << lend;
 			TcpServerPtr server(new TcpServer(port) );
 			servers.push_back( server );
 		}
@@ -109,10 +115,11 @@ InboundTest::InboundTest(const vector<int> &ports)
 
 void InboundTest::Start()
 {
-	for(auto server: this->servers)
+	for(TcpServerPtr server: this->servers)
 	{
 		try
 		{
+			logg << Logger::Debug << "Start inbound test server at "<< server->Port()<<lend;
 			server->Start();
 		}
 		catch(runtime_error& err)

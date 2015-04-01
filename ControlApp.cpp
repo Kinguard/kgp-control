@@ -228,6 +228,7 @@ void ControlApp::Main()
 
 	if( this->state == ControlState::State::AskInitCheckRestore /* 3 */ )
 	{
+
 		logg << Logger::Debug << "Starting inbound connection tests"<<lend;
 		ibt = InboundTestPtr(new InboundTest( {25,80,143, 587, 993, 2525 }));
 		ibt->Start();
@@ -934,15 +935,18 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 
 bool ControlApp::SetDNSName(const string &opiname)
 {
+	logg << Logger::Debug << "Set dns name"<< lend;
 	DnsServer dns;
 	if( ! dns.UpdateDynDNS(this->unit_id, opiname) )
 	{
+		logg << Logger::Error << "Failed to update Dyndns ("<< this->unit_id << ") ("<< opiname <<")"<<lend;
 		this->global_error = "Failed to update DynDNS";
 		return false;
 	}
 
 	if( !this->GetCertificate(opiname, "OPI") )
 	{
+		logg << Logger::Error << "Failed to get certificate for opiname: "<<this->global_error<<lend;
 		return false;
 	}
 
@@ -1113,6 +1117,13 @@ bool ControlApp::RegisterKeys( )
 			if( ! File::DirExists( pub_path ) )
 			{
 				File::MkPath( pub_path, 0755);
+			}
+
+			// Make sure we have no dangling links preventing writing of new key
+			if( File::LinkExists( SYS_PRIV_PATH ) || File::LinkExists( SYS_PUB_PATH ) )
+			{
+				unlink( SYS_PRIV_PATH );
+				unlink( SYS_PUB_PATH );
 			}
 
 			File::Write(SYS_PRIV_PATH, ob.PrivKeyAsPEM(), 0600 );
@@ -1513,6 +1524,8 @@ bool ControlApp::SetupRestoreEnv()
 		return false;
 	}
 
+	this->WriteConfig();
+
 	return true;
 }
 
@@ -1545,6 +1558,7 @@ Json::Value ControlApp::CheckRestore()
 
 		if( ! this->SetupRestoreEnv() )
 		{
+			logg << Logger::Error << "Failed to set up restore environment"<<lend;
 			return Json::nullValue;
 		}
 		this->backuphelper = BackupHelperPtr( new BackupHelper( this->GetBackupPassword() ) );
@@ -1567,6 +1581,10 @@ Json::Value ControlApp::CheckRestore()
 			retval["local"].append(val);
 		}
 	}
+	else
+	{
+		logg << Logger::Debug << "Mount local failed" << lend;
+	}
 
 	// Check remote
 	if( this->backuphelper->MountRemote() )
@@ -1577,6 +1595,16 @@ Json::Value ControlApp::CheckRestore()
 			hasdata = true;
 			retval["remote"].append(val);
 		}
+	}
+	else
+	{
+		logg << Logger::Debug << "Mount remote failed" << lend;
+	}
+
+	if( ! hasdata )
+	{
+		logg << Logger::Debug << "Clean up restore env since no data available"<<lend;
+		this->CleanupRestoreEnv();
 	}
 
 	return hasdata ? retval : Json::nullValue ;
