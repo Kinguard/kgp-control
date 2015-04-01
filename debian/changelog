@@ -1,3 +1,9 @@
+opi-control (1.0.20) vili; urgency=medium
+
+  * Fix faulty pagemapping in web-ui
+
+ -- Tor Krill <tor@openproducts.se>  Wed, 01 Apr 2015 11:31:34 +0200
+
 opi-control (1.0.19) vili; urgency=medium
 
   * Test build. Increase timeout on mongoose to prevent reload error
