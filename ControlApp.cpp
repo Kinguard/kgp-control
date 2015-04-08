@@ -447,221 +447,6 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 	}
 
 	return ret;
-#if 0
-		if( cmd == "init" )
-		{
-			this->masterpassword = v["password"].asString();
-			this->unit_id = v["unit_id"].asString();
-
-			// First check if we should try a restore
-			Json::Value tmpret;
-			if( ( tmpret = this->CheckRestore() ) != Json::nullValue  )
-			{
-				this->state = 12;
-				ret = tmpret;
-			}
-			else
-			{
-				// No restore possible, continue
-				if( this->DoInit( v["save"].asBool() ) )
-				{
-					Secop s;
-					s.SockAuth();
-					vector<string> users = s.GetUsers();
-
-					if( users.size() > 0 )
-					{
-						// We have users on SD, skip register user
-						if( this->GuessOPIName() && this->SetDNSName( this->opi_name ) )
-						{
-							// We have a opi-name in mailconfig and register succeded
-							// Skip to end
-							this->state = 7;
-						}
-						else
-						{
-							this->state = 5;
-						}
-						this->evhandler.AddEvent( 50, bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinstall"));
-					}
-					else
-					{
-						this->state = 4;
-					}
-					// TODO: try reuse opi-name and opi_unitid
-				}
-				else
-				{
-					status = false;
-					this->state = 3;
-				}
-			}
-
-		}
-		else if( cmd == "reinit" )
-		{
-			this->masterpassword = v["password"].asString();
-
-			// First check if we should try a restore
-			Json::Value tmpret;
-			if( ( tmpret = this->CheckRestore()) != Json::nullValue )
-			{
-				this->state = 12;
-				ret = tmpret;
-			}
-			else
-			{
-				// No restore possible, continue
-				if( this->DoInit( v["save"].asBool() ) )
-				{
-					this->evhandler.AddEvent( 50, bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinit"));
-					this->state = 4;
-				}
-				else
-				{
-					status = false;
-					this->state = 3;
-				}
-			}
-		}
-		else if( cmd == "restore" )
-		{
-			if( v["restore"].asBool() )
-			{
-				if( this->DoRestore( v["path"].asString() ) )
-				{
-					if( this->DoInit( false ) )
-					{
-						// We are done
-						this->state = 7;
-					}
-				}
-
-				// Clean up after restore, umount etc
-				this->CleanupRestoreEnv();
-
-				if( this->state != 7 )
-				{
-					// Restore failed return to previous state
-					status = false;
-
-					// Figure out what state to return to
-					if( ! Luks::isLuks( OPI_MMC_PART ) )
-					{
-						this->state = 9;
-					}
-					else
-					{
-						this->state = 3;
-					}
-				}
-			}
-			else
-			{
-				// Mark that user don't want to restore
-				this->skiprestore = true;
-
-				// Figure out what state to return to
-				if( ! Luks::isLuks( OPI_MMC_PART ) )
-				{
-					this->state = 9;
-				}
-				else
-				{
-					this->state = 3;
-				}
-			}
-		}
-		else if( cmd == "adduser" )
-		{
-
-			if( this->AddUser(v["username"].asString(), v["displayname"].asString(), v["password"].asString() ) )
-			{
-				this->state = 5;
-			}
-			else
-			{
-				status = false;
-				this->state = 4;
-			}
-		}
-		else if( cmd == "opiname" )
-		{
-			if( this->SetDNSName(v["opiname"].asString() ) )
-			{
-				this->state = 7;
-			}
-			else
-			{
-				status = false;
-				this->state = 5;
-			}
-		}
-		else if( cmd == "unlock" )
-		{
-			if( this->DoUnlock(v["password"].asString(), v["save"].asBool() ) )
-			{
-				this->state = 7;
-			}
-			else
-			{
-				status = false;
-				this->state = 6;
-			}
-		}
-		else if( cmd == "terminate" )
-		{
-			if( v["shutdown"].asBool() && this->state == 7 )
-			{
-				this->ws->Stop();
-			}
-			else
-			{
-				status = false;
-				this->global_error = "Wrong state for request";
-			}
-		}
-		else if( cmd == "shutdown" )
-		{
-			string action = v["action"].asString();
-
-			if( action == "shutdown")
-			{
-				this->state = 10;
-				this->ws->Stop();
-			}
-			else if( action == "reboot" )
-			{
-				this->state = 11;
-				ret["url"]="/";
-				ret["timeout"]=50;
-				this->ws->Stop();
-			}
-			else
-			{
-				status = false;
-				this->global_error = "Unknown action for shutdown";
-			}
-		}
-		else if( cmd == "portstatus" )
-		{
-			return this->connstatus;
-		}
-		else
-		{
-			status = false;
-			this->global_error = "Unknown command";
-		}
-	}
-	ret["status"]=status;
-	if(!status)
-	{
-		ret["errmsg"]=this->global_error;
-	}
-	ret["state"]=state;
-	return ret;
-#endif
-
 }
 
 bool ControlApp::DoUnlock(const string &pwd, bool savepass)
@@ -995,18 +780,31 @@ bool ControlApp::SetDNSName(const string &opiname)
 bool ControlApp::SecopUnlocked()
 {
 	Secop::State st = Secop::Unknown;
-	try
-	{
-		Secop s;
+	int retries = 3;
 
-		st  = s.Status();
-	}
-	catch( runtime_error& e)
+	while( st == Secop::Unknown && retries > 0)
 	{
-		logg << Logger::Notice << "Failed to check status "<<e.what()<<lend;
-	}
+		try
+		{
+			Secop s;
 
-	logg << Logger::Debug << "Secop status : "<< st << lend;
+			st  = s.Status();
+		}
+		catch( runtime_error& e)
+		{
+			logg << Logger::Notice << "Failed to check status "<<e.what()<<lend;
+		}
+
+		logg << Logger::Debug << "Secop status : "<< st << lend;
+
+		if( st == Secop::Unknown && retries > 0 )
+		{
+			// Give secop some more time getting up and running
+			sleep(1);
+		}
+
+		--retries;
+	}
 
 	return (st != Secop::Uninitialized) && (st != Secop::Unknown);
 }
