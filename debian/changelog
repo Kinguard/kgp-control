@@ -1,3 +1,12 @@
+opi-control (1.0.21) vili; urgency=medium
+
+  * Poll secop instead of failing if not responding to status request
+  * Fixes to pagemapping, pa@openproducts.se
+  * Fixed #257 - help popups not visable on small screens, PA
+  * Add scriptfolder to be executed upon successful restore
+
+ -- Tor Krill <tor@openproducts.se>  Wed, 08 Apr 2015 15:42:43 +0200
+
 opi-control (1.0.20) vili; urgency=medium
 
   * Fix faulty pagemapping in web-ui
