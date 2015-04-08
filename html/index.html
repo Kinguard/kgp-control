@@ -648,12 +648,30 @@ $(document).ready( function() {
 		}
 	}	 
 	
+	if($( window ).width() < 805) {
+		qtip_pos_my =  'top center';
+		qtip_pos_at =	'center center';
+		qtip_pos_adjust = { 
+					y : 25,
+					x : 25
+				}
+	} else {
+		qtip_pos_my =  'left bottom';
+		qtip_pos_at =	'top right';
+		qtip_pos_adjust = { }
+	}
 	$('input[title]').qtip({
 		show: 'focus',
 		hide: 'blur',
 		position : {
-			my: 'left bottom',
-			at: 'top right'
+			my	: qtip_pos_my,
+			at : qtip_pos_at,
+			adjust : qtip_pos_adjust,
+			container : $('#login')
+		},
+		style: {
+        	classes: 'qtip-rounded qtip-shadow',
+        	width : '225px'
 		}
 	});
 
