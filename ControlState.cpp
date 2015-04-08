@@ -496,6 +496,9 @@ void ControlState::DoRestore(const string &path)
 
 	if( this->app->DoRestore( path ) )
 	{
+
+		this->app->evhandler.AddEvent( 50, bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/restore") );
+
 		if( this->app->DoInit( false ) )
 		{
 			Secop s;

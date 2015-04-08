@@ -565,11 +565,11 @@ function poll_restore()
 		console.log("Poll restore request failed");
 	});
 
-	if( current_state != 15 ) // Completed
+	if( current_state == 6 ) // doing restore
 	{
 		setTimeout( poll_restore, 5000 );
 	}
-	else
+	else if( current_state == 15 )
 	{
 		done("");
 	}

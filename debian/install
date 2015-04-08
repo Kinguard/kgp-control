@@ -1,3 +1,4 @@
 scripts/reinit /etc/opi-control
 scripts/reinstall /etc/opi-control
 scripts/completed /etc/opi-control
+scripts/restore /etc/opi-control
