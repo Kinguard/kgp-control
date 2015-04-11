@@ -293,7 +293,8 @@ void ControlState::StInit(EventData *data)
 	}
 	else
 	{
-		// Stay in this state
+		this->status = false;
+		this->RegisterEvent( State::AskInitCheckRestore, nullptr);
 	}
 
 }
@@ -338,7 +339,7 @@ void ControlState::StReInit(EventData *data)
 	else
 	{
 		this->status = false;
-		this->RegisterEvent( State::InitCheckRestore, new ControlData( arg->data ) );
+		this->RegisterEvent( State::AskReInitCheckRestore, nullptr);
 	}
 }
 
