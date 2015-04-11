@@ -1,3 +1,9 @@
+opi-control (1.0.22) vili; urgency=medium
+
+  * Fix returnstates on failed (re)init
+
+ -- Tor Krill <tor@openproducts.se>  Sat, 11 Apr 2015 11:38:17 +0200
+
 opi-control (1.0.21) vili; urgency=medium
 
   * Poll secop instead of failing if not responding to status request
