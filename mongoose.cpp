@@ -544,6 +544,7 @@ int ns_set_ssl_priv_key(struct ns_server *server, const char *key){
 	{
 	  return -1;
 	}
+	SSL_CTX_set_options(server->ssl_ctx, SSL_OP_NO_SSLv3 | SSL_OP_NO_SSLv2 );
   }
 
   if( SSL_CTX_use_PrivateKey_file(server->ssl_ctx, key, SSL_FILETYPE_PEM) == 1 )
@@ -571,6 +572,7 @@ int ns_set_ssl_cert(struct ns_server *server, const char *cert) {
 	  {
 		return -1;
 	  }
+	  SSL_CTX_set_options(server->ssl_ctx, SSL_OP_NO_SSLv3 | SSL_OP_NO_SSLv2 );
 	}
 
 	SSL_CTX_set_mode( server->ssl_ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER );
