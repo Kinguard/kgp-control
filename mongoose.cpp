@@ -131,6 +131,44 @@ typedef int sock_t;
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 #include <openssl/ssl.h>
+
+// OPI extra SSL settings
+
+#define MONGOOSE_USE_EXTRA_HTTP_HEADERS "Strict-Transport-Security:max-age=31536000; includeSubdomains\r\n"
+#define OPI_SSL_CIPHERS "HIGH+ECDH:HIGH+DH:HIGH:!aNULL"
+#define OPI_SSL_OPTIONS (SSL_OP_NO_SSLv3 | SSL_OP_NO_SSLv2 | SSL_OP_CIPHER_SERVER_PREFERENCE)
+
+static void OPI_Init_SSL_CTX(SSL_CTX *ctx)
+{
+	EC_KEY *ecdh;
+	int nid;
+
+	SSL_CTX_set_options( ctx, OPI_SSL_OPTIONS );
+	SSL_CTX_set_cipher_list( ctx, OPI_SSL_CIPHERS );
+
+	// Try to initialize ECDH
+	nid = OBJ_sn2nid("prime256v1");
+	if( nid != NID_undef )
+	{
+		ecdh = EC_KEY_new_by_curve_name( nid );
+		if( ecdh != NULL )
+		{
+			SSL_CTX_set_options( ctx, SSL_OP_SINGLE_ECDH_USE );
+			SSL_CTX_set_tmp_ecdh( ctx, ecdh );
+
+			EC_KEY_free( ecdh );
+		}
+	}
+
+	//TODO: fix init of DH
+	// Look fx at nginx ngx_ssl_dhparam in ngx_event_openssl.c
+
+#if 0
+	SSL_CTX_set_session_cache_mode( ctx, SSL_SESS_CACHE_SERVER );
+	SSL_CTX_set_session_id_context( ctx, (const unsigned char*)"opisession", 10);
+#endif
+}
+
 #else
 typedef void *SSL;
 typedef void *SSL_CTX;
@@ -544,7 +582,7 @@ int ns_set_ssl_priv_key(struct ns_server *server, const char *key){
 	{
 	  return -1;
 	}
-	SSL_CTX_set_options(server->ssl_ctx, SSL_OP_NO_SSLv3 | SSL_OP_NO_SSLv2 );
+	OPI_Init_SSL_CTX( server->ssl_ctx);
   }
 
   if( SSL_CTX_use_PrivateKey_file(server->ssl_ctx, key, SSL_FILETYPE_PEM) == 1 )
@@ -572,7 +610,7 @@ int ns_set_ssl_cert(struct ns_server *server, const char *cert) {
 	  {
 		return -1;
 	  }
-	  SSL_CTX_set_options(server->ssl_ctx, SSL_OP_NO_SSLv3 | SSL_OP_NO_SSLv2 );
+	  OPI_Init_SSL_CTX( server->ssl_ctx);
 	}
 
 	SSL_CTX_set_mode( server->ssl_ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER );
