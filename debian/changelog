@@ -1,3 +1,11 @@
+opi-control (1.0.23) vili; urgency=medium
+
+  * Fix PFS via ECDH
+  * Tighten ciphers used
+  * Use strict transport
+
+ -- Tor Krill <tor@openproducts.se>  Wed, 15 Apr 2015 16:04:04 +0200
+
 opi-control (1.0.22) vili; urgency=medium
 
   * Fix returnstates on failed (re)init
