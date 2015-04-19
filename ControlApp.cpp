@@ -917,12 +917,9 @@ bool ControlApp::RegisterKeys( )
 				File::MkPath( pub_path, 0755);
 			}
 
-			// Make sure we have no dangling links preventing writing of new key
-			if( File::LinkExists( SYS_PRIV_PATH ) || File::LinkExists( SYS_PUB_PATH ) )
-			{
-				unlink( SYS_PRIV_PATH );
-				unlink( SYS_PUB_PATH );
-			}
+			logg << Logger::Debug << "Possibly removing old private key"<<lend;
+			unlink( SYS_PRIV_PATH );
+			unlink( SYS_PUB_PATH );
 
 			File::Write(SYS_PRIV_PATH, ob.PrivKeyAsPEM(), 0600 );
 			File::Write(SYS_PUB_PATH, ob.PubKeyAsPEM(), 0644 );
