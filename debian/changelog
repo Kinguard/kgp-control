@@ -1,3 +1,9 @@
+opi-control (1.0.26) vili; urgency=low
+
+  * Fixed removal of error message on key-up 'enter' event
+
+ -- PA Nilsson <pa@openproducts.se>  Tue, 21 Apr 2015 08:11:50 +0200
+
 opi-control (1.0.25) vili; urgency=medium
 
   * Rebuild against latest libopi

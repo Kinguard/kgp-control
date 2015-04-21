@@ -621,9 +621,11 @@ $("#opiname").keyup( function() {
 	});	
 });
 
-$("input").keyup(function() {
+$("input").keypress(function(e) {
+	if(e.which != 13) {
 	$("#validation_error_msg").text('');
 	$("#validation_error").addClass("hidden");
+	}
 });
 
 $(document).ready( function() {
