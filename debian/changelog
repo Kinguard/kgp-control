@@ -1,3 +1,9 @@
+opi-control (1.0.27) vili; urgency=medium
+
+  * Bump required version of libopi to resolve runtime link error
+
+ -- Tor Krill <tor@openproducts.se>  Wed, 22 Apr 2015 15:41:05 +0200
+
 opi-control (1.0.26) vili; urgency=low
 
   * Fixed removal of error message on key-up 'enter' event
