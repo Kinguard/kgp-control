@@ -3,6 +3,7 @@
 #include <libutils/Process.h>
 #include <libutils/Thread.h>
 #include <libopi/Secop.h>
+#include <libopi/SysInfo.h>
 #include <libopi/Luks.h>
 
 #include "ControlApp.h"
@@ -364,7 +365,7 @@ void ControlState::StRestore(EventData *data)
 		this->app->skiprestore = true;
 
 		// Figure out what state to return to
-		if( ! Luks::isLuks( OPI_MMC_PART ) )
+		if( ! Luks::isLuks( sysinfo.StorageDeviceBlock() + sysinfo.StorageDevicePartition() ) )
 		{
 			this->RegisterEvent( State::ReInit, new ControlData( arg->data ) );
 		}
@@ -559,7 +560,7 @@ void ControlState::DoRestore(const string &path)
 		this->app->CleanupRestoreEnv();
 
 		// Figure out what state to return to
-		if( ! Luks::isLuks( OPI_MMC_PART ) )
+		if( ! Luks::isLuks( sysinfo.StorageDeviceBlock() + sysinfo.StorageDevicePartition() ) )
 		{
 			this->TriggerEvent( State::ReInit, nullptr);
 		}

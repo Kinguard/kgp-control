@@ -10,8 +10,6 @@
 #cmakedefine OPI_BUILD_PACKAGE
 #cmakedefine OPI_BUILD_LOCAL
 
-#define OPI_MMC_DEVICE "@OPI_MMC_DEVICE@"
-
 #define BACKUP_PATH "/var/opi/etc/backup_auth.conf"
 #define DNS_PUB_PATH "/etc/opi/dnspub.pem"
 #define DNS_PRIV_PATH "/etc/opi/dnspriv.pem"
@@ -29,41 +27,9 @@
 #define OP_HOST "https://auth.openproducts.com/"
 #define CONNTEST_HOST "http://conntest.op-i.me"
 
-#ifdef OPI_BUILD_LOCAL
-
-#ifdef USE_SDB
-#define OPI_MMC_DEV	"sdb"
-#define OPI_MMC_PART	"sdb1"
-#define STORAGE_DEV	"/dev/sdb"
-#define STORAGE_PART	"/dev/sdb1"
-#else
-#define OPI_MMC_DEV	"sdg"
-#define OPI_MMC_PART	"sdg1"
-#define STORAGE_DEV	"/dev/sdg"
-#define STORAGE_PART	"/dev/sdg1"
-#endif
-
-#define OPI_PASSWD_DEVICE "/dev/sdh1"
-
-#define MOUNTPOINT		"/var/opi/"
-#define TMP_MOUNT		"/mnt/opi/"
-
-#define LUKSDEVICE		"/dev/mapper/opi"
-#endif
-
-#ifdef OPI_BUILD_PACKAGE
-#define DO_SANITY_CHECKS
-#define OPI_MMC_DEV		"mmcblk0"
-#define OPI_MMC_PART	"mmcblk0p1"
-#define STORAGE_DEV		"/dev/mmcblk0"
-#define STORAGE_PART	"/dev/mmcblk0p1"
-
-#define OPI_PASSWD_DEVICE "/dev/sda1"
-
 #define TMP_MOUNT		"/mnt/opi/"
 #define MOUNTPOINT		"/var/opi/"
 
 #define LUKSDEVICE		"/dev/mapper/opi"
-#endif
 
 #endif

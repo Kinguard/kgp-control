@@ -18,7 +18,7 @@
 #include <libopi/DnsServer.h>
 #include <libopi/Luks.h>
 #include <libopi/MailConfig.h>
-
+#include <libopi/SysInfo.h>
 #include <functional>
 
 #include <syslog.h>
@@ -144,7 +144,7 @@ void ControlApp::Main()
 		logg.SetLevel(Logger::Debug);
 	}
 
-	logg << Logger::Debug << "Checking device: "<< STORAGE_DEV <<lend;
+	logg << Logger::Debug << "Checking device: "<< sysinfo.StorageDevicePath() <<lend;
 
 	this->state = ControlState::State::AskInitCheckRestore; // 3
 	this->skiprestore = false;
@@ -193,19 +193,19 @@ void ControlApp::Main()
 
 #endif
 
-	if( ! DiskHelper::DeviceExists( STORAGE_DEV ) )
+	if( ! DiskHelper::DeviceExists( sysinfo.StorageDevice() ) )
 	{
 		logg << Logger::Error << "Device not present"<<lend;
 		this->state = ControlState::State::Error; // 2
 	}
-	else if( DiskHelper::DeviceSize( OPI_MMC_DEV ) == 0 )
+	else if( DiskHelper::DeviceSize( sysinfo.StorageDevice() ) == 0 )
 	{
 		logg << Logger::Error << "No space on device"<< lend;
 		this->state = ControlState::State::Error; // 2
 	}
 
 	// We have a valid config and a device but device is not a luks container
-	if( this->state == ControlState::State::AskUnlock /* 6 */ && ! Luks::isLuks( OPI_MMC_PART ) )
+	if( this->state == ControlState::State::AskUnlock /* 6 */ && ! Luks::isLuks( sysinfo.StorageDevicePath() ) )
 	{
 		logg << Logger::Debug << "Config correct but no luksdevice do initialization"<<lend;
 		this->state = ControlState::State::AskReInitCheckRestore; // 9
@@ -453,28 +453,28 @@ bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 {
 	logg << Logger::Debug << "Unlock sd card"<<lend;
 
-	if( ! Luks::isLuks( OPI_MMC_PART ) )
+	if( ! Luks::isLuks( sysinfo.StorageDevicePath() ) )
 	{
 		this->global_error = "No crypto storage available";
 		return false;
 	}
 
-	logg << Logger::Notice << "LUKS volume found on "<<STORAGE_PART<< lend;
+	logg << Logger::Notice << "LUKS volume found on "<< sysinfo.StorageDevicePath()<< lend;
 
-	Luks l( STORAGE_PART);
+	Luks l( sysinfo.StorageDevicePath() );
 
 	if( ! l.Active("opi") )
 	{
 		logg << Logger::Debug << "Activating LUKS volume"<<lend;
 		if ( !l.Open("opi",pwd) )
 		{
-			logg << Logger::Debug << "Failed to openLUKS volume on "<<STORAGE_PART<< lend;
+			logg << Logger::Debug << "Failed to openLUKS volume on "<<sysinfo.StorageDevicePath()<< lend;
 			this->global_error = "Unable to unlock crypto storage. (Wrong password?)";
 			return false;
 		}
 	}
 
-	logg << Logger::Debug << "LUKS volume on "<<STORAGE_PART<< " opened"<< lend;
+	logg << Logger::Debug << "LUKS volume on "<<sysinfo.StorageDevicePath()<< " opened"<< lend;
 
 	try
 	{
@@ -813,12 +813,12 @@ bool ControlApp::InitializeSD()
 {
 	logg << Logger::Debug << "Initialize sd card"<<lend;
 	bool sd_isnew = false;
-	if( ! Luks::isLuks( OPI_MMC_PART ) )
+	if( ! Luks::isLuks( sysinfo.StorageDeviceBlock()+sysinfo.StorageDevicePartition() ) )
 	{
-		logg << Logger::Notice << "No Luks volume on device, "<< STORAGE_PART<<", creating"<<lend;
+		logg << Logger::Notice << "No Luks volume on device, "<< sysinfo.StorageDevicePath()<<", creating"<<lend;
 
-		DiskHelper::PartitionDevice( STORAGE_DEV );
-		Luks l( STORAGE_PART);
+		DiskHelper::PartitionDevice( sysinfo.StorageDevice() );
+		Luks l( sysinfo.StorageDevicePath() );
 		l.Format( this->masterpassword );
 
 		if( ! l.Open("opi", this->masterpassword ) )
@@ -832,9 +832,9 @@ bool ControlApp::InitializeSD()
 	}
 	else
 	{
-		logg << Logger::Notice << "LUKS volume found on "<<STORAGE_PART<< lend;
+		logg << Logger::Notice << "LUKS volume found on "<< sysinfo.StorageDevicePath() << lend;
 
-		Luks l( STORAGE_PART);
+		Luks l( sysinfo.StorageDevicePath());
 
 		if( ! l.Active("opi") )
 		{
@@ -1042,11 +1042,11 @@ bool ControlApp::GetCertificate(const string &opiname, const string &company)
 
 bool ControlApp::GetPasswordUSB()
 {
-	logg << Logger::Debug << "Get password from "<<OPI_PASSWD_DEVICE<<lend;
+	logg << Logger::Debug << "Get password from "<< sysinfo.PasswordDevice() <<lend;
 
 	bool ret = false;
 
-	if( ! DiskHelper::DeviceExists( OPI_PASSWD_DEVICE ) )
+	if( ! DiskHelper::DeviceExists( sysinfo.PasswordDevice() ) )
 	{
 		return false;
 	}
@@ -1058,7 +1058,7 @@ bool ControlApp::GetPasswordUSB()
 			File::MkDir("/mnt/usb", 0755);
 		}
 
-		DiskHelper::Mount( OPI_PASSWD_DEVICE, "/mnt/usb", false, false, "");
+		DiskHelper::Mount( sysinfo.PasswordDevice(), "/mnt/usb", false, false, "");
 
 		if( File::DirExists( "/mnt/usb/opi") && File::FileExists("/mnt/usb/opi/opicred.bin") )
 		{
@@ -1075,9 +1075,9 @@ bool ControlApp::GetPasswordUSB()
 		logg << Logger::Info << "Failed to retrieve password "<< e.what()<<lend;
 	}
 
-	if( DiskHelper::IsMounted( OPI_PASSWD_DEVICE ) != "" )
+	if( DiskHelper::IsMounted( sysinfo.PasswordDevice() ) != "" )
 	{
-		DiskHelper::Umount( OPI_PASSWD_DEVICE );
+		DiskHelper::Umount( sysinfo.PasswordDevice() );
 	}
 
 	return ret;
@@ -1085,10 +1085,10 @@ bool ControlApp::GetPasswordUSB()
 
 bool ControlApp::SetPasswordUSB()
 {
-	logg << Logger::Debug << "Store password on "<<OPI_PASSWD_DEVICE<<lend;
+	logg << Logger::Debug << "Store password on "<<sysinfo.PasswordDevice()<<lend;
 	bool ret = false;
 
-	if( ! DiskHelper::DeviceExists( OPI_PASSWD_DEVICE ) )
+	if( ! DiskHelper::DeviceExists( sysinfo.PasswordDevice() ) )
 	{
 		this->global_error ="Failed to save password on device (Device not found)";
 		return false;
@@ -1101,7 +1101,7 @@ bool ControlApp::SetPasswordUSB()
 			File::MkDir("/mnt/usb", 0755);
 		}
 
-		DiskHelper::Mount( OPI_PASSWD_DEVICE, "/mnt/usb", false, false, "");
+		DiskHelper::Mount( sysinfo.PasswordDevice(), "/mnt/usb", false, false, "");
 
 		if( ! File::DirExists( "/mnt/usb/opi" ) )
 		{
@@ -1123,9 +1123,9 @@ bool ControlApp::SetPasswordUSB()
 		this->global_error ="Failed to save password on device";
 	}
 
-	if( DiskHelper::IsMounted( OPI_PASSWD_DEVICE ) != "" )
+	if( DiskHelper::IsMounted( sysinfo.PasswordDevice() ) != "" )
 	{
-		DiskHelper::Umount( OPI_PASSWD_DEVICE );
+		DiskHelper::Umount( sysinfo.PasswordDevice() );
 	}
 
 	return ret;
@@ -1333,7 +1333,7 @@ Json::Value ControlApp::CheckRestore()
 		return Json::nullValue;
 	}
 
-	if( Luks::isLuks( OPI_MMC_PART ) )
+	if( Luks::isLuks( sysinfo.StorageDeviceBlock()+sysinfo.StorageDevicePartition() ) )
 	{
 		// We never do a restore if we have a luks partition on sd
 		return Json::nullValue;
@@ -1482,21 +1482,33 @@ bool ControlApp::DoRestore(const string &path)
 
 void ControlApp::SetLedstate(ControlApp::Ledstate state)
 {
-#ifdef OPI_BUILD_PACKAGE
-	switch( state )
+	logg << Logger::Debug << "SetLedstate "<<state<< lend;
+	try
 	{
-	case Ledstate::Error:
-		this->leds.SetTrigger("usr3", "heartbeat");
-		break;
-	case Ledstate::Waiting:
-		this->leds.SetTrigger("usr2", "heartbeat");
-		break;
-	case Ledstate::Completed:
-		this->leds.SetTrigger("usr2", "none");
-		this->leds.Brightness("usr2", true);
-		break;
-	default:
-		break;
-	}
+#if 0
+#ifdef OPI_BUILD_PACKAGE
+		switch( state )
+		{
+		case Ledstate::Error:
+			this->leds.SetTrigger("usr3", "heartbeat");
+			break;
+		case Ledstate::Waiting:
+			this->leds.SetTrigger("usr2", "heartbeat");
+			break;
+		case Ledstate::Completed:
+			this->leds.SetTrigger("usr2", "none");
+			this->leds.Brightness("usr2", true);
+			break;
+		default:
+			break;
+		}
 #endif
+#endif
+	}
+	catch(std::runtime_error& err )
+	{
+		logg << Logger::Error << "Failed to set ledstate: "<< err.what() << lend;
+	}
+
+	logg << Logger::Debug << "SetLedstate done"<<lend;
 }
