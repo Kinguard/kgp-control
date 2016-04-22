@@ -2,7 +2,7 @@
 
 #include <libutils/Logger.h>
 #include <libutils/String.h>
-
+#include <libopi/SysInfo.h>
 #include <fcntl.h>
 
 #include <list>
@@ -42,7 +42,7 @@ void TcpServer::Redirect( Utils::Net::SocketPtr c )
 
 TcpServer::TcpServer(int port):
 		Thread(false),
-		s("eth0",port),
+		s( OPI::sysinfo.NetworkDevice(), port),
 		port(port),
 		dorun(true)
 {

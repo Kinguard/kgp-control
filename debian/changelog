@@ -1,3 +1,9 @@
+opi-control (1.1.1) vili; urgency=medium
+
+  * Use SysInfo to deterimine which network interface to use
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 22 Apr 2016 09:46:57 +0200
+
 opi-control (1.1.0) vili; urgency=medium
 
   * Initial stab at multihw-support
