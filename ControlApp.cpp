@@ -1485,8 +1485,9 @@ void ControlApp::SetLedstate(ControlApp::Ledstate state)
 	logg << Logger::Debug << "SetLedstate "<<state<< lend;
 	try
 	{
-#if 0
+#if 1
 #ifdef OPI_BUILD_PACKAGE
+		logg << Logger::Debug << "Setting LED state for OPI";
 		switch( state )
 		{
 		case Ledstate::Error:

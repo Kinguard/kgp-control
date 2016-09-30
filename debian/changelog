@@ -1,3 +1,9 @@
+opi-control (1.1.2) vili; urgency=medium
+
+  * Enable SetLedstate
+
+ -- PA Nilsson <pa@openproducts.se>  Fri, 30 Sep 2016 11:49:52 +0000
+
 opi-control (1.1.1) vili; urgency=medium
 
   * Use SysInfo to deterimine which network interface to use
