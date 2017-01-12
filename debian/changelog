@@ -1,3 +1,9 @@
+opi-control (1.1.3) vili; urgency=medium
+
+  * Updated certificate paths in stand alone webserver 
+
+ -- PA Nilsson <pa@openproducts.se>  Tue, 29 Nov 2016 10:46:15 +0000
+
 opi-control (1.1.2) vili; urgency=medium
 
   * Enable SetLedstate

@@ -12,8 +12,8 @@
 #ifdef OPI_BUILD_PACKAGE
 
 #define DOCUMENT_ROOT	"/usr/share/opi-control/web"
-#define SSL_CERT_PATH	"/etc/opi/opi.cert"
-#define SSL_KEY_PATH	"/etc/opi/dnspriv.pem"
+#define SSL_CERT_PATH	"/etc/opi/web_cert.pem"
+#define SSL_KEY_PATH	"/etc/opi/web_key.pem"
 #define LISTENING_PORT	"443"
 
 #else
