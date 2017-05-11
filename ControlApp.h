@@ -50,7 +50,9 @@ private:
 	string GetBackupPassword();
 	bool GetCertificate(const string& opiname, const string& company="OPI");
 	bool GetPasswordUSB();
+	bool GetPasswordRoot();
 	bool SetPasswordUSB();
+	bool SetPasswordRoot();
 	bool GuessOPIName();
 	void WriteConfig();
 	static void WriteBackupConfig(const string& password);
