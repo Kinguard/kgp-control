@@ -211,10 +211,10 @@ void ControlApp::Main()
 		this->state = ControlState::State::AskReInitCheckRestore; // 9
 	}
 
-	// Try use password from USB if possible
+	// Try use password from USB or cfg in /root if possible
 	if( this->state == ControlState::State::AskUnlock /* 6 */ )
 	{
-		if( this->GetPasswordUSB() )
+		if( this->GetPasswordUSB() || this->GetPasswordRoot() )
 		{
 			if( this->DoUnlock( this->masterpassword, false ) )
 			{
@@ -1083,6 +1083,33 @@ bool ControlApp::GetPasswordUSB()
 	return ret;
 }
 
+bool ControlApp::GetPasswordRoot()
+{
+	logg << Logger::Debug << "Get password from mmc"<<lend;
+
+	bool ret = false;
+
+	try
+	{
+		if( File::FileExists("/root/.keepcfg/opicred.bin"))
+		{
+			this->masterpassword = PasswordFile::Read("/root/.keepcfg/opicred.bin");
+			ret = true;
+		}
+	}
+	catch( CryptoPP::Exception& e)
+	{
+		logg << Logger::Info << "Failed to retrieve password "<< e.what()<<lend;
+	}
+	catch( ErrnoException& e)
+	{
+		logg << Logger::Info << "Failed to retrieve password "<< e.what()<<lend;
+	}
+
+
+	return ret;
+}
+
 bool ControlApp::SetPasswordUSB()
 {
 	logg << Logger::Debug << "Store password on "<<sysinfo.PasswordDevice()<<lend;
@@ -1129,6 +1156,11 @@ bool ControlApp::SetPasswordUSB()
 	}
 
 	return ret;
+}
+
+bool ControlApp::SetPasswordRoot()
+{
+	return false;
 }
 
 bool ControlApp::GuessOPIName()
