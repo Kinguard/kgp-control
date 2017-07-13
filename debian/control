@@ -11,7 +11,8 @@ Build-Depends: debhelper (>= 8.0.0), cmake,
 	libssl-dev,
 	libcryptsetup-dev,
 	libparted0-dev,
-	libudev-dev
+	libudev-dev,
+	pkg-config
 Standards-Version: 3.9.4
 Homepage:http://www.openproducts.se
 
