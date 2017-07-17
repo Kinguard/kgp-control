@@ -1,3 +1,9 @@
+opi-control (1.1.5) vili; urgency=medium
+
+  * Convert to use OPI Notification and some cleanups
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 17 Jul 2017 10:59:29 +0200
+
 opi-control (1.1.4) vili; urgency=medium
 
   * Add missing dep on pkg-config
