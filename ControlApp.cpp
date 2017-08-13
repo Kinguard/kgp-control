@@ -19,6 +19,7 @@
 #include <libopi/Luks.h>
 #include <libopi/MailConfig.h>
 #include <libopi/SysInfo.h>
+#include <libopi/Notification.h>
 #include <functional>
 
 #include <syslog.h>
@@ -144,6 +145,8 @@ void ControlApp::Main()
 		logg.SetLevel(Logger::Debug);
 	}
 
+	logg << Logger::Info << "Running on: " << sysinfo.SysTypeText[sysinfo.Type()] << lend;
+
 	logg << Logger::Debug << "Checking device: "<< sysinfo.StorageDevicePath() <<lend;
 
 	this->state = ControlState::State::AskInitCheckRestore; // 3
@@ -176,23 +179,7 @@ void ControlApp::Main()
 		File::MkPath(TMP_MOUNT, 0755);
 	}
 
-
 	// Check environment
-#ifdef DO_SANITY_CHECKS
-	/*
-	 * If on opi and no sd is in place, emmc will have gotten our
-	 * devicenode that we want to install to. So we double check
-	 * that we really have two mmc devices, mmc and SD card
-	 */
-
-	if( ! DiskHelper::DeviceExists( "/dev/mmcblk1" ) )
-	{
-		logg << Logger::Error << "No SD card present"<<lend;
-		this->state = ControlState::State::Error; // 2
-	}
-
-#endif
-
 	if( ! DiskHelper::DeviceExists( sysinfo.StorageDevice() ) )
 	{
 		logg << Logger::Error << "Device not present"<<lend;
@@ -254,11 +241,11 @@ void ControlApp::Main()
 
 		if( this->state == ControlState::State::Error /* 2 */ )
 		{
-			this->SetLedstate(Ledstate::Error);
+			OPI::notification.Notify( OPI::Notification::Error, "Possible error: " + this->global_error);
 		}
 		else
 		{
-			this->SetLedstate( Ledstate::Waiting);
+			OPI::notification.Notify( OPI::Notification::Waiting, "Waiting for user");
 		}
 
 		this->ws->Start();
@@ -296,7 +283,7 @@ void ControlApp::Main()
 									  Process::Exec,
 									  "/bin/run-parts --lsbsysinit  -- /etc/opi-control/completed" ));
 
-		this->SetLedstate( Ledstate::Completed);
+		OPI::notification.Notify( OPI::Notification::Completed, "Opi Control completed ");
 	}
 	else if( this->state == ControlState::State::ShutDown /* 10 */ )
 	{
@@ -1510,38 +1497,4 @@ bool ControlApp::DoRestore(const string &path)
 	}
 
 	return true;
-}
-
-void ControlApp::SetLedstate(ControlApp::Ledstate state)
-{
-	logg << Logger::Debug << "SetLedstate "<<state<< lend;
-	try
-	{
-#if 1
-#ifdef OPI_BUILD_PACKAGE
-		logg << Logger::Debug << "Setting LED state for OPI";
-		switch( state )
-		{
-		case Ledstate::Error:
-			this->leds.SetTrigger("usr3", "heartbeat");
-			break;
-		case Ledstate::Waiting:
-			this->leds.SetTrigger("usr2", "heartbeat");
-			break;
-		case Ledstate::Completed:
-			this->leds.SetTrigger("usr2", "none");
-			this->leds.Brightness("usr2", true);
-			break;
-		default:
-			break;
-		}
-#endif
-#endif
-	}
-	catch(std::runtime_error& err )
-	{
-		logg << Logger::Error << "Failed to set ledstate: "<< err.what() << lend;
-	}
-
-	logg << Logger::Debug << "SetLedstate done"<<lend;
 }

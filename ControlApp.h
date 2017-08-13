@@ -4,7 +4,6 @@
 #include <libutils/Application.h>
 #include <libutils/Mutex.h>
 
-#include <libopi/LedControl.h>
 #include <libopi/BackupHelper.h>
 #include "WebServer.h"
 #include "EventHandler.h"
@@ -71,13 +70,10 @@ private:
 		Completed
 	};
 
-	void SetLedstate(enum Ledstate state);
-
 	bool DoLogin();
 
 	WebServerPtr ws;
 	ControlStatePtr statemachine;
-	OPI::LedControl leds;
 
 	EventHandler evhandler;
 };
