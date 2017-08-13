@@ -5,10 +5,9 @@
 # Required-Stop:
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: <Enter a short description of the software>
-# Description:       <Enter a long description of the software>
-#                    <...>
-#                    <...>
+# Short-Description: OPI control application
+# Description:       OPI control
+#                    opi-control manages startup and unlocking of OPI
 ### END INIT INFO
 
 # Author: Tor Krill <tor@openproducts.se>
