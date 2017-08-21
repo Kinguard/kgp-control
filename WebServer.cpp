@@ -5,6 +5,7 @@
 
 #include <libutils/String.h>
 #include <libutils/Logger.h>
+#include <libutils/FileUtils.h>
 
 #include <string>
 #include <map>
@@ -62,7 +63,27 @@ void WebServer::PreRun()
 	this->server = mg_create_server(NULL, WebServer::ev_handler);
 	mg_set_option(this->server, "document_root", DOCUMENT_ROOT);
 
+	if( ! File::FileExists( SSL_CERT_PATH ) && ! File::LinkExists( SSL_CERT_PATH ) )
+	{
+		logg << Logger::Error << "Unable to locate certificate file: " << SSL_CERT_PATH << lend;
+	}
+	else
+	{
+		logg << Logger::Debug << "Using certificate file: " << SSL_CERT_PATH << lend;
+	}
+
 	mg_set_option(this->server, "ssl_certificate",SSL_CERT_PATH);
+
+
+	if( ! File::FileExists( SSL_KEY_PATH ) && ! File::LinkExists( SSL_KEY_PATH ) )
+	{
+		logg << Logger::Error << "Unable to locate private key file: " << SSL_KEY_PATH << lend;
+	}
+	else
+	{
+		logg << Logger::Debug << "Using private key file: " << SSL_KEY_PATH << lend;
+	}
+
 	mg_set_option(this->server, "ssl_private_key",SSL_KEY_PATH);
 
 	mg_set_option(this->server, "listening_port",LISTENING_PORT);
