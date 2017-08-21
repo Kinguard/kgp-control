@@ -2,7 +2,7 @@
 <html>
 <head>
 	<meta charset="utf-8">
-	<title>OPI Setup</title>
+	<title>Setup</title>
 	<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 	<meta http-equiv="Pragma" content="no-cache">
 	<meta http-equiv="Expires" content="0">
@@ -20,7 +20,7 @@
 <body class="claro" id="theBody">
 <nav id="nav-shutdown">
 	<div id="shutdown">
-		<button type="button" class="shutdown" id="btn-shutdown"><img src='img/shutdown.png' /><span>Shutdown OPI</span></button>
+		<button type="button" class="shutdown" id="btn-shutdown"><img src='img/shutdown.png' /><span>Shutdown <span class="typename"></span></span></button>
 	</div>
 </nav>
 
@@ -53,16 +53,16 @@
 	</div>
 	<div id="page_error" class="page hidden">
 	<h1>Error - Unable to retrieve status</h1>
-	<p>OPI replied with an unknown error</p>
+	<p>Server replied with an unknown error</p>
 	</div>
 
 	<div id="page_restoreinprogress" class="page hidden">
 		<h1>Restore in progress</h1>
-		<p>OPI restore in progress, please wait</p>
+		<p>Data restore in progress, please wait</p>
 	</div>
 	
 	<div id="page_shutdown" class="page hidden">
-		<center><h1>Confirm shutdown of OPI</h1></center>
+		<center><h1>Confirm shutdown</h1></center>
 		<p></p>
 		<div class="sd-buttons">
 			<form>
@@ -99,23 +99,23 @@
 	</div>
 
 	<div id="page_sderror" class="page hidden">
-		<h1>Error - No SD card detected</h1>
-		<p>Please insert SD card and restart OPI</p>
+		<h1>Error - No storage detected</h1>
+		<p>Please insert SD card / hard drive and restart</p>
 	</div>
 
 	<div id="page_initprogress" class="page hidden">
-		<h1>Initializing OPI</h1>
+		<h1>Initializing ...</h1>
 		<p>Please have patience, initializing takes a while</p>
 	</div>
 	
 	<div id="page_shutdownprogress" class="page hidden">
-		<h1>OPI shutdown in progress</h1>
+		<h1>Shutdown in progress</h1>
 		<p>Please to not remove power until all LEDs are turned off.</p>
 	</div>
 
 	<div id="page_rebootprogress" class="page hidden">
-		<h1>OPI reboot in progress</h1>
-		<p>OPI is rebooting, please wait ...</p>
+		<h1>Unit reboot in progress</h1>
+		<p>System is rebooting, please wait ...</p>
 	</div>
 
 	<div id="page_password" class="page hidden">
@@ -123,7 +123,7 @@
 		<form id="pwdform">
 			<div id="div_unit_id">
 				<p class="form-group">
-				<label for='unit_id'>OPI activation code</label>
+				<label for='unit_id'><span class="typename"></span> Activation code</label>
 				<input
 					title = "unit_id"
 					type ="text"
@@ -240,11 +240,11 @@
 	</div>
 	
 	<div id="page_opiname" class="page hidden">
-		<h1>Select OPI name</h1>
+		<h1>Select Device Name</h1>
 		<form id="opinameform">
 			<div>
 				<p class="form-group">
-				<label for="opiname">OPI name</label>
+				<label for="opiname"><span class="typename"></span> name</label>
 				<input 
 					type="text" 	
 					id="opiname"
@@ -252,9 +252,12 @@
 					title="OPI name"
 					data-validation="alphanumeric" data-validation-allowing="-_"
 					class="lowercase"
-					data-validation-error-msg="OPI name is required during setup, (a-z -_ allowed)"
+					data-validation-error-msg="Device name is required during setup, ('a-z,-' allowed)"
 				/>
 				<span id="opi_namestate" class="help-block form-error"></span>
+				</p>
+				<p>
+					<div id="fqdn">Full name is: 'device-name'.<span class="typedomain"></span></div>
 				</p>
 				<div>
 					<button 
@@ -385,7 +388,7 @@
 	
 	
 	<div id="page_postinit" class="page hidden">
-	<h1>OPI unlocked</h1>
+	<h1><span class="typename"></span> unlocked</h1>
 	<p>Waiting for normal operation</p>
 	</div>
 
@@ -396,6 +399,7 @@
 <script>
 
 current_state = 0;
+type = "KEEP";
 
 // set dummy paths
 var restore_paths = Array();
@@ -523,6 +527,10 @@ function setState(state) {
 
 	current_state = state;
 
+	// remove possible error messages
+	$("#validation_error_msg").text('');
+	$("#validation_error").addClass("hidden");
+
 	$(".page").addClass("hidden");
 
 	for( var page in pages )
@@ -630,6 +638,14 @@ $("input").keypress(function(e) {
 
 $(document).ready( function() {
 	var unit_id;
+
+	if (type=="KEEP") {
+		$("span.typename").text("KEEP");
+		$("span.typedomain").text("mykeep.net");
+	} else {
+		$("span.typename").text("OPI");
+		$("span.typedomain").text("op-i.me");
+	}
 
 	// fix margin if we are running in a small browser.
 	if($(window).width() < 760) {
