@@ -393,7 +393,11 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			{
 				return this->connstatus;
 			}
-			else if( cmd == "status" )
+            else if( cmd == "gettype" )
+            {
+                return "{\"type\": \"KEEP\"}";
+            }
+            else if( cmd == "status" )
 			{
 				Json::Value ret;
 				ret["state"] = this->statemachine->State();
