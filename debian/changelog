@@ -1,3 +1,9 @@
+opi-control (1.1.6) vili; urgency=medium
+
+  * Added support to detect system type 
+
+ -- PA Nilsson <pa@openproducts.se>  Tue, 22 Aug 2017 12:56:57 +0200
+
 opi-control (1.1.5) vili; urgency=medium
 
   * Convert to use OPI Notification and some cleanups
