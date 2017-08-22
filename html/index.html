@@ -119,11 +119,11 @@
 	</div>
 
 	<div id="page_password" class="page hidden">
-		<h1>Select master password</h1>
+		<h1>Select Master Password</h1>
 		<form id="pwdform">
 			<div id="div_unit_id">
 				<p class="form-group">
-				<label for='unit_id'><span class="typename"></span> Activation code</label>
+				<label for='unit_id'><span class="typename"></span> Activation Code</label>
 				<input
 					title = "unit_id"
 					type ="text"
@@ -182,11 +182,11 @@
 	
 	
 	<div id="page_user" class="page hidden">
-		<h1>Add first user</h1>
+		<h1>Add First User</h1>
 		<form id="userform">
 			<div>	
 				<p class="form-group">
-				<label for='displayname'>Real name</label>
+				<label for='displayname'>Real Name</label>
 				<input type="text"
 					name="displayname"
 					title="Displayname"
@@ -220,7 +220,7 @@
 			</div>
 			<div>	
 				<p class="form-group">
-				<label for='password'>Confirm password</label>
+				<label for='password'>Confirm Password</label>
 				<input type="password"
 					name="password"
 					data-validation="confirmation"
@@ -255,9 +255,6 @@
 					data-validation-error-msg="Device name is required during setup, ('a-z,-' allowed)"
 				/>
 				<span id="opi_namestate" class="help-block form-error"></span>
-				</p>
-				<p>
-					<div id="fqdn">Full name is: 'device-name'.<span class="typedomain"></span></div>
 				</p>
 				<div>
 					<button 
@@ -306,7 +303,7 @@
 	</div>
 
 	<div id="page_knownunit_id" class="page hidden">
-		<h1>Enter master password</h1>
+		<h1>Enter Master Password</h1>
 		<form id="masterpwdform_knownid">
 				<div>
 					<p class="form-group">
@@ -388,7 +385,7 @@
 	
 	
 	<div id="page_postinit" class="page hidden">
-	<h1><span class="typename"></span> unlocked</h1>
+	<h1><span class="typename"></span> Unlocked</h1>
 	<p>Waiting for normal operation</p>
 	</div>
 
@@ -399,7 +396,6 @@
 <script>
 
 current_state = 0;
-type = "KEEP";
 
 // set dummy paths
 var restore_paths = Array();
@@ -612,6 +608,34 @@ function done(opiname) {
 	
 }
 
+function setHelp(type="") {
+	$.each($('input[title]'), function() {
+		if(helptext[$(this).attr("name")+"_"+type]) {
+			$(this).attr("title", helptext[$(this).attr("name")+"_"+type]);
+		} else if(helptext[$(this).attr("name")]) {
+			$(this).attr("title", helptext[$(this).attr("name")]);
+		}
+	});
+
+}
+function getType() {
+	//console.log("Trying to determine system type");
+	systype = false;
+	$.get("/gettype",function(data) {
+		systype = data.type;
+		if (data.type=="Armada") {
+			$("span.typename").text("KEEP");
+		} else {
+			$("span.typename").text("OPI");
+		}
+		setHelp(systype);
+	}, "json" )
+	.fail(function() {
+		console.log("Poll restore request failed");
+	});
+	return systype;
+}
+
 var opiname_check = false;
 $("#opiname").keyup( function() {
 	if(opiname_check) opiname_check.abort(); // abort any ongoing checks 
@@ -639,13 +663,7 @@ $("input").keypress(function(e) {
 $(document).ready( function() {
 	var unit_id;
 
-	if (type=="KEEP") {
-		$("span.typename").text("KEEP");
-		$("span.typedomain").text("mykeep.net");
-	} else {
-		$("span.typename").text("OPI");
-		$("span.typedomain").text("op-i.me");
-	}
+	type=getType();
 
 	// fix margin if we are running in a small browser.
 	if($(window).width() < 760) {
@@ -693,11 +711,7 @@ $(document).ready( function() {
 		}
 	});
 
-	$.each($('input[title]'), function() {
-		if(helptext[$(this).attr("name")]) {
-			$(this).attr("title", helptext[$(this).attr("name")]);
-		}
-	});
+	setHelp();
 
 	$.validate( {
 		modules : 'security',

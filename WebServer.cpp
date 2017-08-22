@@ -51,6 +51,7 @@ WebServer::WebServer(std::function<Json::Value(Json::Value)> cb):
 	routes[std::make_pair("/portstatus","GET")] = WebServer::handle_portstatus;
 	routes[std::make_pair("/terminate","POST")] = WebServer::handle_terminate;
 	routes[std::make_pair("/shutdown","POST")] = WebServer::handle_shutdown;
+    routes[std::make_pair("/gettype","GET")] = WebServer::handle_type;
 }
 
 void WebServer::Stop()
@@ -590,6 +591,27 @@ int WebServer::handle_shutdown(mg_connection *conn)
 
 	return MG_TRUE;
 }
+
+int WebServer::handle_type(mg_connection *conn)
+{
+	logg << Logger::Debug << "Got request for type"<<lend;
+
+
+	Json::Value ret;
+	if( WebServer::callback != nullptr )
+	{
+		Json::Value cmd;
+        
+		cmd["cmd"]= "gettype";
+		ret = WebServer::callback( cmd );
+	}
+
+	mg_send_header( conn, "Content-Type", "application/json");
+	mg_printf_data( conn, ret.toStyledString().c_str() );
+
+	return MG_TRUE;
+}
+
 
 int WebServer::ev_handler(mg_connection *conn, mg_event ev)
 {
