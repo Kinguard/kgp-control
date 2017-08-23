@@ -80,7 +80,7 @@ form p {
 .lowercase {
 	text-transform : lowercase;
 }
-.strength-meter, .form-error {
+.strength-meter, .form-error, .form-nameerror {
 	//width : 125px;
 	//height : 24px;
 	background : none;
@@ -95,7 +95,7 @@ form p {
 	left : 2px;
 	
 }
-.form-error {
+.form-error,.form-nameerror {
 	top : 20px;
 	text-align : right;
 	width : 97%;
@@ -108,7 +108,7 @@ form p {
 	color : red;
 	text-align : center;
 }
-#page_restorebackup select {
+#page_restorebackup select , #select_domain {
 	width : 100%;
 	padding : 10px;
 }

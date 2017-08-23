@@ -393,10 +393,22 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			{
 				return this->connstatus;
 			}
-			else if( cmd == "gettype" )
+            else if( cmd == "gettype" )
+            {
+                Json::Value ret;
+                ret["type"] = sysinfo.SysTypeText[sysinfo.Type()];
+                return ret;
+            }
+            else if( cmd == "getdomains" )
 			{
-				Json::Value ret;
-				ret["type"] = sysinfo.SysTypeText[sysinfo.Type()];
+                Json::Value ret(Json::objectValue);
+                ret["domains"]=Json::arrayValue;
+
+                for(auto domain: sysinfo.Domains)
+                {
+                    ret["domains"].append(domain);
+                }
+                ret["domain"]=sysinfo.Domains[sysinfo.Type()];
 				return ret;
 			}
 			else if( cmd == "status" )
@@ -713,7 +725,7 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 
 bool ControlApp::SetDNSName(const string &opiname)
 {
-	logg << Logger::Debug << "Set dns name"<< lend;
+    logg << Logger::Debug << "Set dns name: " << opiname << lend;
 	DnsServer dns;
 	if( ! dns.UpdateDynDNS(this->unit_id, opiname) )
 	{
@@ -724,11 +736,13 @@ bool ControlApp::SetDNSName(const string &opiname)
 
 	if( !this->GetCertificate(opiname, "OPI") )
 	{
-		logg << Logger::Error << "Failed to get certificate for opiname: "<<this->global_error<<lend;
+        logg << Logger::Error << "Failed to get certificate for device name: "<<this->global_error<<lend;
 		return false;
 	}
 
-	this->opi_name = opiname;
+	list<string> parts=String::Split(opiname, ".",2);
+	this->opi_name = parts.front();
+	this->domain = parts.back();
 
 	/*
 	 * If we have no first user this indicates old SD card with info and users
@@ -741,7 +755,7 @@ bool ControlApp::SetDNSName(const string &opiname)
 			// Add first user email on opidomain
 			OPI::MailConfig mc;
 			mc.ReadConfig();
-			mc.SetAddress(this->opi_name+".op-i.me",this->first_user,this->first_user);
+			mc.SetAddress(opiname,this->first_user,this->first_user);
 			mc.WriteConfig();
 
 			chown( ALIASES, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
@@ -755,7 +769,7 @@ bool ControlApp::SetDNSName(const string &opiname)
 				return false;
 			}
 
-			File::Write("/etc/mailname", opiname+".op-i.me", 0644);
+			File::Write("/etc/mailname", opiname, 0644);
 		}
 		catch(runtime_error& err)
 		{
@@ -992,7 +1006,7 @@ bool ControlApp::GetCertificate(const string &opiname, const string &company)
 	}
 
 
-	if( ! CryptoHelper::MakeCSR(DNS_PRIV_PATH, CSR_PATH, opiname+".op-i.me", company) )
+	if( ! CryptoHelper::MakeCSR(DNS_PRIV_PATH, CSR_PATH, opiname, company) )
 	{
 		this->global_error = "Failed to make certificate signing request";
 		return false;
@@ -1168,7 +1182,7 @@ bool ControlApp::GuessOPIName()
 		for( const string& domain: domains )
 		{
 			list<string> parts=String::Split(domain, ".",2);
-			if( parts.back() == "op-i.me" )
+			if( parts.back() == "op-i.me" )  // TODO: if parts.back() "is in sysinfo.Domains"
 			{
 				names.push_back(parts.front());
 			}
@@ -1212,6 +1226,10 @@ void ControlApp::WriteConfig()
 	if( this->opi_name != "" )
 	{
 		c["opi_name"] = this->opi_name;
+	}
+	if( this->domain != "" )
+	{
+	c["domain"] = this->domain;
 	}
 
 	c.Sync(true, 0644);

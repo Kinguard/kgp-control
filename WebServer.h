@@ -36,7 +36,8 @@ private:
 	static int handle_portstatus(struct mg_connection *conn);
 	static int handle_terminate(struct mg_connection *conn);
 	static int handle_shutdown(struct mg_connection *conn);
-    static int handle_type(struct mg_connection *conn);
+	static int handle_type(struct mg_connection *conn);
+	static int handle_domains(struct mg_connection *conn);
 
 	static int ev_handler(struct mg_connection *conn, enum mg_event ev);
 	static bool parse_json(struct mg_connection *conn, Json::Value& val);

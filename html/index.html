@@ -244,7 +244,16 @@
 		<form id="opinameform">
 			<div>
 				<p class="form-group">
-				<label for="opiname"><span class="typename"></span> name</label>
+				<label for="domain">Select domain to use</label>
+				<select
+					id="select_domain"
+					name="domain"
+					title="Domain name"
+				>
+				</select>
+				</p>
+				<p class="form-group">
+				<label for="opiname">Device name</label>
 				<input 
 					type="text" 	
 					id="opiname"
@@ -254,7 +263,7 @@
 					class="lowercase"
 					data-validation-error-msg="Device name is required during setup, ('a-z,-' allowed)"
 				/>
-				<span id="opi_namestate" class="help-block form-error"></span>
+				<span id="opi_namestate" class="help-block form-nameerror"></span>
 				</p>
 				<div>
 					<button 
@@ -480,38 +489,7 @@ var pages = {
 	19:"page_knownunit_id",
 	20:"page_password",
 	99:"page_initprogress", // Local state not used on server side
-
-/*
-	2:"page_password",
-	3:"page_user",
-	4:"page_opiname",
-	5:"page_unlockpassword",
-	6:"page_postinit",
-	7:"page_initprogress",
-	8:"page_knownunit_id",
-	9:"page_shutdownprogress",
-	10:"page_rebootprogress",
-	11:"page_restorebackup"
-*/
-};
-
-/*
-var pages = {
-	1:"page_error",
-	2:"page_shutdown",
-	3:"page_sderror",
-	4:"page_initprogress",
-	5:"page_shutdownprogress",
-	6:"page_rebootprogress",
-	7:"page_password",
-	8:"page_user",
-	9:"page_opiname",
-	10:"page_unlockpassword",
-	11:"page_knownunit_id",
-	12:"page_restorebackup",
-	13:"page_postinit",
 }
-*/
 
 function setState(state) {
 
@@ -579,7 +557,7 @@ function poll_restore()
 	}
 }
 
-function done(opiname) {
+function done(fqdn) {
 	$.ajax({
 		  type: "POST",
 		  url: "/terminate",
@@ -595,11 +573,25 @@ function done(opiname) {
 				}
 				
 			} else {
-				if(opiname.length && location.href.indexOf("op-i.me") > 0) {
-					redirect("https://"+opiname+".op-i.me/admin",10);
+				console.log("Redirecting");
+				// is the unit accessed by OP's domain pointers?
+				// could be "local." or IP also.
+				console.log(domains);
+				// is the access from the "local.devicename.domain.com" url?
+				if(location.href.indexOf("local") > 0) {
+					redirect("https://local."+opiname,10);
+					return true;
 				} else {
-				redirect("/admin",10);
+					// do we have any of our domain in the url?
+					for (i = 0; i < domains.length; i++) {
+						if(location.href.indexOf(domains[i]) > 0) {
+							redirect("https://"+opiname,10);
+							return true;
+						}
+					}
 				}
+				// something other in the url, just redirect to the new site on the same hostname
+				redirect("/admin",10);
 			}
 		})
 		.fail(function() {
@@ -631,24 +623,59 @@ function getType() {
 		setHelp(systype);
 	}, "json" )
 	.fail(function() {
-		console.log("Poll restore request failed");
+		console.log("Request 'type' failed");
 	});
 	return systype;
 }
+
+function getDomains() {
+	console.log("Retreiving available domains");
+	domains = false;
+	selected = "";
+	$.get("/getdomains",function(data) {
+		domains = data.domains;
+		for (i = 0; i < domains.length; i++) {
+	  		if ( domains[i] ) {
+	  		  	console.log("Append "+domains[i]+" to domains");
+	  		  	if(data.domain == domains[i]) {
+	  		  		selected = 'selected="selected"';
+	  		  	}
+	  		  	else {
+	  		  		selected = "";
+	  		  	}
+
+	  		  	$("#select_domain").append('<option value="'+domains[i]+'" '+selected+'>'+domains[i]+'</option>');
+			} 
+		}
+	}, "json" )
+	.fail(function() {
+		console.log("Request 'Domains' failed.");
+	});
+	return domains;
+}
+
 
 var opiname_check = false;
 $("#opiname").keyup( function() {
 	if(opiname_check) opiname_check.abort(); // abort any ongoing checks 
 	opiname_check = $.ajax({
 		url : "/checkname",
-		data : JSON.stringify({ opiname : $("#opiname").val()}),
+		data : JSON.stringify({ opiname : $("#opiname").val(), domain : $("#select_domain").val()}),
 		contentType : "application/json",
 		type : "POST",
 	}).done(function(data) {
 		if(data.available) {
 			$("#opi_namestate").text("Name available");
+			$("#opi_namestate").parent().addClass("has-success");
+			$("#opi_namestate").parent().removeClass("has-error");
+			$("#btnOpiname").removeAttr("disabled","disabled");
+			console.log("NAME OK");
 		} else {
 			$("#opi_namestate").text("Name not available");
+			$("#opi_namestate").parent().addClass("has-error");
+			$("#opi_namestate").parent().removeClass("has-success");
+			$("#btnOpiname").attr("disabled","disabled");
+			console.log("NAME NOT OK");
 		}
 	});	
 });
@@ -664,6 +691,7 @@ $(document).ready( function() {
 	var unit_id;
 
 	type=getType();
+	domains=getDomains();
 
 	// fix margin if we are running in a small browser.
 	if($(window).width() < 760) {
@@ -778,9 +806,14 @@ $(document).ready( function() {
 					}
 						
 				} else {
+					// clear opiname input box messages
+					$("#opi_namestate").text("");
+					$("#opi_namestate").parent().removeClass("has-success");
+					$("#opi_namestate").parent().removeClass("has-error");
+					$("#btnOpiname").removeAttr("disabled","disabled");
 					// set the opiname variable before the clearing all fields
 					// done by set state
-					opiname = $("#opiname").val();
+					fqdn = $("#opiname").val()+"."+$("select_domain").val();
 					setState(result.state);
 					if(result.state == 5) {
 						// make paths globally available
@@ -804,7 +837,7 @@ $(document).ready( function() {
 						if(result.state == 15 ) {
 							// this will send the "terminate" signal to opi-control
 							// then redirect to "/admin"
-							done(opiname);
+							done(fqdn);
 						}
 					}	
 				}
