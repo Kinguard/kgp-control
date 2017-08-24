@@ -1,3 +1,9 @@
+opi-control (1.1.7) vili; urgency=medium
+
+  * Clean install flow with mykeep.net 
+
+ -- PA Nilsson <pa@openproducts.se>  Thu, 24 Aug 2017 08:58:39 +0200
+
 opi-control (1.1.6) vili; urgency=medium
 
   * Added support to detect system type 
