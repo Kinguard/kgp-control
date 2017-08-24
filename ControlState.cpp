@@ -282,7 +282,7 @@ void ControlState::StInit(EventData *data)
 			}
 			else
 			{
-				this->RegisterEvent( State::OpiName, nullptr);
+				this->RegisterEvent( State::AskOpiName, nullptr);
 			}
 			this->app->evhandler.AddEvent( 50, std::bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinstall"));
 		}
@@ -414,17 +414,26 @@ void ControlState::StAskOpiName(EventData *data)
 void ControlState::StOpiName(EventData *data)
 {
 	ScopedLog l("StOpiName");
-
-	ControlData *arg = dynamic_cast<ControlData*>(data);
-
-	if( this->app->SetDNSName(arg->data["opiname"].asString() ) )
+	if ( data == nullptr)
 	{
-		this->RegisterEvent( State::Completed, nullptr);
+		logg << Logger::Error << "Got Nullpointer" <<lend;
+		this->status = false;
+		this->RegisterEvent( State::AskOpiName, nullptr);
 	}
 	else
 	{
-		this->status = false;
-		this->RegisterEvent( State::AskOpiName, nullptr);
+		ControlData *arg = dynamic_cast<ControlData*>(data);
+		logg << Logger::Info << "StOpiName 2";
+
+		if( this->app->SetDNSName(arg->data["opiname"].asString() ) )
+		{
+			this->RegisterEvent( State::Completed, nullptr);
+		}
+		else
+		{
+			this->status = false;
+			this->RegisterEvent( State::AskOpiName, nullptr);
+		}
 	}
 }
 

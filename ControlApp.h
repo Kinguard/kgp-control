@@ -30,6 +30,7 @@ private:
 	string masterpassword;
 	string token;
 	string opi_name;
+	string domain;
 	string first_user;
 
 	Json::Value connstatus;

@@ -51,7 +51,8 @@ WebServer::WebServer(std::function<Json::Value(Json::Value)> cb):
 	routes[std::make_pair("/portstatus","GET")] = WebServer::handle_portstatus;
 	routes[std::make_pair("/terminate","POST")] = WebServer::handle_terminate;
 	routes[std::make_pair("/shutdown","POST")] = WebServer::handle_shutdown;
-    routes[std::make_pair("/gettype","GET")] = WebServer::handle_type;
+	routes[std::make_pair("/gettype","GET")] = WebServer::handle_type;
+	routes[std::make_pair("/getdomains","GET")] = WebServer::handle_domains;
 }
 
 void WebServer::Stop()
@@ -438,6 +439,7 @@ int WebServer::handle_checkname(mg_connection *conn)
 	logg << Logger::Debug << "Got request for checkname"<<lend;
 
 	Json::Value req;
+	string fqdn;
 
 	if( ! WebServer::parse_json(conn, req) )
 	{
@@ -445,12 +447,15 @@ int WebServer::handle_checkname(mg_connection *conn)
 		return MG_TRUE;
 	}
 
-	if( req.isMember("opiname") && req["opiname"].isString() && String::Trimmed( req["opiname"].asString(), "\t " ) != ""  )
+	if( req.isMember("opiname") && req["opiname"].isString() && String::Trimmed( req["opiname"].asString(), "\t " ) != ""  &&
+		req.isMember("domain") && req["domain"].isString() && String::Trimmed( req["domain"].asString(), "\t " ) != ""
+	)
 	{
+        	fqdn = String::Trimmed( req["opiname"].asString(), "\t " )+"."+String::Trimmed( req["domain"].asString(), "\t " );
 		OPI::DnsServer dns;
 		int result_code;
 		Json::Value ret;
-		tie(result_code, ret) = dns.CheckOPIName( String::Trimmed( req["opiname"].asString(), "\t " ) );
+		tie(result_code, ret) = dns.CheckOPIName( fqdn );
 
 		if( result_code == 200 || result_code == 403 )
 		{
@@ -485,13 +490,19 @@ int WebServer::handle_selectname(mg_connection *conn)
 		// True in the sense that we handled the req.
 		return MG_TRUE;
 	}
-	if( req.isMember("opiname") && req["opiname"].isString() && String::Trimmed( req["opiname"].asString(), "\t " ) != "" )
+	if( req.isMember("opiname") && req["opiname"].isString() && String::Trimmed( req["opiname"].asString(), "\t " ) != ""  &&
+	    req.isMember("domain") && req["domain"].isString() && String::Trimmed( req["domain"].asString(), "\t " ) != ""
+	)
 	{
 		Json::Value ret;
+		string fqdn;
+
+		fqdn = String::Trimmed( req["opiname"].asString(), "\t " )+"."+String::Trimmed( req["domain"].asString(), "\t " );
+
 		if( WebServer::callback != nullptr ){
 			Json::Value cmd;
 			cmd["cmd"] = "opiname";
-			cmd["opiname"] = String::Trimmed( req["opiname"].asString(), "\t " );
+			cmd["opiname"] = fqdn;
 			ret = WebServer::callback( cmd );
 		}
 		mg_send_header( conn, "Content-Type", "application/json");
@@ -603,6 +614,26 @@ int WebServer::handle_type(mg_connection *conn)
 		Json::Value cmd;
         
 		cmd["cmd"]= "gettype";
+		ret = WebServer::callback( cmd );
+	}
+
+	mg_send_header( conn, "Content-Type", "application/json");
+	mg_printf_data( conn, ret.toStyledString().c_str() );
+
+	return MG_TRUE;
+}
+
+int WebServer::handle_domains(mg_connection *conn)
+{
+	logg << Logger::Debug << "Got request for domains"<<lend;
+
+
+	Json::Value ret;
+	if( WebServer::callback != nullptr )
+	{
+		Json::Value cmd;
+
+		cmd["cmd"]= "getdomains";
 		ret = WebServer::callback( cmd );
 	}
 
