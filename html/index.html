@@ -573,19 +573,20 @@ function done(fqdn) {
 				}
 				
 			} else {
-				console.log("Redirecting");
+				//console.log("Redirecting");
+
 				// is the unit accessed by OP's domain pointers?
 				// could be "local." or IP also.
 				console.log(domains);
 				// is the access from the "local.devicename.domain.com" url?
 				if(location.href.indexOf("local") > 0) {
-					redirect("https://local."+opiname,10);
+					redirect("https://local."+fqdn,10);
 					return true;
 				} else {
 					// do we have any of our domain in the url?
 					for (i = 0; i < domains.length; i++) {
 						if(location.href.indexOf(domains[i]) > 0) {
-							redirect("https://"+opiname,10);
+							redirect("https://"+fqdn,10);
 							return true;
 						}
 					}
@@ -813,7 +814,7 @@ $(document).ready( function() {
 					$("#btnOpiname").removeAttr("disabled","disabled");
 					// set the opiname variable before the clearing all fields
 					// done by set state
-					fqdn = $("#opiname").val()+"."+$("select_domain").val();
+					fqdn = $("#opiname").val()+"."+$("#select_domain").val();
 					setState(result.state);
 					if(result.state == 5) {
 						// make paths globally available
