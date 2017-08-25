@@ -20,6 +20,12 @@ void TcpServer::ParseRequest(Utils::Net::SocketPtr c)
 		list<string> rows = String::Split(buf,"\r\n");
 		for( auto row: rows )
 		{
+			if( row.compare(0, 3, "GET") == 0)
+			{
+				// remove 'GET ' and split the remainder on ' ' (has a ' HTTP/1.0' at the end)
+				list<string> request = String::Split(row.substr(4, string::npos), " ",2);
+				this->url = request.front();
+			}
 			list<string> words = String::Split(row, ": ",2);
 			if( words.size() == 2 )
 			{
@@ -32,9 +38,11 @@ void TcpServer::ParseRequest(Utils::Net::SocketPtr c)
 void TcpServer::Redirect( Utils::Net::SocketPtr c )
 {
 	ostringstream ss;
+	string url = this->headers["host"]+this->url;
+
 	ss << "HTTP/1.1 307 Temporary Redirect\r\n"
 		  //<< "Location: https://www.openproducts.com\r\n"
-	   << "Location: https://"<<this->headers["host"]<<"\r\n"
+		<< "Location: https://"<<url<<"\r\n"
 		<< "Connection: close\n\n";
 
 	c->Write(ss.str().c_str(), ss.str().size());

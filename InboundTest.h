@@ -20,6 +20,7 @@ private:
 	bool dorun;
 
 	map<string,string> headers;
+	string url;
 	char buf[8192];
 
 	void ParseRequest(Utils::Net::SocketPtr c);

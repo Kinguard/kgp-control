@@ -781,6 +781,14 @@ bool ControlApp::SetDNSName(const string &opiname)
 
 	this->WriteConfig();
 
+
+    logg << Logger::Debug << "Get signed Certificate for '"<< opiname <<"'"<<lend;
+    if( ! this->GetSignedCert(opiname) )
+    {
+        // This can fail if portforwards does not work, then the above cert will be used.
+        logg << Logger::Notice << "Failed to get signed Certificate for device name: "<< opiname <<lend;
+    }
+
 	return true;
 }
 
@@ -1045,6 +1053,21 @@ bool ControlApp::GetCertificate(const string &opiname, const string &company)
 #endif
 
 	return true;
+}
+
+bool ControlApp::GetSignedCert(const string &opiname)
+{
+    bool ret;
+    tie(ret, ignore) = Process::Exec("/usr/share/kinguard-certhandler/letsencrypt.sh -ac");
+    if (ret)
+    {
+        logg << Logger::Notice << "Successfully received signed certificate" <<lend;
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 bool ControlApp::GetPasswordUSB()

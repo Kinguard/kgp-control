@@ -49,6 +49,7 @@ private:
 	bool RegisterKeys();
 	string GetBackupPassword();
 	bool GetCertificate(const string& opiname, const string& company="OPI");
+	bool GetSignedCert(const string& opiname);
 	bool GetPasswordUSB();
 	bool GetPasswordRoot();
 	bool SetPasswordUSB();
