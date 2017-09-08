@@ -1,3 +1,9 @@
+opi-control (1.1.10) vili; urgency=medium
+
+  * Updated path to backup auth-file 
+
+ -- PA Nilsson <pa@openproducts.se>  Fri, 08 Sep 2017 11:24:17 +0200
+
 opi-control (1.1.9) vili; urgency=medium
 
   * Bump for rebuild against newer libopi
