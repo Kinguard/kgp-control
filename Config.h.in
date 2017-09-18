@@ -10,7 +10,6 @@
 #cmakedefine OPI_BUILD_PACKAGE
 #cmakedefine OPI_BUILD_LOCAL
 
-#define BACKUP_PATH "/var/opi/etc/backup/auth.conf"
 #define DNS_PUB_PATH "/etc/opi/dnspub.pem"
 #define DNS_PRIV_PATH "/etc/opi/dnspriv.pem"
 #define CSR_PATH "/etc/opi/opi.csr"
