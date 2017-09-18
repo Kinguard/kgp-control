@@ -1,3 +1,9 @@
+opi-control (1.1.11) vili; urgency=medium
+
+  * Writing passphrase for ss3 backend during init. 
+
+ -- PA Nilsson <pa@openproducts.se>  Mon, 18 Sep 2017 11:28:34 +0200
+
 opi-control (1.1.10) vili; urgency=medium
 
   * Updated path to backup auth-file 

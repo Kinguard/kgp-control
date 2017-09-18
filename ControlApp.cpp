@@ -1278,7 +1278,12 @@ void ControlApp::WriteBackupConfig(const string &password)
 
 		<< "[local]\n"
 		<< "storage-url: local://\n"
-		<< "fs-passphrase: " << password<<endl;
+        << "fs-passphrase: " << password<<endl
+
+        << "[s3]\n"
+        << "storage-url: s3://\n"
+        << "fs-passphrase: " << password<<endl;
+
 
 	File::Write(BACKUP_PATH, ss.str(), 0600 );
 }
