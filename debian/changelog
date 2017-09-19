@@ -1,3 +1,9 @@
+opi-control (1.1.13) vili; urgency=medium
+
+  * Bump version for pbuilder rebuild 
+
+ -- PA Nilsson <pa@openproducts.se>  Tue, 19 Sep 2017 08:02:15 +0200
+
 opi-control (1.1.12) vili; urgency=medium
 
   * Remove duplicate definition for backup auth file. 
