@@ -833,17 +833,56 @@ bool ControlApp::InitializeSD()
 		logg << Logger::Notice << "No Luks volume on device, "<< sysinfo.StorageDevicePath()<<", creating"<<lend;
 
 		DiskHelper::PartitionDevice( sysinfo.StorageDevice() );
-		Luks l( sysinfo.StorageDevicePath() );
-		l.Format( this->masterpassword );
 
-		if( ! l.Open("opi", this->masterpassword ) )
+		logg << Logger::Debug << "Waiting for device to be available"<<lend;
+
+		int retries = 50;
+		bool done=false;
+		do
 		{
-			this->global_error = "Wrong password";
+			try
+			{
+				logg << Logger::Debug << "Checking device"<<lend;
+				done = DiskHelper::DeviceExists( Utils::File::RealPath( sysinfo.StorageDevicePath() ) );
+			}
+			catch(std::runtime_error& err)
+			{
+				logg << Logger::Debug << "Unable to probe device: "<< err.what() << lend;
+			}
+			if( !done && retries > 0 )
+			{
+				logg << Logger::Debug << "Device not yet available, waiting" << lend;
+				usleep(1000);
+			}
+		}while( !done && retries-- > 0);
+
+		if ( ! done )
+		{
+			logg << Logger::Notice << "Unable to retrieve newly partitioned device, aborting" << lend;
 			return false;
 		}
 
-		DiskHelper::FormatPartition( LUKSDEVICE,"OPI");
-		sd_isnew = true;
+		logg << Logger::Debug << "Device " << sysinfo.StorageDevicePath() << " avaliable" << lend;
+
+		try
+		{
+			Luks l( Utils::File::RealPath( sysinfo.StorageDevicePath() ) );
+			l.Format( this->masterpassword );
+
+			if( ! l.Open("opi", this->masterpassword ) )
+			{
+				this->global_error = "Wrong password";
+				return false;
+			}
+
+			DiskHelper::FormatPartition( LUKSDEVICE,"OPI");
+			sd_isnew = true;
+		}
+		catch( std::runtime_error& err)
+		{
+			logg << Logger::Notice << "Failed to format device: "<<err.what()<<lend;
+			return false;
+		}
 	}
 	else
 	{
