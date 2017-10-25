@@ -824,45 +824,61 @@ bool ControlApp::SecopUnlocked()
 	return (st != Secop::Uninitialized) && (st != Secop::Unknown);
 }
 
+static bool checkDevice(const string& path)
+{
+	logg << Logger::Debug << "Check device " << path << lend;
+	int retries = 50;
+	bool done=false;
+	do
+	{
+		try
+		{
+			logg << Logger::Debug << "Checking device"<<lend;
+			done = DiskHelper::DeviceExists( Utils::File::RealPath( path ) );
+		}
+		catch(std::runtime_error& err)
+		{
+			logg << Logger::Debug << "Unable to probe device: "<< err.what() << lend;
+		}
+		if( !done && retries > 0 )
+		{
+			logg << Logger::Debug << "Device not yet available, waiting" << lend;
+			usleep(1000);
+		}
+	}while( !done && retries-- > 0);
+
+	if ( ! done )
+	{
+		logg << Logger::Notice << "Unable to locate device, aborting" << lend;
+		return false;
+	}
+
+	logg << Logger::Debug << "Device " << path << " avaliable" << lend;
+	return true;
+}
+
 bool ControlApp::InitializeSD()
 {
 	logg << Logger::Debug << "Initialize sd card"<<lend;
 	bool sd_isnew = false;
+
+	if( ! checkDevice( sysinfo.StorageDevicePath() ) )
+	{
+		return false;
+	}
+
 	if( ! Luks::isLuks( sysinfo.StorageDeviceBlock()+sysinfo.StorageDevicePartition() ) )
 	{
 		logg << Logger::Notice << "No Luks volume on device, "<< sysinfo.StorageDevicePath()<<", creating"<<lend;
 
 		DiskHelper::PartitionDevice( sysinfo.StorageDevice() );
 
-		logg << Logger::Debug << "Waiting for device to be available"<<lend;
 
-		int retries = 50;
-		bool done=false;
-		do
+		if( ! checkDevice( sysinfo.StorageDevicePath() ) )
 		{
-			try
-			{
-				logg << Logger::Debug << "Checking device"<<lend;
-				done = DiskHelper::DeviceExists( Utils::File::RealPath( sysinfo.StorageDevicePath() ) );
-			}
-			catch(std::runtime_error& err)
-			{
-				logg << Logger::Debug << "Unable to probe device: "<< err.what() << lend;
-			}
-			if( !done && retries > 0 )
-			{
-				logg << Logger::Debug << "Device not yet available, waiting" << lend;
-				usleep(1000);
-			}
-		}while( !done && retries-- > 0);
-
-		if ( ! done )
-		{
-			logg << Logger::Notice << "Unable to retrieve newly partitioned device, aborting" << lend;
+			this->global_error = "Unable to locate newly partitioned device, aborting";
 			return false;
 		}
-
-		logg << Logger::Debug << "Device " << sysinfo.StorageDevicePath() << " avaliable" << lend;
 
 		try
 		{
