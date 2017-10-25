@@ -1,3 +1,9 @@
+opi-control (1.1.15) vili; urgency=medium
+
+  * Rebuild against newer libopi
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 23 Oct 2017 16:30:11 +0000
+
 opi-control (1.1.14) vili; urgency=medium
 
   * Implement poll for newly created partiton hopefully solving #343
