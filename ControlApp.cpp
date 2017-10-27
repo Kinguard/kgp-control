@@ -867,7 +867,7 @@ bool ControlApp::InitializeSD()
 		return false;
 	}
 
-	if( ! Luks::isLuks( sysinfo.StorageDeviceBlock()+sysinfo.StorageDevicePartition() ) )
+	if( ! Luks::isLuks( sysinfo.StorageDevicePath() ) )
 	{
 		logg << Logger::Notice << "No Luks volume on device, "<< sysinfo.StorageDevicePath()<<", creating"<<lend;
 
@@ -1459,7 +1459,7 @@ Json::Value ControlApp::CheckRestore()
 		return Json::nullValue;
 	}
 
-	if( Luks::isLuks( sysinfo.StorageDeviceBlock()+sysinfo.StorageDevicePartition() ) )
+	if( Luks::isLuks( sysinfo.StorageDevicePath() ) )
 	{
 		// We never do a restore if we have a luks partition on sd
 		return Json::nullValue;
