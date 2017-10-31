@@ -1,3 +1,9 @@
+opi-control (1.1.17) vili; urgency=medium
+
+  * Umount backup source after scan for restore
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 31 Oct 2017 13:16:19 +0000
+
 opi-control (1.1.16) vili; urgency=medium
 
   * Update path and use dev-path used when checking for Luks

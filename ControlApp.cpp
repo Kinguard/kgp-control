@@ -1501,6 +1501,7 @@ Json::Value ControlApp::CheckRestore()
 			hasdata = true;
 			retval["local"].append(val);
 		}
+		this->backuphelper->UmountLocal();
 	}
 	else
 	{
@@ -1516,6 +1517,7 @@ Json::Value ControlApp::CheckRestore()
 			hasdata = true;
 			retval["remote"].append(val);
 		}
+		this->backuphelper->UmountRemote();
 	}
 	else
 	{
@@ -1582,6 +1584,39 @@ bool ControlApp::DoRestore(const string &path)
 	{
 		logg << Logger::Error << "Failed to mount SD for backup: "<< err.what()<<lend;
 		this->global_error = "Restore backup - Failed to access SD card";
+		return false;
+	}
+
+
+// Temp workaround to figure out if this is a local or remote backup
+// Todo: Refactor in libopi
+#define LOCALBACKUP	"/tmp/localbackup"
+#define REMOTEBACKUP "/tmp/remotebackup"
+
+	if( path.substr(0,strlen(LOCALBACKUP) ) == LOCALBACKUP )
+	{
+		logg << Logger::Debug << "Do restore from local backup "<< path << lend;
+		if( ! this->backuphelper->MountLocal() )
+		{
+			logg << Logger::Error << "Failed to (re)mount local backup" << lend;
+			this->global_error = "Restore backup - failed to retrieve local backup";
+			return false;
+		}
+	}
+	else if( path.substr(0, strlen(REMOTEBACKUP)) == REMOTEBACKUP )
+	{
+		logg << Logger::Debug << "Do restore from remote backup "<< path << lend;
+		if( ! this->backuphelper->MountRemote() )
+		{
+			logg << Logger::Error << "Failed to (re)mount remote backup" << lend;
+			this->global_error = "Restore backup - failed to retrieve remote backup";
+			return false;
+		}
+	}
+	else
+	{
+		logg << Logger::Error << "Malformed restore path: " << path << lend;
+		this->global_error = "Restore backup - Malformed source path" ;
 		return false;
 	}
 
