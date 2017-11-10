@@ -1,3 +1,10 @@
+opi-control (1.1.18) vili; urgency=medium
+
+  * Umount s3ql FS in init.d do_stop()
+  * Run notifcation of system shutdown. 
+
+ -- PA Nilsson <pa@openproducts.se>  Fri, 10 Nov 2017 12:46:24 +0100
+
 opi-control (1.1.17) vili; urgency=medium
 
   * Umount backup source after scan for restore

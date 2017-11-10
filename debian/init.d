@@ -60,6 +60,10 @@ do_stop()
 	#   1 if daemon was already stopped
 	#   2 if daemon could not be stopped
 	#   other if a failure occurred
+	#unmount  s3ql FS
+	kgp-notifier -l "LOG_NOTICE" -m "Shutting down" -i "sysctrl"
+	/usr/share/opi-backup/umount_fs.sh
+	
 	start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 --pidfile $PIDFILE --name $NAME
 	RETVAL="$?"
 	[ "$RETVAL" = 2 ] && return 2
