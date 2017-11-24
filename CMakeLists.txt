@@ -35,7 +35,7 @@ include_directories (
 		"${LIBOPI_INCLUDE_DIRS}"
 	)
 
-add_definitions( -std=c++11 )
+add_definitions( -std=c++11 -Wall )
 add_executable(${PROJECT_NAME} ${SRC_LIST})
 
 add_subdirectory( pwdctrl )

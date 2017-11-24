@@ -30,5 +30,7 @@
 #define MOUNTPOINT		"/var/opi/"
 
 #define LUKSDEVICE		"/dev/mapper/opi"
-
+#define LVMDEVICE		"/dev/pool/data"
+#define LVMVG			"pool"
+#define LVMLV			"data"
 #endif

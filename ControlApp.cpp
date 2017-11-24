@@ -4,6 +4,7 @@
 #include "InboundTest.h"
 #include "ConnTest.h"
 #include "PasswordFile.h"
+#include "StorageManager.h"
 
 #include <libutils/FileUtils.h>
 #include <libutils/ConfigFile.h>
@@ -16,7 +17,6 @@
 #include <libopi/CryptoHelper.h>
 #include <libopi/AuthServer.h>
 #include <libopi/DnsServer.h>
-#include <libopi/Luks.h>
 #include <libopi/MailConfig.h>
 #include <libopi/SysInfo.h>
 #include <libopi/Notification.h>
@@ -149,7 +149,7 @@ void ControlApp::Main()
 
 	logg << Logger::Debug << "Checking device: "<< sysinfo.StorageDevicePath() <<lend;
 
-	this->state = ControlState::State::AskInitCheckRestore; // 3
+	this->state = ControlState::State::AskInitCheckRestore;
 	this->skiprestore = false;
 
 	if( File::FileExists(SYSCONFIG_PATH))
@@ -160,7 +160,7 @@ void ControlApp::Main()
 
 		if( unit_id != "" )
 		{
-			this->state = ControlState::State::AskUnlock;  // 6
+			this->state = ControlState::State::AskUnlock;
 			this->unit_id = unit_id;
 		}
 
@@ -180,32 +180,30 @@ void ControlApp::Main()
 	}
 
 	// Check environment
-	if( ! DiskHelper::DeviceExists( sysinfo.StorageDevice() ) )
+	if( ! StorageManager::DeviceExists() )
 	{
 		logg << Logger::Error << "Device not present"<<lend;
-		this->state = ControlState::State::Error; // 2
-	}
-	else if( DiskHelper::DeviceSize( sysinfo.StorageDevice() ) == 0 )
-	{
-		logg << Logger::Error << "No space on device"<< lend;
-		this->state = ControlState::State::Error; // 2
+		this->state = ControlState::State::Error;
 	}
 
 	// We have a valid config and a device but device is not a luks container
-	if( this->state == ControlState::State::AskUnlock /* 6 */ && ! Luks::isLuks( sysinfo.StorageDevicePath() ) )
+	if( this->state == ControlState::State::AskUnlock )
 	{
-		logg << Logger::Debug << "Config correct but no luksdevice do initialization"<<lend;
-		this->state = ControlState::State::AskReInitCheckRestore; // 9
+		if( StorageManager::UseLocking() && ! StorageManager::DeviceExists() )
+		{
+			logg << Logger::Debug << "Config correct but no luksdevice do initialization"<<lend;
+			this->state = ControlState::State::AskReInitCheckRestore;
+		}
 	}
 
 	// Try use password from USB or cfg in /root if possible
-	if( this->state == ControlState::State::AskUnlock /* 6 */ )
+	if( this->state == ControlState::State::AskUnlock )
 	{
 		if( this->GetPasswordUSB() || this->GetPasswordRoot() )
 		{
 			if( this->DoUnlock( this->masterpassword, false ) )
 			{
-				this->state = ControlState::State::Completed; // 7
+				this->state = ControlState::State::Completed;
 			}
 		}
 	}
@@ -213,7 +211,7 @@ void ControlApp::Main()
 	InboundTestPtr ibt;
 	TcpServerPtr redirector;
 
-	if( this->state == ControlState::State::AskInitCheckRestore /* 3 */ )
+	if( this->state == ControlState::State::AskInitCheckRestore )
 	{
 
 		logg << Logger::Debug << "Starting inbound connection tests"<<lend;
@@ -232,14 +230,14 @@ void ControlApp::Main()
 		redirector->Start();
 	}
 
-	if( this->state != ControlState::State::Completed /* 7 */ )
+	if( this->state != ControlState::State::Completed )
 	{
 
 		this->statemachine = ControlStatePtr( new ControlState( this, this->state ) );
 
 		this->ws = WebServerPtr( new WebServer( std::bind(&ControlApp::WebCallback,this, _1)) );
 
-		if( this->state == ControlState::State::Error /* 2 */ )
+		if( this->state == ControlState::State::Error )
 		{
 			OPI::notification.Notify( OPI::Notification::Error, "Possible error: " + this->global_error);
 		}
@@ -267,7 +265,7 @@ void ControlApp::Main()
 		redirector.reset();
 	}
 
-	if( this->state == ControlState::State::Completed /* 7 */ )
+	if( this->state == ControlState::State::Completed )
 	{
 		// We should have reached a positive end of init, start services
 		logg << Logger::Debug << "Init completed, start servers"<<lend;
@@ -285,13 +283,13 @@ void ControlApp::Main()
 
 		OPI::notification.Notify( OPI::Notification::Completed, "Opi Control completed ");
 	}
-	else if( this->state == ControlState::State::ShutDown /* 10 */ )
+	else if( this->state == ControlState::State::ShutDown )
 	{
 		logg << Logger::Debug << "Register power off opi"<<lend;
 
 		this->evhandler.AddEvent( 99, bind(Process::Exec, "/sbin/poweroff") );
 	}
-	else if( this->state == ControlState::State::Reboot /* 11 */ )
+	else if( this->state == ControlState::State::Reboot )
 	{
 		logg << Logger::Debug << "Register reboot opi"<<lend;
 		this->evhandler.AddEvent( 99, bind(Process::Exec, "/sbin/reboot") );
@@ -305,11 +303,6 @@ void ControlApp::Main()
 
 void ControlApp::ShutDown()
 {
-#if 0
-	ServiceHelper::Stop("secop");
-	DiskHelper::Umount("/var/opi");
-	Luks( STORAGE_PART).Close("opi");
-#endif
 	curl_global_cleanup();
 	logg << Logger::Debug << "Shutting down"<< lend;
 }
@@ -458,40 +451,15 @@ bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 {
 	logg << Logger::Debug << "Unlock sd card"<<lend;
 
-	if( ! Luks::isLuks( sysinfo.StorageDevicePath() ) )
+	if( ! StorageManager(pwd).Open() )
 	{
-		this->global_error = "No crypto storage available";
+		this->global_error = "Unable to unlock crypto storage. (Wrong password?)";
 		return false;
 	}
 
-	logg << Logger::Notice << "LUKS volume found on "<< sysinfo.StorageDevicePath()<< lend;
+	logg << Logger::Debug << "Storage device opened"<< lend;
 
-	Luks l( sysinfo.StorageDevicePath() );
-
-	if( ! l.Active("opi") )
-	{
-		logg << Logger::Debug << "Activating LUKS volume"<<lend;
-		if ( !l.Open("opi",pwd) )
-		{
-			logg << Logger::Debug << "Failed to openLUKS volume on "<<sysinfo.StorageDevicePath()<< lend;
-			this->global_error = "Unable to unlock crypto storage. (Wrong password?)";
-			return false;
-		}
-	}
-
-	logg << Logger::Debug << "LUKS volume on "<<sysinfo.StorageDevicePath()<< " opened"<< lend;
-
-	try
-	{
-		// Make sure device is not mounted (Should not happen)
-		if( DiskHelper::IsMounted( LUKSDEVICE ) != "" )
-		{
-			DiskHelper::Umount( LUKSDEVICE );
-		}
-
-		DiskHelper::Mount( LUKSDEVICE , MOUNTPOINT );
-	}
-	catch( ErrnoException& err)
+	if( ! StorageManager::mountDevice( MOUNTPOINT ) )
 	{
 		this->global_error = "Unable to access SD card";
 		return false;
@@ -824,128 +792,11 @@ bool ControlApp::SecopUnlocked()
 	return (st != Secop::Uninitialized) && (st != Secop::Unknown);
 }
 
-static bool checkDevice(const string& path)
-{
-	logg << Logger::Debug << "Check device " << path << lend;
-	int retries = 50;
-	bool done=false;
-	do
-	{
-		try
-		{
-			logg << Logger::Debug << "Checking device"<<lend;
-			done = DiskHelper::DeviceExists( Utils::File::RealPath( path ) );
-		}
-		catch(std::runtime_error& err)
-		{
-			logg << Logger::Debug << "Unable to probe device: "<< err.what() << lend;
-		}
-		if( !done && retries > 0 )
-		{
-			logg << Logger::Debug << "Device not yet available, waiting" << lend;
-			usleep(1000);
-		}
-	}while( !done && retries-- > 0);
-
-	if ( ! done )
-	{
-		logg << Logger::Notice << "Unable to locate device, aborting" << lend;
-		return false;
-	}
-
-	logg << Logger::Debug << "Device " << path << " avaliable" << lend;
-	return true;
-}
-
 bool ControlApp::InitializeSD()
 {
 	logg << Logger::Debug << "Initialize sd card"<<lend;
-	bool sd_isnew = false;
 
-	if( ! checkDevice( sysinfo.StorageDevicePath() ) )
-	{
-		return false;
-	}
-
-	if( ! Luks::isLuks( sysinfo.StorageDevicePath() ) )
-	{
-		logg << Logger::Notice << "No Luks volume on device, "<< sysinfo.StorageDevicePath()<<", creating"<<lend;
-
-		DiskHelper::PartitionDevice( sysinfo.StorageDevice() );
-
-
-		if( ! checkDevice( sysinfo.StorageDevicePath() ) )
-		{
-			this->global_error = "Unable to locate newly partitioned device, aborting";
-			return false;
-		}
-
-		try
-		{
-			Luks l( Utils::File::RealPath( sysinfo.StorageDevicePath() ) );
-			l.Format( this->masterpassword );
-
-			if( ! l.Open("opi", this->masterpassword ) )
-			{
-				this->global_error = "Wrong password";
-				return false;
-			}
-
-			DiskHelper::FormatPartition( LUKSDEVICE,"OPI");
-			sd_isnew = true;
-		}
-		catch( std::runtime_error& err)
-		{
-			logg << Logger::Notice << "Failed to format device: "<<err.what()<<lend;
-			return false;
-		}
-	}
-	else
-	{
-		logg << Logger::Notice << "LUKS volume found on "<< sysinfo.StorageDevicePath() << lend;
-
-		Luks l( sysinfo.StorageDevicePath());
-
-		if( ! l.Active("opi") )
-		{
-			logg << Logger::Debug << "Activating LUKS volume"<<lend;
-			if ( !l.Open("opi", this->masterpassword ) )
-			{
-				this->global_error = "Wrong password";
-				return false;
-			}
-		}
-	}
-
-	try
-	{
-		// Make sure device is not mounted (Should not happen)
-		if( DiskHelper::IsMounted( LUKSDEVICE ) != "" )
-		{
-			DiskHelper::Umount( LUKSDEVICE );
-		}
-
-		if( sd_isnew )
-		{
-			logg << Logger::Debug << "Sync mmc to SD"<<lend;
-			// Sync data from emmc to sd
-			DiskHelper::Mount( LUKSDEVICE , TMP_MOUNT );
-
-			DiskHelper::SyncPaths(MOUNTPOINT, TMP_MOUNT);
-
-			DiskHelper::Umount(LUKSDEVICE);
-		}
-
-		// Mount in final place
-		DiskHelper::Mount( LUKSDEVICE , MOUNTPOINT );
-	}
-	catch( ErrnoException& err)
-	{
-		this->global_error = "Unable to access SD card";
-		return false;
-	}
-
-	return true;
+	return StorageManager(this->masterpassword).Initialize();
 }
 
 bool ControlApp::RegisterKeys( )
@@ -1459,9 +1310,9 @@ Json::Value ControlApp::CheckRestore()
 		return Json::nullValue;
 	}
 
-	if( Luks::isLuks( sysinfo.StorageDevicePath() ) )
+	if( StorageManager::UseLocking() && StorageManager::IsLocked()  )
 	{
-		// We never do a restore if we have a luks partition on sd
+		// We never do a restore if we have a locked device
 		return Json::nullValue;
 	}
 
@@ -1568,25 +1419,13 @@ bool ControlApp::DoRestore(const string &path)
 		return false;
 	}
 
-	try
+	StorageManager mgr(this->masterpassword );
+	if( ! mgr.mountDevice( TMP_MOUNT ) )
 	{
-		// We need access to underlying info of SD card
-		// move mount
-		// Make sure device is not mounted (Should not happen)
-		if( DiskHelper::IsMounted( LUKSDEVICE ) != "" )
-		{
-			DiskHelper::Umount( LUKSDEVICE );
-		}
-
-		DiskHelper::Mount( LUKSDEVICE , TMP_MOUNT );
-	}
-	catch( ErrnoException& err)
-	{
-		logg << Logger::Error << "Failed to mount SD for backup: "<< err.what()<<lend;
+		logg << Logger::Error << "Failed to mount SD for backup: "<< mgr.Error()<<lend;
 		this->global_error = "Restore backup - Failed to access SD card";
 		return false;
 	}
-
 
 // Temp workaround to figure out if this is a local or remote backup
 // Todo: Refactor in libopi
@@ -1622,14 +1461,14 @@ bool ControlApp::DoRestore(const string &path)
 
 	if( !this->backuphelper->RestoreBackup( path ) )
 	{
-		DiskHelper::Umount( LUKSDEVICE );
+		StorageManager::umountDevice();
 		this->global_error = "Restore Backup - restore failed";
 		return false;
 	}
 
 	try
 	{
-		DiskHelper::Umount( LUKSDEVICE );
+		StorageManager::umountDevice();
 	}
 	catch( ErrnoException& err)
 	{
