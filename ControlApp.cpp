@@ -189,7 +189,7 @@ void ControlApp::Main()
 	// We have a valid config and a device but device is not a luks container
 	if( this->state == ControlState::State::AskUnlock )
 	{
-		if( StorageManager::UseLocking() && ! StorageManager::DeviceExists() )
+		if( StorageManager::UseLocking() && ! StorageManager::StorageAreaExists() )
 		{
 			logg << Logger::Debug << "Config correct but no luksdevice do initialization"<<lend;
 			this->state = ControlState::State::AskReInitCheckRestore;
@@ -1307,18 +1307,22 @@ Json::Value ControlApp::CheckRestore()
 
 	if( this->skiprestore )
 	{
+		logg << Logger::Debug << "Restore manually cancelled"<<lend;
 		return Json::nullValue;
 	}
 
-	if( StorageManager::UseLocking() && StorageManager::IsLocked()  )
+	if( StorageManager::UseLocking() && StorageManager::StorageAreaExists()  )
 	{
 		// We never do a restore if we have a locked device
+		logg << Logger::Notice << "Found locked device, aborting"<<lend;
 		return Json::nullValue;
 	}
 
 	if( this->masterpassword == "" )
 	{
 		// Need password to be able to get backups
+		logg << Logger::Notice << "Missing password, restore impossible" << lend;
+
 		return Json::nullValue;
 	}
 

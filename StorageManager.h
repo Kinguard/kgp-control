@@ -36,7 +36,13 @@ public:
 	static string DevicePath();
 
 	/**
-	 * @brief DeviceExists check if device exists and of right type
+	 * @brief StorageAreaExists check if storage area is existant
+	 * @return true if area exists
+	 */
+	static bool StorageAreaExists();
+
+	/**
+	 * @brief DeviceExists check if underlaying block device exists
 	 * @return true if exists
 	 */
 	static bool DeviceExists();
@@ -61,6 +67,8 @@ private:
 
 	bool setupStorageArea(const string& device);
 
+	void RemoveLUKS();
+	void RemoveLVM();
 	bool InitializeLVM();
 
 	bool device_new;

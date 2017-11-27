@@ -98,10 +98,10 @@ bool StorageManager::Initialize()
 		return false;
 	}
 
-	string luksdevice = sysinfo.StorageDevicePath();
+	string curdevice = sysinfo.StorageDevicePath();
 	if( SysInfo::useLVM() )
 	{
-		luksdevice = LVMDEVICE;
+		curdevice = LVMDEVICE;
 		if( ! this->InitializeLVM() )
 		{
 			return false;
@@ -110,13 +110,14 @@ bool StorageManager::Initialize()
 
 	if( SysInfo::useLUKS() )
 	{
-		if( ! this->InitializeLUKS( luksdevice) )
+		if( ! this->InitializeLUKS( curdevice) )
 		{
 			return false;
 		}
+		curdevice = LUKSDEVICE;
 	}
 
-	return this->setupStorageArea( luksdevice );
+	return this->setupStorageArea( curdevice );
 }
 
 bool StorageManager::Open()
@@ -172,23 +173,76 @@ string StorageManager::DevicePath()
 	return source;
 }
 
+bool StorageManager::StorageAreaExists()
+{
+	logg << Logger::Debug << "Check if storage area exists"<<lend;
+	try
+	{
+		// With no underlaying device there can't be any upper layer either
+		if( ! DiskHelper::DeviceExists( sysinfo.StorageDevice() ) )
+		{
+			return false;
+		}
+
+		// We need storage space on underlaying device. I.e. an sd-card is available in slot
+		if( DiskHelper::DeviceSize( sysinfo.StorageDevice() ) == 0 )
+		{
+			return false;
+		}
+
+		if( SysInfo::useLVM() && ! DiskHelper::DeviceExists( LVMDEVICE ) )
+		{
+			return false;
+		}
+
+		// If we have a luks-volume on underlaying storage we assume we have a correct setup
+		if( SysInfo::useLUKS() )
+		{
+			if( SysInfo::useLVM() && ! Luks::isLuks( LVMDEVICE ) )
+			{
+				return false;
+			}
+
+			if( ! SysInfo::useLVM() && ! Luks::isLuks( sysinfo.StorageDevicePath() ) )
+			{
+				return false;
+			}
+		}
+
+	}
+	catch( std::exception& e)
+	{
+		logg << Logger::Notice << "Failed to check" << StorageManager::DevicePath()<< ": " << e.what() <<lend;
+		return false;
+	}
+
+	return true;
+}
+
 bool StorageManager::DeviceExists()
 {
-	if( ! DiskHelper::DeviceExists( StorageManager::DevicePath() ) )
+	try
 	{
+		string device = File::RealPath( sysinfo.StorageDevice() );
+
+		logg << Logger::Debug << "Checking device " << device << lend;
+
+
+		if( ! DiskHelper::DeviceExists( device ) )
+		{
+			return false;
+		}
+
+		if( DiskHelper::DeviceSize( device ) == 0 )
+		{
+			return false;
+		}
+
+	}catch( std::exception& e)
+	{
+		logg << Logger::Notice << "Failed to check device: " << e.what() <<lend;
 		return false;
 	}
-
-	if( DiskHelper::DeviceSize( sysinfo.StorageDevice() ) == 0 )
-	{
-		return false;
-	}
-
-	if( SysInfo::useLUKS() )
-	{
-		return Luks::isLuks( StorageManager::DevicePath() );
-	}
-
 	return true;
 }
 
@@ -307,13 +361,75 @@ bool StorageManager::setupStorageArea(const string &device)
 	return true;
 }
 
+void StorageManager::RemoveLUKS()
+{
+	logg << Logger::Debug << "Remove any active LUKS volumes on storage area" << lend;
+	try
+	{
+		if( SysInfo::useLVM() && Luks::isLuks( LVMDEVICE ) )
+		{
+			logg << Logger::Debug << "Try closing device" << lend;
+			Luks l( LVMDEVICE );
+
+			l.Close("opi" );
+		}
+	}
+	catch( std::exception& e)
+	{
+		logg << Logger::Notice << "Failed to close LUKS" << e.what() << lend;
+	}
+	logg << Logger::Debug << "Remove LUKS done"<< lend;
+}
+
+void StorageManager::RemoveLVM()
+{
+	logg << Logger::Debug << "Remove any present LVM volumes"<<lend;
+	try
+	{
+		LVM l;
+
+		logg << Logger::Debug << "Manager created"<<lend;
+
+		list<VolumeGroupPtr> vgs = l.ListVolumeGroups();
+		logg << Logger::Debug << "List volumes"<<lend;
+		for( auto& vg: vgs)
+		{
+			logg << Logger::Debug << "Iterate"<<lend;
+			list<LogicalVolumePtr> lvs = vg->GetLogicalVolumes();
+			for( auto& lv: lvs)
+			{
+				logg << Logger::Debug << "Remove LV"<<lend;
+				vg->RemoveLogicalVolume(lv);
+			}
+
+			logg << Logger::Debug << "Remove VG"<<lend;
+			l.RemoveVolumeGroup(vg);
+		}
+
+		//TODO: remove all PVs
+	}
+	catch( std::exception& e)
+	{
+		logg << Logger::Error << "Failed to remove lvms: " << e.what()<<lend;
+	}
+	logg << Logger::Debug << "Remove done"<<lend;
+}
+
 bool StorageManager::InitializeLVM()
 {
 	logg << Logger::Debug << "Initialize LVM on " << LVMDEVICE << lend;
 	try
 	{
-		if( ! DiskHelper::DeviceExists( Utils::File::RealPath( LVMDEVICE )) )
+		if( ! StorageManager::StorageAreaExists() )
 		{
+			// Unfortunately we cant assume a clean slate, there could be a partial/full lvm here
+			// try to remove
+			if( SysInfo::useLUKS() )
+			{
+				this->RemoveLUKS();
+			}
+			this->RemoveLVM();
+
 			logg << Logger::Notice << "No LVM on device "<< sysinfo.StorageDevicePath()<<", creating"<<lend;
 			DiskHelper::PartitionDevice( sysinfo.StorageDevice() );
 
@@ -324,8 +440,8 @@ bool StorageManager::InitializeLVM()
 
 			// Setup device
 			LVM lvm;
-
-			PhysicalVolumePtr pv = lvm.CreatePhysicalVolume( sysinfo.StorageDevicePath() );
+			logg << Logger::Debug << "Create pv on " << sysinfo.StorageDevicePath() << lend;
+			PhysicalVolumePtr pv = lvm.CreatePhysicalVolume( File::RealPath( sysinfo.StorageDevicePath() ) );
 
 			VolumeGroupPtr vg = lvm.CreateVolumeGroup( LVMVG, {pv} );
 

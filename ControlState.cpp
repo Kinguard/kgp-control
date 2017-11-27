@@ -4,8 +4,8 @@
 #include <libutils/Thread.h>
 #include <libopi/Secop.h>
 #include <libopi/SysInfo.h>
-#include <libopi/Luks.h>
 
+#include "StorageManager.h"
 #include "ControlApp.h"
 #include "Config.h"
 
@@ -332,6 +332,12 @@ void ControlState::StReInit(EventData *data)
 
 	ControlData *arg = dynamic_cast<ControlData*>(data);
 
+	if( arg == nullptr )
+	{
+		logg << Logger::Emerg << "Missing arguments to reinit!"<<lend;
+		logg.flush();
+	}
+
 	if( this->app->DoInit(arg->data["save"].asBool() ) )
 	{
 		this->app->evhandler.AddEvent( 50, bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinit") );
@@ -365,7 +371,7 @@ void ControlState::StRestore(EventData *data)
 		this->app->skiprestore = true;
 
 		// Figure out what state to return to
-		if( ! Luks::isLuks( sysinfo.StorageDeviceBlock() + sysinfo.StorageDevicePartition() ) )
+		if( ! StorageManager::StorageAreaExists() )
 		{
 			this->RegisterEvent( State::ReInit, new ControlData( arg->data ) );
 		}
@@ -569,7 +575,7 @@ void ControlState::DoRestore(const string &path)
 		this->app->CleanupRestoreEnv();
 
 		// Figure out what state to return to
-		if( ! Luks::isLuks( sysinfo.StorageDeviceBlock() + sysinfo.StorageDevicePartition() ) )
+		if( ! StorageManager::StorageAreaExists() )
 		{
 			this->TriggerEvent( State::ReInit, nullptr);
 		}
