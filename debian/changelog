@@ -1,3 +1,9 @@
+opi-control (1.1.19) vili; urgency=medium
+
+  * Updates on StorageManager
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 27 Nov 2017 17:12:40 +0100
+
 opi-control (1.1.18) vili; urgency=medium
 
   * Umount s3ql FS in init.d do_stop()
