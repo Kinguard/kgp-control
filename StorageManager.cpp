@@ -388,21 +388,25 @@ void StorageManager::RemoveLVM()
 	{
 		LVM l;
 
-		logg << Logger::Debug << "Manager created"<<lend;
-
 		list<VolumeGroupPtr> vgs = l.ListVolumeGroups();
-		logg << Logger::Debug << "List volumes"<<lend;
 		for( auto& vg: vgs)
 		{
-			logg << Logger::Debug << "Iterate"<<lend;
+			if( vg == nullptr )
+			{
+				logg << Logger::Error << "Got nullptr vg from listvgs"<< lend;
+				continue;
+			}
 			list<LogicalVolumePtr> lvs = vg->GetLogicalVolumes();
 			for( auto& lv: lvs)
 			{
-				logg << Logger::Debug << "Remove LV"<<lend;
+				if( lv == nullptr )
+				{
+					logg << Logger::Error << "Got nullptr lv from listlvs"<< lend;
+					continue;
+				}
 				vg->RemoveLogicalVolume(lv);
 			}
 
-			logg << Logger::Debug << "Remove VG"<<lend;
 			l.RemoveVolumeGroup(vg);
 		}
 
@@ -422,6 +426,8 @@ bool StorageManager::InitializeLVM()
 	{
 		if( ! StorageManager::StorageAreaExists() )
 		{
+			logg << Logger::Notice << "No LVM on device "<< sysinfo.StorageDevicePath()<<", creating"<<lend;
+
 			// Unfortunately we cant assume a clean slate, there could be a partial/full lvm here
 			// try to remove
 			if( SysInfo::useLUKS() )
@@ -430,18 +436,33 @@ bool StorageManager::InitializeLVM()
 			}
 			this->RemoveLVM();
 
-			logg << Logger::Notice << "No LVM on device "<< sysinfo.StorageDevicePath()<<", creating"<<lend;
 			DiskHelper::PartitionDevice( sysinfo.StorageDevice() );
 
 			if( ! this->checkDevice( sysinfo.StorageDevicePath() ) )
 			{
+				logg << Logger::Error << "No such device avaliable (" << sysinfo.StorageDevicePath() << lend;
 				return false;
 			}
 
 			// Setup device
 			LVM lvm;
-			logg << Logger::Debug << "Create pv on " << sysinfo.StorageDevicePath() << lend;
-			PhysicalVolumePtr pv = lvm.CreatePhysicalVolume( File::RealPath( sysinfo.StorageDevicePath() ) );
+			PhysicalVolumePtr pv;
+			try
+			{
+				pv = lvm.CreatePhysicalVolume( File::RealPath( sysinfo.StorageDevicePath() ) );
+			}
+			catch( ErrnoException& err )
+			{
+				logg << Logger::Debug << "Device not yet reappeared, wait and check" << lend;
+				// Udev most likely not done yet, check device once more and retry.
+				if( ! this->checkDevice( sysinfo.StorageDevicePath() ) )
+				{
+					logg << Logger::Error << "Device disappeared? (" << sysinfo.StorageDevicePath() << lend;
+					return false;
+				}
+
+				pv = lvm.CreatePhysicalVolume( File::RealPath( sysinfo.StorageDevicePath() ) );
+			}
 
 			VolumeGroupPtr vg = lvm.CreateVolumeGroup( LVMVG, {pv} );
 
