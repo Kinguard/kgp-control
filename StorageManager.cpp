@@ -438,11 +438,20 @@ bool StorageManager::InitializeLVM()
 
 			DiskHelper::PartitionDevice( sysinfo.StorageDevice() );
 
+			// We have a synchronization problem trying to figure out when partition is finalized
+			// and u-dev have created /dev entries. Thus we back of twice to hopefully let udev
+			// do its thing.
+			logg << Logger::Debug << "Sleep and wait for udev"<< lend;
+			sleep(1);
+
 			if( ! this->checkDevice( sysinfo.StorageDevicePath() ) )
 			{
 				logg << Logger::Error << "No such device avaliable (" << sysinfo.StorageDevicePath() << lend;
 				return false;
 			}
+
+			logg << Logger::Debug << "Sleep some more and hope udev is done"<< lend;
+			sleep(3);
 
 			// Setup device
 			LVM lvm;
