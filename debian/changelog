@@ -1,3 +1,9 @@
+opi-control (1.1.22) vili; urgency=medium
+
+  * Refactor initialize lvm once more
+
+ -- Tor Krill <tor@openproducts.se>  Sun, 10 Dec 2017 22:57:53 +0100
+
 opi-control (1.1.21) vili; urgency=medium
 
   * Do some strategic sleep in init lvm to hopefully let udev create nodes

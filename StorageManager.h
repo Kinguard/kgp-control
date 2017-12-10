@@ -69,6 +69,7 @@ private:
 
 	void RemoveLUKS();
 	void RemoveLVM();
+	bool CreateLVM();
 	bool InitializeLVM();
 
 	bool device_new;

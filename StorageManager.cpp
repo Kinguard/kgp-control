@@ -43,7 +43,7 @@ bool StorageManager::checkDevice(const string& path)
 		if( !done && retries > 0 )
 		{
 			logg << Logger::Debug << "Device not yet available, waiting" << lend;
-			usleep(1000);
+			usleep(5000);
 		}
 	}while( !done && retries-- > 0);
 
@@ -419,6 +419,30 @@ void StorageManager::RemoveLVM()
 	logg << Logger::Debug << "Remove done"<<lend;
 }
 
+bool StorageManager::CreateLVM()
+{
+	LVM lvm;
+	PhysicalVolumePtr pv;
+	try
+	{
+		pv = lvm.CreatePhysicalVolume( File::RealPath( sysinfo.StorageDevicePath() ) );
+
+		VolumeGroupPtr vg = lvm.CreateVolumeGroup( LVMVG, {pv} );
+
+		LogicalVolumePtr lv = vg->CreateLogicalVolume( LVMLV );
+	}
+	catch( ErrnoException& err )
+	{
+		logg << Logger::Notice << "Create LVM failed: " << err.what() << lend;
+		return false;
+	}
+
+
+	return true;
+}
+
+
+
 bool StorageManager::InitializeLVM()
 {
 	logg << Logger::Debug << "Initialize LVM on " << LVMDEVICE << lend;
@@ -442,41 +466,40 @@ bool StorageManager::InitializeLVM()
 			// and u-dev have created /dev entries. Thus we back of twice to hopefully let udev
 			// do its thing.
 			logg << Logger::Debug << "Sleep and wait for udev"<< lend;
-			sleep(1);
+			sleep(3);
 
-			if( ! this->checkDevice( sysinfo.StorageDevicePath() ) )
+			int retries = 100;
+			while( retries > 0 )
+			{
+				if( this->checkDevice( sysinfo.StorageDevicePath() ) )
+				{
+						break;
+				}
+				retries--;
+			}
+
+			if( retries == 0 )
 			{
 				logg << Logger::Error << "No such device avaliable (" << sysinfo.StorageDevicePath() << lend;
 				return false;
 			}
 
-			logg << Logger::Debug << "Sleep some more and hope udev is done"<< lend;
 			sleep(3);
 
 			// Setup device
-			LVM lvm;
-			PhysicalVolumePtr pv;
-			try
+			retries = 100;
+			while( retries > 0)
 			{
-				pv = lvm.CreatePhysicalVolume( File::RealPath( sysinfo.StorageDevicePath() ) );
-			}
-			catch( ErrnoException& err )
-			{
-				logg << Logger::Debug << "Device not yet reappeared, wait and check" << lend;
-				// Udev most likely not done yet, check device once more and retry.
-				if( ! this->checkDevice( sysinfo.StorageDevicePath() ) )
+				if( this->CreateLVM() )
 				{
-					logg << Logger::Error << "Device disappeared? (" << sysinfo.StorageDevicePath() << lend;
-					return false;
+					break;
 				}
-
-				pv = lvm.CreatePhysicalVolume( File::RealPath( sysinfo.StorageDevicePath() ) );
 			}
-
-			VolumeGroupPtr vg = lvm.CreateVolumeGroup( LVMVG, {pv} );
-
-			LogicalVolumePtr lv = vg->CreateLogicalVolume( LVMLV );
-
+			if( retries == 0 )
+			{
+				logg << Logger::Error << "Failed to create lvm"<<lend;
+				return false;
+			}
 			this->device_new = true;
 		}
 
