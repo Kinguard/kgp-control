@@ -19,6 +19,7 @@ Homepage:http://www.openproducts.se
 Package: opi-control
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
+	opi-postsetup,
 	secop,
 	rsync,
 	openssl
