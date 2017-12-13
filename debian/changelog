@@ -1,3 +1,10 @@
+opi-control (1.1.23) vili; urgency=medium
+
+  * Update to use systemd exclusively
+  * Trigger opi-postestup internally when completed startup
+
+ -- Tor Krill <tor@openproducts.se>  Wed, 13 Dec 2017 14:49:48 +0100
+
 opi-control (1.1.22) vili; urgency=medium
 
   * Refactor initialize lvm once more
