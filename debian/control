@@ -2,7 +2,7 @@ Source: opi-control
 Section: admin
 Priority: extra
 Maintainer: Tor Krill <tor@openproducts.se>
-Build-Depends: debhelper (>= 8.0.0), cmake,
+Build-Depends: debhelper (>= 8.0.0), cmake, dh-systemd (>= 1.5),
 	libcurl4-gnutls-dev,
 	libcrypto++-dev,
 	libutils-dev (>= 1.5.1),
