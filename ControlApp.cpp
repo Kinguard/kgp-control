@@ -10,6 +10,7 @@
 #include <libutils/ConfigFile.h>
 #include <libutils/UserGroups.h>
 #include <libutils/Process.h>
+#include <libutils/Thread.h>
 
 #include <libopi/Secop.h>
 #include <libopi/DiskHelper.h>
@@ -135,6 +136,22 @@ bool ControlApp::DoLogin()
 	}
 
 	return true;
+}
+
+void ControlApp::StopWebserver()
+{
+	logg << Logger::Debug << "Stopping webserver" << lend;
+	if( this->ws != nullptr )
+	{
+		// If we have launhed a signer thread wait for it to complete
+		// before shutting down webserver.
+		if( this->signerthread )
+		{
+			this->signerthread->Join();
+		}
+
+		this->ws->Stop();
+	}
 }
 
 void ControlApp::Main()
@@ -319,7 +336,7 @@ void ControlApp::SigTerm(int signo)
 	// Possibly shutdown webserver
 	if( this->ws != nullptr )
 	{
-		this->ws->Stop();
+		this->StopWebserver();
 	}
 
 }
@@ -968,19 +985,41 @@ bool ControlApp::GetCertificate(const string &opiname, const string &company)
 	return true;
 }
 
+class SignerThread: public Utils::Thread
+{
+public:
+	SignerThread(const string& name): Thread(false), opiname(name) {}
+
+	virtual void Run()
+	{
+		tie(this->result, ignore) = Process::Exec("/usr/share/kinguard-certhandler/letsencrypt.sh -ac");
+	}
+
+	bool Result()
+	{
+		// Only valid upon completed run
+		return this->result;
+	}
+	virtual ~SignerThread() {}
+private:
+	string opiname;
+	bool result;
+};
+
 bool ControlApp::GetSignedCert(const string &opiname)
 {
-    bool ret;
-    tie(ret, ignore) = Process::Exec("/usr/share/kinguard-certhandler/letsencrypt.sh -ac");
-    if (ret)
-    {
-        logg << Logger::Notice << "Successfully received signed certificate" <<lend;
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+	try
+	{
+		logg << Logger::Debug << "Launching detached signer thread" << lend;
+		this->signerthread = ThreadPtr( new SignerThread(opiname) );
+		this->signerthread->Start();
+	}
+	catch( std::runtime_error& err)
+	{
+		logg << Logger::Error << "Failed to launch signer thread: " << err.what() << lend;
+		return false;
+	}
+	return true;
 }
 
 bool ControlApp::GetPasswordUSB()

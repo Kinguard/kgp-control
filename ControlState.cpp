@@ -470,7 +470,7 @@ void ControlState::StTerminate(EventData *data)
 {
 	ScopedLog l("StTerminate");
 
-	this->app->ws->Stop();
+	this->app->StopWebserver();
 
 	this->RegisterEvent( State::Completed, nullptr );
 }
@@ -479,7 +479,7 @@ void ControlState::StShutDown(EventData *data)
 {
 	ScopedLog l("StShutdown");
 
-	this->app->ws->Stop();
+	this->app->StopWebserver();
 
 }
 
@@ -487,7 +487,7 @@ void ControlState::StReboot(EventData *data)
 {
 	ScopedLog l("StReboot");
 
-	this->app->ws->Stop();
+	this->app->StopWebserver();
 
 	this->retvalue["url"] = "/";
 	this->retvalue["timeout"] = 50;

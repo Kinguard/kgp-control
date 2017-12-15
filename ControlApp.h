@@ -2,12 +2,16 @@
 #define CONTROLAPP_H
 
 #include <libutils/Application.h>
-#include <libutils/Mutex.h>
+#include <libutils/Thread.h>
 
 #include <libopi/BackupHelper.h>
 #include "WebServer.h"
 #include "EventHandler.h"
 #include "ControlState.h"
+
+#include <memory>
+
+typedef shared_ptr<Utils::Thread> ThreadPtr;
 
 class ControlApp : public Utils::DaemonApplication
 {
@@ -78,6 +82,9 @@ private:
 	ControlStatePtr statemachine;
 
 	EventHandler evhandler;
+
+	void StopWebserver();
+	ThreadPtr signerthread; // Used by letsencrypt signer thread
 };
 
 #endif // CONTROLAPP_H
