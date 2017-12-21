@@ -293,13 +293,6 @@ void ControlApp::Main()
 		ServiceHelper::Start( "fetchmail" );
 		ServiceHelper::Start( "nginx" );
 
-		//Add postsetup handler
-		//TODO: review if possibly just call in reinit/reinstall etc.
-		this->evhandler.AddEvent( 10, std::bind(
-									  Process::Exec,
-									  "/usr/share/opi-postsetup/kgp-postsetup"
-									  ));
-
 		// Add eventhandler to process completed startup
 		this->evhandler.AddEvent( 90, std::bind(
 									  Process::Exec,

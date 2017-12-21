@@ -1,3 +1,9 @@
+opi-control (1.1.25) vili; urgency=medium
+
+  * Revert to not manually trigger opi-postsetup
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 21 Dec 2017 07:31:02 +0100
+
 opi-control (1.1.24) vili; urgency=medium
 
   * Make sure opi-access completed before we start opi-control

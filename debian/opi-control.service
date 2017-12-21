@@ -1,7 +1,7 @@
 [Unit]
 Description=OPI startup control application
-Wants=network-online.target opi-access.service
-After=network-online.target opi-access.service
+Wants=network-online.target opi-access.service opi-postsetup.service
+After=network-online.target opi-access.service opi-postsetup.service
 
 [Service]
 Type=forking
