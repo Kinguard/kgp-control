@@ -93,7 +93,7 @@ bool StorageManager::Initialize()
 	logg << Logger::Debug << "Storagemanager initialize" << lend;
 
 
-	if( ! this->checkDevice( sysinfo.StorageDevicePath() ) )
+	if( ! this->checkDevice( sysinfo.StorageDevice() ) )
 	{
 		return false;
 	}
