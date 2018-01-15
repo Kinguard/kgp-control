@@ -1140,9 +1140,34 @@ bool ControlApp::SetPasswordRoot()
 
 bool ControlApp::GuessOPIName()
 {
+	logg << Logger::Debug << "Guess opi-name"<<lend;
+	// First try sysconfig
+	if( File::FileExists(SYSCONFIG_PATH))
+	{
+		ConfigFile c(SYSCONFIG_PATH);
+
+		string name = c.ValueOrDefault("opi_name");
+		string domain = c.ValueOrDefault("domain");
+
+		if( name != "" && domain != "" )
+		{
+			this->opi_name = name + "." + domain;
+
+			logg << Logger::Debug << "OPI-name, " << this->opi_name <<  ", sucessfully read from sysconfig"<<lend;
+			return true;
+		}
+		logg << Logger::Notice << "OPI-name not found in sysconfig ("<<name<<")"<<", ("<<domain<<")"<<lend;
+	}
+
+	// If not found try figure out from mail-addresses
 	try
 	{
 		OPI::MailConfig mc;
+		//TODO: refactor this into sysconfig
+		const vector<string> valid_domains = {
+			"op-i.me",
+			"mykeep.net"
+		};
 
 		mc.ReadConfig();
 		list<string> names;
@@ -1150,12 +1175,13 @@ bool ControlApp::GuessOPIName()
 		for( const string& domain: domains )
 		{
 			list<string> parts=String::Split(domain, ".",2);
-			if( parts.back() == "op-i.me" )  // TODO: if parts.back() "is in sysinfo.Domains"
+			if( find( valid_domains.begin(), valid_domains.end(), parts.back() ) != valid_domains.end() )
 			{
-				names.push_back(parts.front());
+				names.push_back(domain);
 			}
 		}
 
+		// If we have only one match we assume this is our opi-name and try with that.
 		if( names.size() != 1 )
 		{
 			return false;

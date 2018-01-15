@@ -1,3 +1,10 @@
+opi-control (1.1.27) vili; urgency=medium
+
+  * Check sysconf for opiname before trying to parse mail domains
+  * Pass fully fqnd to dns backends fixing #403
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 15 Jan 2018 16:46:32 +0100
+
 opi-control (1.1.26) vili; urgency=medium
 
   * Check disk instead of partition when initializing #411
