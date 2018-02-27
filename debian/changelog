@@ -1,3 +1,9 @@
+opi-control (1.1.28) vili; urgency=medium
+
+  * Fix bug in storage manager that resulted in multiple reinit.
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 27 Feb 2018 14:48:48 +0100
+
 opi-control (1.1.27) vili; urgency=medium
 
   * Check sysconf for opiname before trying to parse mail domains
