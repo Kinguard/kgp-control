@@ -13,7 +13,14 @@
 using namespace Utils;
 using namespace OPI;
 
-StorageManager::StorageManager(const string &password): device_new(false), password(password)
+StorageManager &StorageManager::Instance()
+{
+	static StorageManager mgr;
+
+	return mgr;
+}
+
+StorageManager::StorageManager(): device_new(false), initialized(false)
 {
 
 }
@@ -88,10 +95,12 @@ void StorageManager::umountDevice()
 	DiskHelper::Umount( StorageManager::DevicePath() );
 }
 
-bool StorageManager::Initialize()
+/*
+ * TODO: This has to be reworked. To complicated and hackish
+ */
+bool StorageManager::Initialize(const string& password)
 {
 	logg << Logger::Debug << "Storagemanager initialize" << lend;
-
 
 	if( ! this->checkDevice( sysinfo.StorageDevice() ) )
 	{
@@ -99,28 +108,48 @@ bool StorageManager::Initialize()
 	}
 
 	string curdevice = sysinfo.StorageDevicePath();
-	if( SysInfo::useLVM() )
+
+	if( ! this->initialized )
 	{
-		curdevice = LVMDEVICE;
-		if( ! this->InitializeLVM() )
+		logg << Logger::Debug << "Device not initialized, starting initialization"<<lend;
+		bool partition = true;
+		if( SysInfo::useLVM() )
 		{
-			return false;
+			if( ! this->InitializeLVM( partition ) )
+			{
+				return false;
+			}
+			curdevice = LVMDEVICE;
+			partition = false;
+		}
+
+		if( SysInfo::useLUKS() )
+		{
+			if( ! this->InitializeLUKS( curdevice, password, partition ) )
+			{
+				return false;
+			}
+			curdevice = LUKSDEVICE;
+		}
+		this->initialized = true;
+	}
+	else
+	{
+		logg << Logger::Debug << "Device initialized, skip to setup"<<lend;
+		if( SysInfo::useLVM() )
+		{
+			curdevice = LVMDEVICE;
+		}
+
+		if( SysInfo::useLUKS() )
+		{
+			curdevice = LUKSDEVICE;
 		}
 	}
-
-	if( SysInfo::useLUKS() )
-	{
-		if( ! this->InitializeLUKS( curdevice) )
-		{
-			return false;
-		}
-		curdevice = LUKSDEVICE;
-	}
-
 	return this->setupStorageArea( curdevice );
 }
 
-bool StorageManager::Open()
+bool StorageManager::Open(const string& password)
 {
 
 	if( SysInfo::useLUKS() )
@@ -132,7 +161,7 @@ bool StorageManager::Open()
 		if( ! l.Active("opi") )
 		{
 			logg << Logger::Debug << "Activating LUKS volume"<<lend;
-			if ( !l.Open("opi", this->password) )
+			if ( !l.Open("opi", password) )
 			{
 				logg << Logger::Debug << "Failed to openLUKS volume on "<<sysinfo.StorageDevicePath()<< lend;
 				this->global_error = "Unable to unlock crypto storage. (Wrong password?)";
@@ -261,14 +290,14 @@ StorageManager::~StorageManager()
 
 }
 
-bool StorageManager::setupLUKS(const string &path)
+bool StorageManager::setupLUKS(const string &path, const string& password)
 {
 	try
 	{
 		Luks l( Utils::File::RealPath( path ) );
-		l.Format( this->password );
+		l.Format( password );
 
-		if( ! l.Open("opi", this->password ) )
+		if( ! l.Open("opi", password ) )
 		{
 			this->global_error = "Wrong password";
 			return false;
@@ -285,14 +314,14 @@ bool StorageManager::setupLUKS(const string &path)
 	return true;
 }
 
-bool StorageManager::unlockLUKS(const string &path)
+bool StorageManager::unlockLUKS(const string &path, const string& password)
 {
 	Luks l( path );
 
 	if( ! l.Active("opi") )
 	{
 		logg << Logger::Debug << "Activating LUKS volume"<<lend;
-		if ( !l.Open("opi", this->password ) )
+		if ( !l.Open("opi", password ) )
 		{
 			this->global_error = "Wrong password";
 			return false;
@@ -302,14 +331,20 @@ bool StorageManager::unlockLUKS(const string &path)
 	return true;
 }
 
-bool StorageManager::InitializeLUKS(const string &device)
+bool StorageManager::InitializeLUKS(const string &device, const string& password, bool partition )
 {
 	logg << Logger::Debug << "Initialize LUKS on device " << device <<lend;
 	if( ! Luks::isLuks( device ) )
 	{
 		logg << Logger::Notice << "No luks volume on device " << device << " creating" << lend;
 
-		if( ! this->setupLUKS( device ) )
+		if( partition )
+		{
+			logg << Logger::Debug << "Partitioning " << sysinfo.StorageDevice() << lend;
+			DiskHelper::PartitionDevice( sysinfo.StorageDevice() );
+		}
+
+		if( ! this->setupLUKS( device, password ) )
 		{
 			return false;
 		}
@@ -317,7 +352,7 @@ bool StorageManager::InitializeLUKS(const string &device)
 		this->device_new = true;
 	}
 
-	if( ! this->unlockLUKS( device ) )
+	if( ! this->unlockLUKS( device, password ) )
 	{
 		return false;
 	}
@@ -443,7 +478,7 @@ bool StorageManager::CreateLVM()
 
 
 
-bool StorageManager::InitializeLVM()
+bool StorageManager::InitializeLVM(bool partition)
 {
 	logg << Logger::Debug << "Initialize LVM on " << LVMDEVICE << lend;
 	try
@@ -460,7 +495,11 @@ bool StorageManager::InitializeLVM()
 			}
 			this->RemoveLVM();
 
-			DiskHelper::PartitionDevice( sysinfo.StorageDevice() );
+			if ( partition )
+			{
+				logg << Logger::Debug << "Partitioning " << sysinfo.StorageDevice() << lend;
+				DiskHelper::PartitionDevice( sysinfo.StorageDevice() );
+			}
 
 			// We have a synchronization problem trying to figure out when partition is finalized
 			// and u-dev have created /dev entries. Thus we back of twice to hopefully let udev
@@ -501,6 +540,10 @@ bool StorageManager::InitializeLVM()
 				return false;
 			}
 			this->device_new = true;
+		}
+		else
+		{
+			logg << Logger::Debug << "Storage area exists, not creating lvm"<<lend;
 		}
 
 	}catch( std::exception& e)

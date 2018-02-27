@@ -468,7 +468,7 @@ bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 {
 	logg << Logger::Debug << "Unlock sd card"<<lend;
 
-	if( ! StorageManager(pwd).Open() )
+	if( ! StorageManager::Instance().Open(pwd) )
 	{
 		this->global_error = "Unable to unlock crypto storage. (Wrong password?)";
 		return false;
@@ -813,7 +813,7 @@ bool ControlApp::InitializeSD()
 {
 	logg << Logger::Debug << "Initialize sd card"<<lend;
 
-	return StorageManager(this->masterpassword).Initialize();
+	return StorageManager::Instance().Initialize(this->masterpassword);
 }
 
 bool ControlApp::RegisterKeys( )
@@ -1488,7 +1488,7 @@ bool ControlApp::DoRestore(const string &path)
 		return false;
 	}
 
-	StorageManager mgr(this->masterpassword );
+	StorageManager& mgr=StorageManager::Instance();
 	if( ! mgr.mountDevice( TMP_MOUNT ) )
 	{
 		logg << Logger::Error << "Failed to mount SD for backup: "<< mgr.Error()<<lend;
@@ -1545,6 +1545,8 @@ bool ControlApp::DoRestore(const string &path)
 		this->global_error = "Restore backup - Failed to remove SD card";
 		return false;
 	}
+
+	logg << Logger::Debug << "Restore completed sucessfully"<<lend;
 
 	return true;
 }

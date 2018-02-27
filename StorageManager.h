@@ -3,16 +3,21 @@
 
 #include <string>
 
+#include <libutils/ClassTools.h>
+
 using namespace std;
 
-class StorageManager
+class StorageManager: public Utils::NoCopy
 {
+private:
+	StorageManager();
 public:
-	StorageManager(const string& password);
 
-	bool Initialize();
+	static StorageManager& Instance();
 
-	bool Open();
+	bool Initialize(const string &password);
+
+	bool Open(const string &password);
 
 	static bool mountDevice(const string& destination);
 	static void umountDevice();
@@ -61,19 +66,19 @@ private:
 
 	bool checkDevice(const string& path);
 
-	bool setupLUKS(const string& path);
-	bool unlockLUKS(const string& path);
-	bool InitializeLUKS(const string& device);
+	bool setupLUKS(const string& path, const string &password);
+	bool unlockLUKS(const string& path, const string &password);
+	bool InitializeLUKS(const string& device, const string &password, bool partition);
 
 	bool setupStorageArea(const string& device);
 
 	void RemoveLUKS();
 	void RemoveLVM();
 	bool CreateLVM();
-	bool InitializeLVM();
+	bool InitializeLVM(bool partition);
 
 	bool device_new;
-	string password;
+	bool initialized;
 	string global_error;
 };
 
