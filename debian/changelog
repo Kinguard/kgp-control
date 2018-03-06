@@ -1,3 +1,9 @@
+opi-control (1.1.29) vili; urgency=medium
+
+  * Fix redirect after unlock when using complete FQDN's, Closes #421 
+
+ -- PA Nilsson <pa@openproducts.se>  Tue, 06 Mar 2018 17:32:30 +0100
+
 opi-control (1.1.28) vili; urgency=medium
 
   * Fix bug in storage manager that resulted in multiple reinit.

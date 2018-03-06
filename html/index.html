@@ -573,7 +573,12 @@ function done(fqdn) {
 				}
 				
 			} else {
-				//console.log("Redirecting");
+				// check for a valid fqdn, it is not available on a pure "unlock"
+				p_fqdn = fqdn.split(".");
+				if ( ! p_fqdn[0].length ) {
+					// the fqdn start with a "." which is no good to use...
+					console.log("Unusable 'fqdn'");
+				} else {
 
 				// is the unit accessed by OP's domain pointers?
 				// could be "local." or IP also.
@@ -592,6 +597,7 @@ function done(fqdn) {
 					}
 				}
 				// something other in the url, just redirect to the new site on the same hostname
+				}
 				redirect("/admin",10);
 			}
 		})
