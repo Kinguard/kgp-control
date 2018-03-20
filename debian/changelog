@@ -1,3 +1,9 @@
+opi-control (1.1.30) vili; urgency=medium
+
+  * Adjusted redirect timeout for OPI 
+
+ -- PA Nilsson <pa@openproducts.se>  Tue, 20 Mar 2018 16:59:12 +0100
+
 opi-control (1.1.29) vili; urgency=medium
 
   * Fix redirect after unlock when using complete FQDN's, Closes #421 

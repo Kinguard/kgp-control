@@ -408,6 +408,8 @@ current_state = 0;
 
 // set dummy paths
 var restore_paths = Array();
+var redirect_timeout = 10;
+
 restore_paths['local'] = ["/path/1","/path/2"];
 restore_paths['remote'] = ["/path/3","/path/4"];
 $("button[type='cancel']").click(function() {
@@ -585,20 +587,20 @@ function done(fqdn) {
 				console.log(domains);
 				// is the access from the "local.devicename.domain.com" url?
 				if(location.href.indexOf("local") > 0) {
-					redirect("https://local."+fqdn,10);
+					redirect("https://local."+fqdn,redirect_timeout);
 					return true;
 				} else {
 					// do we have any of our domain in the url?
 					for (i = 0; i < domains.length; i++) {
 						if(location.href.indexOf(domains[i]) > 0) {
-							redirect("https://"+fqdn,10);
+							redirect("https://"+fqdn,redirect_timeout);
 							return true;
 						}
 					}
 				}
 				// something other in the url, just redirect to the new site on the same hostname
 				}
-				redirect("/admin",10);
+				redirect("/admin",redirect_timeout);
 			}
 		})
 		.fail(function() {
@@ -626,6 +628,7 @@ function getType() {
 			$("span.typename").text("KEEP");
 		} else {
 			$("span.typename").text("OPI");
+			redirect_timeout = 20;
 		}
 		setHelp(systype);
 	}, "json" )
