@@ -1,3 +1,9 @@
+opi-control (1.1.31) vili; urgency=medium
+
+  * Added popup and warning texts not reload page during setup. 
+
+ -- PA Nilsson <pa@openproducts.se>  Fri, 23 Mar 2018 14:11:43 +0100
+
 opi-control (1.1.30) vili; urgency=medium
 
   * Adjusted redirect timeout for OPI 

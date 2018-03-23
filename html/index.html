@@ -105,7 +105,16 @@
 
 	<div id="page_initprogress" class="page hidden">
 		<h1>Initializing ...</h1>
-		<p>Please have patience, initializing takes a while</p>
+		<p>Please have patience, initializing can take a long time</p>
+		<div class="note">
+			<div class="txtnote">
+				<i>
+					<b>NOTE:</b><br>
+					Reloading this page will corrupt the initialization process.
+				</i>
+			</div>
+		</div>
+
 	</div>
 	
 	<div id="page_shutdownprogress" class="page hidden">
@@ -387,6 +396,15 @@
 					>
 					Skip restore</button>
 		</form>
+		<div class="note">
+			<div class="txtnote">
+				<i>
+					<b>NOTE:</b><br>
+					Reloading this page will corrupt the initialization process.
+				</i>
+			</div>
+		</div>
+
 	</div>	
 	<div id="validation_error" class="hidden">
 		<div id="validation_error_msg"></div>
@@ -533,6 +551,7 @@ function setState(state) {
 }
 
 function redirect(url,timeout) {
+	$(window).off("beforeunload");
 	$("#spinner-bg").removeClass("hidden");
 	setTimeout(function() {
 		location.href = url;
@@ -695,6 +714,10 @@ $("input").keypress(function(e) {
 	$("#validation_error_msg").text('');
 	$("#validation_error").addClass("hidden");
 	}
+});
+
+$(window).bind('beforeunload', function(){
+  return 'Are you sure you want to leave?';
 });
 
 $(document).ready( function() {
