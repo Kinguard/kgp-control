@@ -1,3 +1,10 @@
+opi-control (1.1.32) vili; urgency=medium
+
+  * Detect already unlocked system and terminate gracefully
+  * Don't launch opi-authproxy at completion. Let it be started by systemd
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 08 Jun 2018 09:34:59 +0000
+
 opi-control (1.1.31) vili; urgency=medium
 
   * Added popup and warning texts not reload page during setup. 
