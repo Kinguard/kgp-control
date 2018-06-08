@@ -187,6 +187,13 @@ void ControlApp::Main()
 	// Secop should not be running
 	if( ServiceHelper::IsRunning("secop") )
 	{
+		if( this->SecopUnlocked() )
+		{
+			// We are running on an already started system, exit gracefully
+			logg << Logger::Notice << "Secop already unlocked, system likely up. Terminating opi-control"<<lend;
+			return;
+		}
+
 		logg << Logger::Debug << "Stop running secop instance"<<lend;
 		ServiceHelper::Stop("secop");
 	}
@@ -289,7 +296,6 @@ void ControlApp::Main()
 		ServiceHelper::Start( "mysql" );
 		ServiceHelper::Start( "postfix" );
 		ServiceHelper::Start( "dovecot" );
-		ServiceHelper::Start( "opi-authproxy" );
 		ServiceHelper::Start( "fetchmail" );
 		ServiceHelper::Start( "nginx" );
 
