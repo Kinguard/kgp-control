@@ -8,7 +8,6 @@ Type=forking
 RemainAfterExit=yes
 PIDFile=/var/run/opi-control.pid
 ExecStart=/usr/sbin/opi-control -d
-ExecStopPost=/usr/sbin/kgp-notifier -l "LOG_NOTICE" -m "Shutting down" -i "sysctrl"
 
 [Install]
 WantedBy=multi-user.target
