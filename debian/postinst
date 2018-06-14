@@ -20,11 +20,15 @@ set -e
 
 case "$1" in
     configure)
-		# Fix faulty notification upon upgrade from  
-		if dpkg --compare-versions "$2" lt "1.1.32"
+		# Fix faulty notification upon upgrade
+		if dpkg --compare-versions "$2" lt "1.1.32" ;
 		then
-			# Remove all temporary notifications
-			kgp-notifier -s
+			msgs=$(grep -d skip -l "Shutting down" /var/spool/kgp-notify/*)
+			for msg in $msgs
+			do
+				msgid=$(basename $msg)
+				kgp-notifier -qa $msgid
+			done
 		fi
     ;;
 
