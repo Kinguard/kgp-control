@@ -7,7 +7,7 @@
 
 using namespace Utils;
 
-ConnTest::ConnTest(): HttpClient(CONNTEST_HOST)
+ConnTest::ConnTest(const string &host): HttpClient(host)
 {
 }
 

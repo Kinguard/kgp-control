@@ -5,11 +5,12 @@
 #include <libopi/HttpClient.h>
 
 #include <json/json.h>
+#include <string>
 
 class ConnTest : public OPI::HttpClient
 {
 public:
-	ConnTest();
+	ConnTest(const std::string& host);
 
 	Json::Value DoTest();
 

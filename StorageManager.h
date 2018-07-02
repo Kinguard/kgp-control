@@ -80,6 +80,12 @@ private:
 	bool device_new;
 	bool initialized;
 	string global_error;
+
+	// parameters from sysconfig
+	string storagemount;	// MOUNTPOINT
+	string luksdevice;		// LUKSDEVICE
+	string lvmdevice;		// LVMDEVICE
+
 };
 
 #endif // STORAGEMANAGER_H

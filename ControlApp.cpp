@@ -21,6 +21,7 @@
 #include <libopi/MailConfig.h>
 #include <libopi/SysInfo.h>
 #include <libopi/Notification.h>
+#include <libopi/SysConfig.h>
 #include <functional>
 
 #include <syslog.h>
@@ -169,18 +170,11 @@ void ControlApp::Main()
 	this->state = ControlState::State::AskInitCheckRestore;
 	this->skiprestore = false;
 
-	if( File::FileExists(SYSCONFIG_PATH))
+	SysConfig cfg;
+	if( cfg.HasKey("hostinfo", "unitid") )
 	{
-		ConfigFile c(SYSCONFIG_PATH);
-
-		string unit_id = c.ValueOrDefault("unit_id");
-
-		if( unit_id != "" )
-		{
-			this->state = ControlState::State::AskUnlock;
-			this->unit_id = unit_id;
-		}
-
+		this->state = ControlState::State::AskUnlock;
+		this->unit_id = cfg.GetKeyAsString("hostinfo", "unitid");
 	}
 
 	// Preconditions
@@ -243,7 +237,7 @@ void ControlApp::Main()
 		ibt->Start();
 
 		logg << Logger::Debug << "Doing connection tests"<<lend;
-		ConnTest ct;
+		ConnTest ct(SysConfig().GetKeyAsString( "setup", "conntesthost"));
 		this->connstatus = ct.DoTest();
 	}
 	else
@@ -482,7 +476,7 @@ bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 
 	logg << Logger::Debug << "Storage device opened"<< lend;
 
-	if( ! StorageManager::mountDevice( MOUNTPOINT ) )
+	if( ! StorageManager::mountDevice( SysConfig().GetKeyAsString("filesystem","storagemount") ) )
 	{
 		this->global_error = "Unable to access SD card";
 		return false;
@@ -668,15 +662,19 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 
 	this->first_user = user;
 
+	SysConfig cfg;
+	const string localmail(cfg.GetKeyAsString("filesystem", "storagemount")+cfg.GetKeyAsString("mail", "localmail"));
+	const string virtual_aliases(cfg.GetKeyAsString("filesystem", "storagemount") + cfg.GetKeyAsString("mail","virtualalias"));
 	try
 	{
 		// Add user to localdomain mailboxfile
-		OPI::MailMapFile mmf( LOCAL_MAILFILE );
+
+		OPI::MailMapFile mmf( localmail );
 		mmf.ReadConfig();
 		mmf.SetAddress("localdomain", user, user);
 		mmf.WriteConfig();
 
-		chown( LOCAL_MAILFILE, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
+		chown( localmail.c_str(), User::UserToUID("postfix"), Group::GroupToGID("postfix") );
 	}
 	catch( runtime_error& err)
 	{
@@ -687,7 +685,7 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 	// Add this user as receiver of administrative mail
 	try
 	{
-		OPI::MailAliasFile mf( VIRTUAL_ALIASES );
+		OPI::MailAliasFile mf( virtual_aliases );
 
 		mf.AddUser("/^postmaster@/",user+"@localdomain");
 		mf.AddUser("/^root@/",user+"@localdomain");
@@ -700,10 +698,10 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 		return false;
 	}
 
-	chown( VIRTUAL_ALIASES, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
+	chown( virtual_aliases.c_str(), User::UserToUID("postfix"), Group::GroupToGID("postfix") );
 
 	bool ret;
-	tie(ret,ignore) = Process::Exec( "/usr/sbin/postmap " LOCAL_MAILFILE );
+	tie(ret,ignore) = Process::Exec( (string("/usr/sbin/postmap ") + localmail) .c_str() );
 
 	if( !ret )
 	{

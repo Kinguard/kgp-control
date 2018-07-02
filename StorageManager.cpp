@@ -8,6 +8,7 @@
 #include <libopi/LVM.h>
 #include <libopi/Luks.h>
 #include <libopi/SysInfo.h>
+#include <libopi/SysConfig.h>
 #include <libopi/DiskHelper.h>
 
 using namespace Utils;
@@ -22,7 +23,11 @@ StorageManager &StorageManager::Instance()
 
 StorageManager::StorageManager(): device_new(false), initialized(false)
 {
+	SysConfig cfg;
 
+	this->storagemount = cfg.GetKeyAsString("filesystem", "storagemount");
+	this->luksdevice = cfg.GetKeyAsString("filesystem", "luksdevice");
+	this->lvmdevice = cfg.GetKeyAsString("filesystem", "lvmdevice");
 }
 
 /**
@@ -119,7 +124,7 @@ bool StorageManager::Initialize(const string& password)
 			{
 				return false;
 			}
-			curdevice = LVMDEVICE;
+			curdevice = this->lvmdevice;
 			partition = false;
 		}
 
@@ -129,7 +134,7 @@ bool StorageManager::Initialize(const string& password)
 			{
 				return false;
 			}
-			curdevice = LUKSDEVICE;
+			curdevice = this->luksdevice;
 		}
 		this->initialized = true;
 	}
@@ -138,12 +143,12 @@ bool StorageManager::Initialize(const string& password)
 		logg << Logger::Debug << "Device initialized, skip to setup"<<lend;
 		if( SysInfo::useLVM() )
 		{
-			curdevice = LVMDEVICE;
+			curdevice = this->lvmdevice;
 		}
 
 		if( SysInfo::useLUKS() )
 		{
-			curdevice = LUKSDEVICE;
+			curdevice = this->luksdevice;
 		}
 	}
 	return this->setupStorageArea( curdevice );
@@ -151,12 +156,9 @@ bool StorageManager::Initialize(const string& password)
 
 bool StorageManager::Open(const string& password)
 {
-
 	if( SysInfo::useLUKS() )
 	{
-		string luksdevice = SysInfo::useLVM() ? LVMDEVICE : sysinfo.StorageDevicePath();
-
-		Luks l( luksdevice );
+		Luks l( this->luksdevice );
 
 		if( ! l.Active("opi") )
 		{
@@ -192,11 +194,11 @@ string StorageManager::DevicePath()
 
 	if( SysInfo::useLUKS() )
 	{
-		source = LUKSDEVICE;
+		source = SysConfig().GetKeyAsString("filesystem", "luksdevice");
 	}
 	else if( SysInfo::useLVM() )
 	{
-		source = LVMDEVICE;
+		source = SysConfig().GetKeyAsString("filesystem", "lvmdevice");
 	}
 
 	return source;
@@ -219,7 +221,7 @@ bool StorageManager::StorageAreaExists()
 			return false;
 		}
 
-		if( SysInfo::useLVM() && ! DiskHelper::DeviceExists( LVMDEVICE ) )
+		if( SysInfo::useLVM() && ! DiskHelper::DeviceExists( SysConfig().GetKeyAsString("filesystem", "lvmdevice") ) )
 		{
 			return false;
 		}
@@ -227,7 +229,7 @@ bool StorageManager::StorageAreaExists()
 		// If we have a luks-volume on underlaying storage we assume we have a correct setup
 		if( SysInfo::useLUKS() )
 		{
-			if( SysInfo::useLVM() && ! Luks::isLuks( LVMDEVICE ) )
+			if( SysInfo::useLVM() && ! Luks::isLuks( SysConfig().GetKeyAsString("filesystem", "lvmdevice") ) )
 			{
 				return false;
 			}
@@ -303,7 +305,7 @@ bool StorageManager::setupLUKS(const string &path, const string& password)
 			return false;
 		}
 
-		DiskHelper::FormatPartition( LUKSDEVICE,"OPI");
+		DiskHelper::FormatPartition( this->luksdevice, "OPI");
 	}
 	catch( std::runtime_error& err)
 	{
@@ -364,6 +366,7 @@ bool StorageManager::setupStorageArea(const string &device)
 {
 	try
 	{
+		const string mountpoint = SysConfig().GetKeyAsString("filesystem", "storagemount");
 		// Make sure device is not mounted (Should not happen)
 		if( DiskHelper::IsMounted( device ) != "" )
 		{
@@ -376,7 +379,7 @@ bool StorageManager::setupStorageArea(const string &device)
 			// Sync data from emmc to sd
 			DiskHelper::Mount( device , TMP_MOUNT );
 
-			DiskHelper::SyncPaths(MOUNTPOINT, TMP_MOUNT);
+			DiskHelper::SyncPaths(mountpoint, TMP_MOUNT);
 
 			DiskHelper::Umount(device);
 
@@ -384,7 +387,7 @@ bool StorageManager::setupStorageArea(const string &device)
 		}
 
 		// Mount in final place
-		DiskHelper::Mount( device , MOUNTPOINT );
+		DiskHelper::Mount( device, mountpoint );
 	}
 	catch( ErrnoException& err)
 	{
@@ -401,10 +404,10 @@ void StorageManager::RemoveLUKS()
 	logg << Logger::Debug << "Remove any active LUKS volumes on storage area" << lend;
 	try
 	{
-		if( SysInfo::useLVM() && Luks::isLuks( LVMDEVICE ) )
+		if( SysInfo::useLVM() && Luks::isLuks( this->lvmdevice ) )
 		{
 			logg << Logger::Debug << "Try closing device" << lend;
-			Luks l( LVMDEVICE );
+			Luks l( this->lvmdevice );
 
 			l.Close("opi" );
 		}
@@ -462,9 +465,9 @@ bool StorageManager::CreateLVM()
 	{
 		pv = lvm.CreatePhysicalVolume( File::RealPath( sysinfo.StorageDevicePath() ) );
 
-		VolumeGroupPtr vg = lvm.CreateVolumeGroup( LVMVG, {pv} );
+		VolumeGroupPtr vg = lvm.CreateVolumeGroup( SysConfig().GetKeyAsString("filesystem", "lvmvg"), {pv} );
 
-		LogicalVolumePtr lv = vg->CreateLogicalVolume( LVMLV );
+		LogicalVolumePtr lv = vg->CreateLogicalVolume( SysConfig().GetKeyAsString("filesystem", "lvmlv") );
 	}
 	catch( ErrnoException& err )
 	{
@@ -480,7 +483,7 @@ bool StorageManager::CreateLVM()
 
 bool StorageManager::InitializeLVM(bool partition)
 {
-	logg << Logger::Debug << "Initialize LVM on " << LVMDEVICE << lend;
+	logg << Logger::Debug << "Initialize LVM on " << this->lvmdevice << lend;
 	try
 	{
 		if( ! StorageManager::StorageAreaExists() )
