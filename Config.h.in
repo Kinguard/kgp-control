@@ -9,50 +9,7 @@
 
 #cmakedefine OPI_BUILD_PACKAGE
 #cmakedefine OPI_BUILD_LOCAL
-#if 0
-#define DNS_PUB_PATH "/etc/opi/dnspub.pem"
-#define DNS_PRIV_PATH "/etc/opi/dnspriv.pem"
-#define CSR_PATH "/etc/opi/opi.csr"
-#define CERT_PATH "/etc/opi/opi.cert"
-#define SYS_PUB_PATH "/var/opi/etc/syspub.pem"
-#define SYS_PRIV_PATH "/var/opi/etc/syspriv.pem"
-#define SYSCONFIG_PATH "/etc/opi/sysinfo.conf"
-
-
-// mail localmail  /mail/conf/localmail  ( - /var/opi  filesystem storagemount )
-
-#define LOCAL_MAILFILE	"/var/opi/mail/conf/localmail"
-#define DOMAINFILE		"/var/opi/mail/conf/domains"
-#define ALIASES			"/var/opi/mail/conf/vmailbox"
-
-// mail virtualalias /mail/conf/virtual
-#define VIRTUAL_ALIASES	"/var/opi/mail/conf/virtual"
-
-#define OP_HOST "https://auth.openproducts.com/"
-
-
-// ("setup", "conntesthost")
-#define CONNTEST_HOST "http://conntest.op-i.me"
-
-#endif
 
 #define TMP_MOUNT		"/mnt/opi/"
 
-#if 0
-
-// ("filesystem", "storagemount")
-#define MOUNTPOINT		"/var/opi/"
-
-// ("filesystem", "luksdevice")
-#define LUKSDEVICE		"/dev/mapper/opi"
-
-// ("filesystem", "lvmdevice")
-#define LVMDEVICE		"/dev/pool/data"
-
-// ("filesystem", "lvmvg")
-#define LVMVG			"pool"
-
-// ("filesystem", "lvmlv")
-#define LVMLV			"data"
-#endif
 #endif

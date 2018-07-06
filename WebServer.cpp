@@ -2,6 +2,7 @@
 #include "Config.h"
 #include "mongoose.h"
 #include <libopi/DnsServer.h>
+#include <libopi/SysConfig.h>
 
 #include <libutils/String.h>
 #include <libutils/Logger.h>
@@ -11,21 +12,12 @@
 #include <map>
 
 #ifdef OPI_BUILD_PACKAGE
-
 #define DOCUMENT_ROOT	"/usr/share/opi-control/web"
-#define SSL_CERT_PATH	"/etc/opi/web_cert.pem"
-#define SSL_KEY_PATH	"/etc/opi/web_key.pem"
-#define LISTENING_PORT	"443"
-
 #else
-
 #define DOCUMENT_ROOT	"../opi-control/html"
-#define SSL_CERT_PATH	"certificate.pem"
-#define SSL_KEY_PATH	"priv_key.pem"
+#endif
 
 #define LISTENING_PORT	"443"
-
-#endif
 
 using namespace Utils;
 using namespace std;
@@ -62,31 +54,35 @@ void WebServer::Stop()
 
 void WebServer::PreRun()
 {
+	OPI::SysConfig cfg;
+	const string certpath = cfg.GetKeyAsString("webcertificate", "activecert");
+	const string keypath = cfg.GetKeyAsString("webcertificate", "activekey");
+
 	this->server = mg_create_server(NULL, WebServer::ev_handler);
 	mg_set_option(this->server, "document_root", DOCUMENT_ROOT);
 
-	if( ! File::FileExists( SSL_CERT_PATH ) && ! File::LinkExists( SSL_CERT_PATH ) )
+	if( ! File::FileExists( certpath ) && ! File::LinkExists( certpath ) )
 	{
-		logg << Logger::Error << "Unable to locate certificate file: " << SSL_CERT_PATH << lend;
+		logg << Logger::Error << "Unable to locate certificate file: " << certpath << lend;
 	}
 	else
 	{
-		logg << Logger::Debug << "Using certificate file: " << SSL_CERT_PATH << lend;
+		logg << Logger::Debug << "Using certificate file: " << certpath << lend;
 	}
 
-	mg_set_option(this->server, "ssl_certificate",SSL_CERT_PATH);
+	mg_set_option(this->server, "ssl_certificate",certpath.c_str());
 
 
-	if( ! File::FileExists( SSL_KEY_PATH ) && ! File::LinkExists( SSL_KEY_PATH ) )
+	if( ! File::FileExists( keypath ) && ! File::LinkExists( keypath ) )
 	{
-		logg << Logger::Error << "Unable to locate private key file: " << SSL_KEY_PATH << lend;
+		logg << Logger::Error << "Unable to locate private key file: " << keypath << lend;
 	}
 	else
 	{
-		logg << Logger::Debug << "Using private key file: " << SSL_KEY_PATH << lend;
+		logg << Logger::Debug << "Using private key file: " << keypath << lend;
 	}
 
-	mg_set_option(this->server, "ssl_private_key",SSL_KEY_PATH);
+	mg_set_option(this->server, "ssl_private_key",keypath.c_str());
 
 	mg_set_option(this->server, "listening_port",LISTENING_PORT);
 
