@@ -1,3 +1,9 @@
+opi-control (1.1.37) vili; urgency=medium
+
+  * Restore dynamic luksdevice-detection in storagemanager
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 06 Jul 2018 15:53:28 +0200
+
 opi-control (1.1.36) vili; urgency=medium
 
   * Updates to use sysconfig

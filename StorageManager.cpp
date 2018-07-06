@@ -158,7 +158,10 @@ bool StorageManager::Open(const string& password)
 {
 	if( SysInfo::useLUKS() )
 	{
-		Luks l( this->luksdevice );
+		// Use lvm or raw blockdevice?
+		string ld = SysInfo::useLVM() ? this->lvmdevice : sysinfo.StorageDevicePath();
+
+		Luks l( ld );
 
 		if( ! l.Active("opi") )
 		{
