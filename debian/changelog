@@ -1,3 +1,10 @@
+opi-control (1.1.38) vili; urgency=medium
+
+  * Added possibility to load theme files in UI.
+  * Fixed return codes from webcalls to reflect the actual status set by callbacks. 
+
+ -- PA Nilsson <pa@openproducts.se>  Fri, 07 Sep 2018 07:59:58 +0200
+
 opi-control (1.1.37) vili; urgency=medium
 
   * Restore dynamic luksdevice-detection in storagemanager

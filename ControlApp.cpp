@@ -29,6 +29,11 @@
 
 #include "ControlApp.h"
 
+// Convenience defines
+#define SCFG	(OPI::SysConfig())
+#define SAREA (SCFG.GetKeyAsString("filesystem","storagemount"))
+
+
 using namespace Utils;
 using namespace std::placeholders;
 
@@ -157,7 +162,10 @@ void ControlApp::StopWebserver()
 
 void ControlApp::Main()
 {
-	if( this->options["debug"] == "1" )
+    logg << Logger::Info << "------ !!!   TODO  !!!! ---------"<<lend;
+    logg << Logger::Info << "Wrap/test reading of sysconfig keys to not get unwanted exceptions."<<lend;
+
+    if( this->options["debug"] == "1" )
 	{
 		logg << Logger::Info << "Increase logging to debug level "<<lend;
 		logg.SetLevel(Logger::Debug);
@@ -170,11 +178,10 @@ void ControlApp::Main()
 	this->state = ControlState::State::AskInitCheckRestore;
 	this->skiprestore = false;
 
-	SysConfig cfg;
-	if( cfg.HasKey("hostinfo", "unitid") )
+    if( SCFG.HasKey("hostinfo", "unitid") )
 	{
 		this->state = ControlState::State::AskUnlock;
-		this->unit_id = cfg.GetKeyAsString("hostinfo", "unitid");
+        this->unit_id = SCFG.GetKeyAsString("hostinfo", "unitid");
 	}
 
 	// Preconditions
@@ -237,7 +244,7 @@ void ControlApp::Main()
 		ibt->Start();
 
 		logg << Logger::Debug << "Doing connection tests"<<lend;
-		ConnTest ct(SysConfig().GetKeyAsString( "setup", "conntesthost"));
+		ConnTest ct(SCFG.GetKeyAsString( "setup", "conntesthost"));
 		this->connstatus = ct.DoTest();
 	}
 	else
@@ -476,7 +483,7 @@ bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 
 	logg << Logger::Debug << "Storage device opened"<< lend;
 
-	if( ! StorageManager::mountDevice( SysConfig().GetKeyAsString("filesystem","storagemount") ) )
+    if( ! StorageManager::mountDevice( SCFG.GetKeyAsString("filesystem","storagemount") ) )
 	{
 		this->global_error = "Unable to access SD card";
 		return false;
@@ -619,7 +626,7 @@ bool ControlApp::DoInit( bool savepassword )
 	if( ret )
 	{
 		stringstream pk;
-		for( auto row: File::GetContent(DNS_PUB_PATH) )
+        for( auto row: File::GetContent(SCFG.GetKeyAsString("dns","dnspubkey")) )
 		{
 			pk << row << "\n";
 		}
@@ -662,9 +669,8 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 
 	this->first_user = user;
 
-	SysConfig cfg;
-	const string localmail(cfg.GetKeyAsString("filesystem", "storagemount")+cfg.GetKeyAsString("mail", "localmail"));
-	const string virtual_aliases(cfg.GetKeyAsString("filesystem", "storagemount") + cfg.GetKeyAsString("mail","virtualalias"));
+    const string localmail(SCFG.GetKeyAsString("filesystem", "storagemount")+SCFG.GetKeyAsString("mail", "localmail"));
+    const string virtual_aliases(SCFG.GetKeyAsString("filesystem", "storagemount") + SCFG.GetKeyAsString("mail","virtualalias"));
 	try
 	{
 		// Add user to localdomain mailboxfile
@@ -747,10 +753,11 @@ bool ControlApp::SetDNSName(const string &opiname)
 			mc.SetAddress(opiname,this->first_user,this->first_user);
 			mc.WriteConfig();
 
-			chown( ALIASES, User::UserToUID("postfix"), Group::GroupToGID("postfix") );
+            string aliases = SAREA + SCFG.GetKeyAsString("mail","vmailbox");
+            chown( aliases.c_str(), User::UserToUID("postfix"), Group::GroupToGID("postfix") );
 
 			bool ret;
-			tie(ret, ignore) = Process::Exec("/usr/sbin/postmap " ALIASES);
+            tie(ret, ignore) = Process::Exec("/usr/sbin/postmap " + aliases);
 
 			if( !ret )
 			{
@@ -823,7 +830,11 @@ bool ControlApp::InitializeSD()
 bool ControlApp::RegisterKeys( )
 {
 	logg << Logger::Debug << "Register keys"<<lend;
-	try{
+    string sysauthkey = SCFG.GetKeyAsString("hostinfo","sysauthkey");
+    string syspubkey = SCFG.GetKeyAsString("hostinfo","syspubkey");
+    string dnsauthkey = SCFG.GetKeyAsString("dns","dnsauthkey");
+    string dnspubkey = SCFG.GetKeyAsString("dns","dnspubkey");
+    try{
 		Secop s;
 
 		s.SockAuth();
@@ -847,24 +858,24 @@ bool ControlApp::RegisterKeys( )
 			ob.GenerateKeys();
 
 			// Write to disk
-			string priv_path = File::GetPath( SYS_PRIV_PATH );
+            string priv_path = File::GetPath( sysauthkey );
 			if( ! File::DirExists( priv_path ) )
 			{
 				File::MkPath( priv_path, 0755);
 			}
 
-			string pub_path = File::GetPath( SYS_PUB_PATH );
+            string pub_path = File::GetPath( syspubkey );
 			if( ! File::DirExists( pub_path ) )
 			{
 				File::MkPath( pub_path, 0755);
 			}
 
 			logg << Logger::Debug << "Possibly removing old private key"<<lend;
-			unlink( SYS_PRIV_PATH );
-			unlink( SYS_PUB_PATH );
+            unlink( sysauthkey.c_str() );
+            unlink( syspubkey.c_str() );
 
-			File::Write(SYS_PRIV_PATH, ob.PrivKeyAsPEM(), 0600 );
-			File::Write(SYS_PUB_PATH, ob.PubKeyAsPEM(), 0644 );
+            File::Write(sysauthkey, ob.PrivKeyAsPEM(), 0600 );
+            File::Write(syspubkey, ob.PubKeyAsPEM(), 0644 );
 
 			// Write to secop
 			map<string,string> data;
@@ -878,29 +889,29 @@ bool ControlApp::RegisterKeys( )
 		// perhaps move that part out here to make sure keys exist
 		// on disk.
 
-		string priv_path = File::GetPath( DNS_PRIV_PATH );
+        string priv_path = File::GetPath( dnsauthkey );
 		if( ! File::DirExists( priv_path ) )
 		{
 			File::MkPath( priv_path, 0755);
 		}
 
-		string pub_path = File::GetPath( DNS_PUB_PATH );
+        string pub_path = File::GetPath( dnspubkey );
 		if( ! File::DirExists( pub_path ) )
 		{
 			File::MkPath( pub_path, 0755);
 		}
 
-		if( ! File::FileExists( DNS_PRIV_PATH) || ! File::FileExists( DNS_PUB_PATH ) )
+        if( ! File::FileExists( dnsauthkey) || ! File::FileExists( dnspubkey ) )
 		{
 			RSAWrapper dns;
 			dns.GenerateKeys();
 
 			// Could be leftover symlinks, remove
-			unlink( DNS_PRIV_PATH );
-			unlink( DNS_PUB_PATH );
+            unlink( dnsauthkey.c_str() );
+            unlink( dnspubkey.c_str() );
 
-			File::Write(DNS_PRIV_PATH, dns.PrivKeyAsPEM(), 0600 );
-			File::Write(DNS_PUB_PATH, dns.PubKeyAsPEM(), 0644 );
+            File::Write(dnsauthkey, dns.PrivKeyAsPEM(), 0600 );
+            File::Write(dnspubkey, dns.PubKeyAsPEM(), 0644 );
 		}
 
 		ControlApp::WriteBackupConfig( this->GetBackupPassword());
@@ -939,15 +950,18 @@ bool ControlApp::GetCertificate(const string &opiname, const string &company)
 		this->global_error = "Failed to login to OP servers";
 		return false;
 	}
+    string syscert = SCFG.GetKeyAsString("hostinfo","syscert");
+    string dnsauthkey = SCFG.GetKeyAsString("dns","dnsauthkey");
 
+    string csrfile = File::GetPath(SCFG.GetKeyAsString("hostinfo","syscert"))+"/"+SCFG.GetKeyAsString("hostinfo","hostname")+".csr";
 
-	if( ! CryptoHelper::MakeCSR(DNS_PRIV_PATH, CSR_PATH, opiname, company) )
+    if( ! CryptoHelper::MakeCSR(dnsauthkey, csrfile, opiname, company) )
 	{
 		this->global_error = "Failed to make certificate signing request";
 		return false;
 	}
 
-	string csr = File::GetContentAsString(CSR_PATH, true);
+    string csr = File::GetContentAsString(csrfile, true);
 
 	AuthServer s(this->unit_id);
 
@@ -970,9 +984,9 @@ bool ControlApp::GetCertificate(const string &opiname, const string &company)
 	}
 
 	// Make sure we have no symlinked tempcert in place
-	unlink( CERT_PATH );
+    unlink( syscert.c_str() );
 
-	File::Write( CERT_PATH, ret["cert"].asString(), 0644);
+    File::Write( syscert, ret["cert"].asString(), 0644);
 
 #if 0
 	cout << "Resultcode: "<<resultcode<<endl;
@@ -1146,12 +1160,11 @@ bool ControlApp::GuessOPIName()
 {
 	logg << Logger::Debug << "Guess opi-name"<<lend;
 	// First try sysconfig
-	if( File::FileExists(SYSCONFIG_PATH))
+    try
 	{
-		ConfigFile c(SYSCONFIG_PATH);
 
-		string name = c.ValueOrDefault("opi_name");
-		string domain = c.ValueOrDefault("domain");
+        string name = SCFG.GetKeyAsString("hostinfo","hostname");
+        string domain = SCFG.GetKeyAsString("hostinfo","domain");
 
 		if( name != "" && domain != "" )
 		{
@@ -1162,6 +1175,10 @@ bool ControlApp::GuessOPIName()
 		}
 		logg << Logger::Notice << "OPI-name not found in sysconfig ("<<name<<")"<<", ("<<domain<<")"<<lend;
 	}
+    catch (std::runtime_error& e)
+    {
+        logg << Logger::Notice << "Failed to read hostname / domain from sysconfig"<<lend;
+    }
 
 	// If not found try figure out from mail-addresses
 	try
@@ -1203,41 +1220,29 @@ bool ControlApp::GuessOPIName()
 }
 void ControlApp::WriteConfig()
 {
-	string path = File::GetPath( SYSCONFIG_PATH );
 
-	if( ! File::DirExists( path ) )
+
+    if( this->opi_name != "" )
 	{
-		File::MkPath( path, 0755 );
-	}
-
-	ConfigFile c( SYSCONFIG_PATH );
-
-	c["dns_key"] = DNS_PRIV_PATH;
-	c["sys_key"] = SYS_PRIV_PATH;
-	c["ca_path"] = "/etc/opi/op_ca.pem";
-
-	if( this->unit_id != "" )
-	{
-		c["unit_id"] = this->unit_id;
+        SCFG.PutKey("hostinfo","unitid",this->unit_id);
 	}
 
 	if( this->opi_name != "" )
 	{
-		c["opi_name"] = this->opi_name;
+        SCFG.PutKey("hostinfo","hostname",this->opi_name);
 	}
 	if( this->domain != "" )
 	{
-	c["domain"] = this->domain;
+        SCFG.PutKey("hostinfo","domain",this->domain);
 	}
-
-	c.Sync(true, 0644);
 
 }
 
 
 void ControlApp::WriteBackupConfig(const string &password)
 {
-	string path = File::GetPath( BACKUP_PATH );
+    string authfile = SCFG.GetKeyAsString("backup","authfile");
+    string path = File::GetPath( authfile );
 
 	if( ! File::DirExists( path ) )
 	{
@@ -1260,7 +1265,7 @@ void ControlApp::WriteBackupConfig(const string &password)
         << "fs-passphrase: " << password<<endl;
 
 
-	File::Write(BACKUP_PATH, ss.str(), 0600 );
+    File::Write(authfile, ss.str(), 0600 );
 }
 
 bool ControlApp::SetupRestoreEnv()
@@ -1274,6 +1279,10 @@ bool ControlApp::SetupRestoreEnv()
 
 #define TMP_PRIV "/tmp/tmpkey.priv"
 #define TMP_PUB "/tmp/tmpkey.pub"
+
+    string sysauthkey = SCFG.GetKeyAsString("hostinfo","sysauthkey");
+    string syspubkey = SCFG.GetKeyAsString("hostinfo","syspubkey");
+
 
 	// Write to disk
 	string priv_path = File::GetPath( TMP_PRIV );
@@ -1292,10 +1301,10 @@ bool ControlApp::SetupRestoreEnv()
 	File::Write(TMP_PUB, ob.PubKeyAsPEM(), 0644 );
 
 	// Remove possible old keys
-	unlink( SYS_PRIV_PATH );
-	unlink( SYS_PUB_PATH );
+    unlink( sysauthkey.c_str() );
+    unlink( syspubkey.c_str() );
 
-	if( symlink( TMP_PRIV , SYS_PRIV_PATH ) )
+    if( symlink( TMP_PRIV , sysauthkey.c_str() ) )
 	{
 		unlink( TMP_PRIV );
 		unlink( TMP_PUB );
@@ -1303,9 +1312,9 @@ bool ControlApp::SetupRestoreEnv()
 		return false;
 	}
 
-	if( symlink( TMP_PUB , SYS_PUB_PATH ) )
+    if( symlink( TMP_PUB , syspubkey.c_str() ) )
 	{
-		unlink( SYS_PRIV_PATH );
+        unlink( sysauthkey.c_str() );
 		unlink( TMP_PRIV );
 		unlink( TMP_PUB );
 		logg << Logger::Notice << "Failed to symlink public key"<<lend;
@@ -1320,8 +1329,8 @@ bool ControlApp::SetupRestoreEnv()
 
 	if( resultcode != 200 )
 	{
-		unlink( SYS_PRIV_PATH );
-		unlink( SYS_PUB_PATH );
+        unlink( sysauthkey.c_str() );
+        unlink( syspubkey.c_str() );
 		unlink( TMP_PRIV );
 		unlink( TMP_PUB );
 		logg << Logger::Notice << "Failed to get challenge " << resultcode <<lend;
@@ -1334,8 +1343,8 @@ bool ControlApp::SetupRestoreEnv()
 
 	if( resultcode != 403 )
 	{
-		unlink( SYS_PRIV_PATH );
-		unlink( SYS_PUB_PATH );
+        unlink( sysauthkey.c_str() );
+        unlink( syspubkey.c_str() );
 		unlink( TMP_PRIV );
 		unlink( TMP_PUB );
 		logg << Logger::Notice << "Failed to send challenge " << resultcode <<lend;
@@ -1353,8 +1362,8 @@ bool ControlApp::SetupRestoreEnv()
 
 	if( resultcode != 200 )
 	{
-		unlink( SYS_PRIV_PATH );
-		unlink( SYS_PUB_PATH );
+        unlink( sysauthkey.c_str() );
+        unlink( syspubkey.c_str() );
 		unlink( TMP_PRIV );
 		unlink( TMP_PUB );
 		logg << Logger::Notice << "Failed to send secret ("
@@ -1461,6 +1470,8 @@ Json::Value ControlApp::CheckRestore()
 void ControlApp::CleanupRestoreEnv()
 {
 	logg << Logger::Debug << "Clean up restore environment"<<lend;
+    string sysauthkey = SCFG.GetKeyAsString("hostinfo","sysauthkey");
+    string syspubkey = SCFG.GetKeyAsString("hostinfo","syspubkey");
 
 	if( this->backuphelper )
 	{
@@ -1468,14 +1479,14 @@ void ControlApp::CleanupRestoreEnv()
 		this->backuphelper->UmountRemote();
 	}
 
-	if( File::LinkExists( SYS_PRIV_PATH ) )
+    if( File::LinkExists( sysauthkey ) )
 	{
-		unlink( SYS_PRIV_PATH );
+        unlink( sysauthkey.c_str() );
 	}
 
-	if( File::LinkExists( SYS_PUB_PATH ) )
+    if( File::LinkExists( syspubkey ) )
 	{
-		unlink( SYS_PUB_PATH );
+        unlink( syspubkey.c_str() );
 	}
 
 	unlink( TMP_PRIV );

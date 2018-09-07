@@ -1,0 +1,8 @@
+/* The default files, app.css and init.css from opi-control        *
+ * is always loaded. Theme files are loaded on top, by opi-control *
+ * using a redirect on:                                            *
+ *  -  "/activetheme/css/app.css"                                  *
+ *  -  "/activetheme/css/init.css"                                 *
+ * to the theme set in sysconfig to give "/example/css/app.css"   */
+ 
+ 

@@ -1,11 +1,6 @@
+
 #login-bg {
 	overflow : auto;
-}
-
-#login {
-	width : 400px;
-	margin-left : -200px;
-	top : 40%;
 }
 
 #page_shutdown {
@@ -30,7 +25,6 @@ nav  button.shutdown {
 	padding : 0px 10px;
 }
 nav button span {
-	vertical-align: middle;
 	font-size : 0.7em;
 }
 .width_50 {
