@@ -58,9 +58,33 @@
 	<p>Server replied with an unknown error</p>
 	</div>
 
-	<div id="page_restoreinprogress" class="page hidden">
+	<!-- <div id="page_restoreinprogress" class="page hidden"> -->
+	<div id="page_restoreinprogress" class="page">
 		<h1>Restore in progress</h1>
 		<p>Data restore in progress, please wait</p>
+		<div id="progressinfo" class="hidden">
+			<div id="progressbar">
+				<span id="restoreprogress">
+			</div>
+			<div class="restoreinfo">
+				<span id="file-label" class="restore-label">Current file:</span>
+				<div class="text-right restoredata">
+					<span id="file" class="pull-right"></span>
+				</div>
+			</div>
+			<div class="restoreinfo">
+				<span id="transferred-label" class="restore-label">Transferred:</span>
+				<div class="text-right restoredata">
+					<span id="transferred" class="pull-right"></span>
+				</div>
+			</div>
+			<div class="restoreinfo">
+				<span id="eta-label" class="restore-label">Estimated time left:</span>
+				<div class="text-right restoredata">
+					<span id="eta" class="pull-right"></span>
+				</div>
+			</div>
+		</div>
 	</div>
 	
 	<div id="page_shutdown" class="page hidden">
@@ -430,8 +454,11 @@ current_state = 0;
 var restore_paths = Array();
 var redirect_timeout = 10;
 
+/*
 restore_paths['local'] = ["/path/1","/path/2"];
 restore_paths['remote'] = ["/path/3","/path/4"];
+*/
+
 $("button[type='cancel']").click(function() {
 	setState(current_state);
 });
@@ -565,6 +592,16 @@ function poll_restore()
 
 	$.get("/status",function(data) {
 		setState(data.state);
+		//progress = { status: 1, filename:"/var/opi/nexcloud/data/files/john/intor.pdf", progress: "10%", eta:"00:10:55", rate:"", transferred:"10MB" };
+		console.log(data);
+		console.log(data.progress);
+		if ( data.progress.status ) {
+			$("#progressinfo").removeClass("hidden");
+			$("#file").text(data.progress.filename);
+			$("#transferred").text(data.progress.transferred);
+			$("#eta").text(data.progress.eta);
+			$("#restoreprogress").width(data.progress.progress);
+		}
 	})
 	.fail(function() {
 		console.log("Poll restore request failed");
@@ -719,7 +756,8 @@ $("input").keypress(function(e) {
 });
 
 $(window).bind('beforeunload', function(){
-  return 'Are you sure you want to leave?';
+	console.log("Confirm leave.");
+  	return "Leaving?";
 });
 
 $(document).ready( function() {
@@ -728,13 +766,6 @@ $(document).ready( function() {
 	type=getType();
 	domains=getDomains();
 
-	// fix margin if we are running in a small browser.
-	/*
-	if($(window).width() < 760) {
-		margin = ($(window).width() - 400)/2; 
-		$("#login").css("marginLeft",margin+"px");
-	}
-	*/
 	$("input[type='text']").addClass("form-control");
 	$("input[type='password']").addClass("form-control");
 	$("button").addClass("btn").addClass("btn-primary");
@@ -887,6 +918,7 @@ $(document).ready( function() {
 				}
 			});
 
+			// return false to prevent "normal" submit of the form.
 			return false;
 		},
 		onError : function($form) {
@@ -899,6 +931,27 @@ $(document).ready( function() {
 	$.get("/status",function(data) {
 		//console.log(data);
 		setState(data.state);
+		switch ( data.state ) {
+		case 5:
+			// expecting cached content here for backup paths.
+			if (data.cache) {
+				var paths = {local:data.cache.local, remote:data.cache.remote};
+				populate_paths(paths);
+			} else {
+				console.log("Expected cached content, but did not find any.");
+			}
+			break;
+
+		case 6:  
+			// Restore in progress
+			poll_restore();
+			break;
+
+		default:
+			console.log("Nothing to do for state:" + data.state);
+			break;
+		}
+
 	})
 	.fail(function() {
 		setState(1);	

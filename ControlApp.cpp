@@ -373,7 +373,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			{
 				this->masterpassword = v["password"].asString();
 				this->unit_id = v["unit_id"].asString();
-
+				this->WriteConfig();
 				this->statemachine->Init( v["save"].asBool() );
 			}
 			else if( cmd == "reinit" )
@@ -420,18 +420,52 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			{
                 Json::Value ret(Json::objectValue);
                 ret["domains"]=Json::arrayValue;
-
+				list<string> domains;
+				if ( SysConfig().HasKey("dns","availabledomains"))
+				{
+					domains = SysConfig().GetKeyAsStringList("dns","availabledomains");
+					for(auto domain: domains)
+					{
+						ret["domains"].append(domain);
+					}
+					ret["domain"]=domains.front();
+				}
+				else
+				{
                 for(auto domain: sysinfo.Domains)
                 {
                     ret["domains"].append(domain);
                 }
                 ret["domain"]=sysinfo.Domains[sysinfo.Type()];
+				}
 				return ret;
 			}
 			else if( cmd == "status" )
 			{
 				Json::Value ret;
+				Json::Value progress;
+				Json::Reader reader;
 				ret["state"] = this->statemachine->State();
+				bool retval;
+				string strprog;
+
+				tie(retval,strprog) = Process::Exec( "/usr/share/opi-backup/progress.sh" );
+				if ( retval )
+				{
+					retval = reader.parse(strprog,progress);
+					if ( retval )
+					{
+						ret["progress"] = progress;
+					}
+					else
+					{
+						logg << Logger::Error << "Failed to parse restore progress." << lend;
+					}
+				}
+				else
+				{
+					logg << Logger::Error << "Failed to run restore progress check." << lend;
+				}
 				return ret;
 			}
 			else
@@ -1221,19 +1255,19 @@ bool ControlApp::GuessOPIName()
 void ControlApp::WriteConfig()
 {
 
-
-    if( this->opi_name != "" )
+	SysConfig sysconfig(true);
+	if( this->unit_id != "" )
 	{
-        SCFG.PutKey("hostinfo","unitid",this->unit_id);
+		sysconfig.PutKey("hostinfo","unitid",this->unit_id);
 	}
 
 	if( this->opi_name != "" )
 	{
-        SCFG.PutKey("hostinfo","hostname",this->opi_name);
+		sysconfig.PutKey("hostinfo","hostname",this->opi_name);
 	}
 	if( this->domain != "" )
 	{
-        SCFG.PutKey("hostinfo","domain",this->domain);
+		sysconfig.PutKey("hostinfo","domain",this->domain);
 	}
 
 }
