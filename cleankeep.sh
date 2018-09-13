@@ -1,9 +1,6 @@
-#!/bin/bash
-if [ "$1" == "upgrade" ]
-then
-	apt update
-	apt install cryptsetup-bin
-fi
+apt update
+apt install cryptsetup-bin
+
 
 service secop stop
 service opi-authproxy stop
@@ -23,9 +20,9 @@ vgremove pool
 pvremove /dev/sda1
 wipefs -a /dev/disk/by-path/platform-f10a8000.sata-ata-2-part1
 rm /var/opi/secop/secop.db
-sed -i 's/\(unitid\)/\#\1/' /etc/kinguard/sysconfig.json
-sed -i 's/\(domain\)/\#\1/' /etc/kinguard/sysconfig.json
-sed -i 's/\(hostname\)/\#\1/' /etc/kinguard/sysconfig.json
+sed -i 's/\"\(unitid\)/\"\#\1/' /etc/kinguard/sysconfig.json
+sed -i 's/\"\(domain\)/\"\#\1/' /etc/kinguard/sysconfig.json
+sed -i 's/\"\(hostname\)/\"\#\1/' /etc/kinguard/sysconfig.json
 
 rm -rf /usr/share/kinguard-certhandler/dehydrated/accounts/*
 rm /etc/opi/web*
