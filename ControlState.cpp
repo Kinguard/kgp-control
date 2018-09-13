@@ -232,13 +232,14 @@ ControlState::~ControlState()
 void ControlState::StIdle(EventData *data)
 {
 	ScopedLog l("StIdle");
+	(void)data;
 
 }
 
 void ControlState::StAskInitCheckRestore(EventData *data)
 {
 	ScopedLog l("StAskInitCheckrestore");
-
+	(void)data;
 }
 
 void ControlState::StInitCheckRestore(EventData *data)
@@ -303,7 +304,7 @@ void ControlState::StInit(EventData *data)
 void ControlState::StAskReInitCheckRestore(EventData *data)
 {
 	ScopedLog l("StAskReInitCheckrestore");
-
+	(void)data;
 }
 
 void ControlState::StReInitCheckrestore(EventData *data)
@@ -385,13 +386,13 @@ void ControlState::StRestore(EventData *data)
 void ControlState::StAskRestore(EventData *data)
 {
 	ScopedLog l("StAskRestore");
-
+	(void)data;
 }
 
 void ControlState::StAskAddUser(EventData *data)
 {
 	ScopedLog l("StAskAddUser");
-
+	(void)data;
 }
 
 void ControlState::StAddUser(EventData *data)
@@ -414,7 +415,7 @@ void ControlState::StAddUser(EventData *data)
 void ControlState::StAskOpiName(EventData *data)
 {
 	ScopedLog l("StAskOpiName");
-
+	(void)data;
 }
 
 void ControlState::StOpiName(EventData *data)
@@ -446,7 +447,7 @@ void ControlState::StOpiName(EventData *data)
 void ControlState::StAskUnlock(EventData *data)
 {
 	ScopedLog l("StAskUnlock");
-
+	(void)data;
 }
 
 void ControlState::StDoUnlock(EventData *data)
@@ -469,6 +470,7 @@ void ControlState::StDoUnlock(EventData *data)
 void ControlState::StTerminate(EventData *data)
 {
 	ScopedLog l("StTerminate");
+	(void)data;
 
 	this->app->StopWebserver();
 
@@ -478,6 +480,7 @@ void ControlState::StTerminate(EventData *data)
 void ControlState::StShutDown(EventData *data)
 {
 	ScopedLog l("StShutdown");
+	(void)data;
 
 	this->app->StopWebserver();
 
@@ -486,6 +489,7 @@ void ControlState::StShutDown(EventData *data)
 void ControlState::StReboot(EventData *data)
 {
 	ScopedLog l("StReboot");
+	(void)data;
 
 	this->app->StopWebserver();
 
@@ -496,13 +500,13 @@ void ControlState::StReboot(EventData *data)
 void ControlState::StCompleted(EventData *data)
 {
 	ScopedLog l("StCompleted");
-
+	(void)data;
 }
 
 void ControlState::StError(EventData *data)
 {
 	ScopedLog l("StError");
-
+	(void)data;
 }
 
 // Todo: We really should have more internal states here

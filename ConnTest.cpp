@@ -33,7 +33,7 @@ ConnTest::~ConnTest()
 
 bool ConnTest::TestPort(long port)
 {
-	logg << Logger::Debug << "Testing port "<<port<<lend;
+	logg << Logger::Debug << "Testing port " << static_cast<int>(port) << lend;
 	bool ret = false;
 
 	try

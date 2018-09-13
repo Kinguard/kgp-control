@@ -258,7 +258,7 @@ void ControlApp::Main()
 	if( this->state != ControlState::State::Completed )
 	{
 
-		this->statemachine = ControlStatePtr( new ControlState( this, this->state ) );
+		this->statemachine = ControlStatePtr( new ControlState( this, static_cast<uint8_t>(this->state) ) );
 
 		this->ws = WebServerPtr( new WebServer( std::bind(&ControlApp::WebCallback,this, _1)) );
 
@@ -333,6 +333,7 @@ void ControlApp::ShutDown()
 
 void ControlApp::SigTerm(int signo)
 {
+	(void) signo;
 	// Possibly shutdown webserver
 	if( this->ws != nullptr )
 	{
@@ -343,7 +344,7 @@ void ControlApp::SigTerm(int signo)
 
 void ControlApp::SigHup(int signo)
 {
-
+	(void) signo;
 }
 
 ControlApp::~ControlApp()
@@ -374,6 +375,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 				this->masterpassword = v["password"].asString();
 				this->unit_id = v["unit_id"].asString();
 				this->WriteConfig();
+
 				this->statemachine->Init( v["save"].asBool() );
 			}
 			else if( cmd == "reinit" )
@@ -445,7 +447,14 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 				Json::Value ret;
 				Json::Value progress;
 				Json::Reader reader;
-				ret["state"] = this->statemachine->State();
+
+				uint8_t state = this->statemachine->State();
+				ret["state"] = state;
+				if( this->cache.find( state) != this->cache.end() )
+				{
+					ret["cache"] = this->cache[state];
+				}
+
 				bool retval;
 				string strprog;
 
@@ -878,7 +887,7 @@ bool ControlApp::RegisterKeys( )
 		{
 			ids = s.AppGetIdentifiers("op-backend");
 		}
-		catch( runtime_error& err)
+		catch( __attribute__((unused)) runtime_error& err )
 		{
 			// Do nothing, appid is missing but thats ok.
 		}
@@ -1035,21 +1044,28 @@ class SignerThread: public Utils::Thread
 public:
 	SignerThread(const string& name): Thread(false), opiname(name) {}
 
-	virtual void Run()
-	{
-		tie(this->result, ignore) = Process::Exec("/usr/share/kinguard-certhandler/letsencrypt.sh -ac");
-	}
-
-	bool Result()
-	{
-		// Only valid upon completed run
-		return this->result;
-	}
-	virtual ~SignerThread() {}
+	virtual void Run();
+	bool Result();
+	virtual ~SignerThread();
 private:
 	string opiname;
 	bool result;
 };
+
+void SignerThread::Run()
+{
+	tie(this->result, ignore) = Process::Exec("/usr/share/kinguard-certhandler/letsencrypt.sh -ac");
+}
+
+bool SignerThread::Result()
+{
+	// Only valid upon completed run
+	return this->result;
+}
+
+SignerThread::~SignerThread()
+{
+}
 
 bool ControlApp::GetSignedCert(const string &opiname)
 {
@@ -1211,7 +1227,7 @@ bool ControlApp::GuessOPIName()
 	}
     catch (std::runtime_error& e)
     {
-        logg << Logger::Notice << "Failed to read hostname / domain from sysconfig"<<lend;
+		logg << Logger::Notice << "Failed to read hostname / domain from sysconfig (" << e.what() << ")" <<lend;
     }
 
 	// If not found try figure out from mail-addresses
@@ -1254,8 +1270,8 @@ bool ControlApp::GuessOPIName()
 }
 void ControlApp::WriteConfig()
 {
-
 	SysConfig sysconfig(true);
+
 	if( this->unit_id != "" )
 	{
 		sysconfig.PutKey("hostinfo","unitid",this->unit_id);
@@ -1468,6 +1484,8 @@ Json::Value ControlApp::CheckRestore()
 			hasdata = true;
 			retval["local"].append(val);
 		}
+
+		this->cache[ControlState::State::AskRestore]["local"] = retval["local"];
 		this->backuphelper->UmountLocal();
 	}
 	else
@@ -1484,6 +1502,7 @@ Json::Value ControlApp::CheckRestore()
 			hasdata = true;
 			retval["remote"].append(val);
 		}
+		this->cache[ControlState::State::AskRestore]["remote"] = retval["remote"];
 		this->backuphelper->UmountRemote();
 	}
 	else

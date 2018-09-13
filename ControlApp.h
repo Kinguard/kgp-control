@@ -40,6 +40,9 @@ private:
 	Json::Value connstatus;
 	string global_error;
 
+	// User value cache for state
+	map<uint16_t, Json::Value> cache;
+
 	// Web communication
 	Json::Value WebCallback(Json::Value v);
 	bool DoUnlock(const string& pwd, bool savepass);

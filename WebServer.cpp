@@ -28,7 +28,7 @@ std::function<Json::Value(Json::Value)> WebServer::callback;
 WebServer::WebServer(std::function<Json::Value(Json::Value)> cb):
     Utils::Thread(false),
     doRun(true),
-    server(NULL)
+    server(nullptr)
 {
     WebServer::callback = cb;
     routes[std::make_pair("/configure","POST")] = WebServer::handle_init;
@@ -60,7 +60,7 @@ void WebServer::PreRun()
     const string certpath = cfg.GetKeyAsString("webcertificate", "activecert");
     const string keypath = cfg.GetKeyAsString("webcertificate", "activekey");
 
-    this->server = mg_create_server(NULL, WebServer::ev_handler);
+    this->server = mg_create_server(nullptr, WebServer::ev_handler);
     mg_set_option(this->server, "document_root", DOCUMENT_ROOT);
 
     if( ! File::FileExists( certpath ) && ! File::LinkExists( certpath ) )
@@ -701,7 +701,7 @@ int WebServer::handle_theme(mg_connection *conn)
     }
     catch (std::runtime_error& e)
     {
-        logg << Logger::Debug << "No theme set"<<lend;
+        logg << Logger::Debug << "No theme set (" << e.what() << ")"<<lend;
     }
 
     mg_send_status(conn,404);
