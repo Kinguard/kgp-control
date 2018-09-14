@@ -1,3 +1,10 @@
+opi-control (1.1.39) vili; urgency=medium
+
+  * Support reload of UI during setup. 
+  * Show progressbar duing restore.
+
+ -- PA Nilsson <pa@openproducts.se>  Fri, 14 Sep 2018 11:39:57 +0200
+
 opi-control (1.1.38) vili; urgency=medium
 
   * Added possibility to load theme files in UI.
