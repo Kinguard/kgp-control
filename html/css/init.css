@@ -141,6 +141,7 @@ form p {
 	white-space: nowrap;
 	word-break: keep-all;
 	display : inline-block;
+	font-size : 12px;
 }
 
 #page_restoreinprogress .restoredata {

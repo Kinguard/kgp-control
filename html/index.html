@@ -59,12 +59,20 @@
 	</div>
 
 	<!-- <div id="page_restoreinprogress" class="page hidden"> -->
-	<div id="page_restoreinprogress" class="page">
+	<div id="page_restoreinprogress" class="page hidden">
 		<h1>Restore in progress</h1>
 		<p>Data restore in progress, please wait</p>
+		<div id="progressstate">
+			<div class="restoreinfo">
+				<span id="state-label" class="restore-label">Current operation:</span>
+				<div class="text-right restoredata">
+					<span id="restorestate" class="pull-right">Initializing restore.</span>
+				</div>
+			</div>
+		</div>
 		<div id="progressinfo" class="hidden">
 			<div id="progressbar">
-				<span id="restoreprogress">
+				<span id="restoreprogress"></span>
 			</div>
 			<div class="restoreinfo">
 				<span id="file-label" class="restore-label">Current file:</span>
@@ -132,14 +140,6 @@
 	<div id="page_initprogress" class="page hidden">
 		<h1>Initializing ...</h1>
 		<p>Please have patience, initializing can take a long time</p>
-		<div class="note">
-			<div class="txtnote">
-				<i>
-					<b>NOTE:</b><br>
-					Reloading this page will corrupt the initialization process.
-				</i>
-			</div>
-		</div>
 
 	</div>
 	
@@ -422,14 +422,6 @@
 					>
 					Skip restore</button>
 		</form>
-		<div class="note">
-			<div class="txtnote">
-				<i>
-					<b>NOTE:</b><br>
-					Reloading this page will corrupt the initialization process.
-				</i>
-			</div>
-		</div>
 
 	</div>	
 	<div id="validation_error" class="hidden">
@@ -450,14 +442,11 @@
 
 current_state = 0;
 
-// set dummy paths
 var restore_paths = Array();
 var redirect_timeout = 10;
+var maxpolls = 10;
+var pollcount = 0;
 
-/*
-restore_paths['local'] = ["/path/1","/path/2"];
-restore_paths['remote'] = ["/path/3","/path/4"];
-*/
 
 $("button[type='cancel']").click(function() {
 	setState(current_state);
@@ -542,13 +531,22 @@ var pages = {
 
 function setState(state) {
 
+	current_state = state;
 	if( ! pages.hasOwnProperty( state ) )
 	{
-		console.log("Unknown state! "+state);
-		state = 0;
+		switch(state) {
+			case 1:
+				console.log("State: " + state + ", show loading");
+				$("#spinner-bg").removeClass("hidden");
+				state = 99;
+				break;
+			default:
+				console.log("Unknown state! "+state);
+				current_state = 0;
+				break;
+		}
 	}
 
-	current_state = state;
 
 	// remove possible error messages
 	$("#validation_error_msg").text('');
@@ -592,19 +590,29 @@ function poll_restore()
 
 	$.get("/status",function(data) {
 		setState(data.state);
-		//progress = { status: 1, filename:"/var/opi/nexcloud/data/files/john/intor.pdf", progress: "10%", eta:"00:10:55", rate:"", transferred:"10MB" };
-		console.log(data);
-		console.log(data.progress);
-		if ( data.progress.status ) {
+
+		if (data.progress.stateinfo &&  ( Number(data.progress.stateinfo.state) < Number(data.progress.stateinfo.max_states)) )  {
+			$("#restorestate").text(data.progress.stateinfo.desc);
+		}
+
+		if ( data.progress.status && (data.progress.stateinfo.state < 5) ) {
 			$("#progressinfo").removeClass("hidden");
 			$("#file").text(data.progress.filename);
 			$("#transferred").text(data.progress.transferred);
 			$("#eta").text(data.progress.eta);
 			$("#restoreprogress").width(data.progress.progress);
+		} else {
+			$("#progressinfo").addClass("hidden");
 		}
 	})
 	.fail(function() {
 		console.log("Poll restore request failed");
+		if ( pollcount > maxpolls ) {
+			setState(1);
+		} else {
+			pollcount++;
+		}
+
 	});
 
 	if( current_state == 6 ) // doing restore
@@ -722,6 +730,49 @@ function getDomains() {
 	return domains;
 }
 
+function getStatus() {
+	$.get("/status",function(data) {
+		
+		setState(data.state);	
+		console.log("getStatus state: " + data.state);
+		switch ( data.state ) {
+		case 1:
+			// add all states here that we want to wait for
+			// and that has been triggered by a page reload
+			console.log("Trigger poll");
+			setTimeout( getStatus(), 2000 );
+			break;
+		case 5:
+			// expecting cached content here for backup paths.
+			if (data.cache) {
+				var paths = {local:data.cache.local, remote:data.cache.remote};
+				populate_paths(paths);
+			} else {
+				console.log("Expected cached content, but did not find any.");
+			}
+			break;
+
+		case 6:  
+			// Restore in progress
+			poll_restore();
+			break;
+		case 15:  
+			// System is unlocked, send terminate signal.
+			done("");
+			break;
+
+
+		default:
+			console.log("Nothing to do for state:" + data.state);
+			break;
+		}
+
+	})
+	.fail(function() {
+		setState(1);	
+		console.log("request failed");
+	});	
+}
 
 var opiname_check = false;
 $("#opiname").keyup( function() {
@@ -755,10 +806,12 @@ $("input").keypress(function(e) {
 	}
 });
 
+/*
 $(window).bind('beforeunload', function(){
 	console.log("Confirm leave.");
   	return "Leaving?";
 });
+*/
 
 $(document).ready( function() {
 	var unit_id;
@@ -927,36 +980,8 @@ $(document).ready( function() {
 		}
 
 	});
-
-	$.get("/status",function(data) {
-		//console.log(data);
-		setState(data.state);
-		switch ( data.state ) {
-		case 5:
-			// expecting cached content here for backup paths.
-			if (data.cache) {
-				var paths = {local:data.cache.local, remote:data.cache.remote};
-				populate_paths(paths);
-			} else {
-				console.log("Expected cached content, but did not find any.");
-			}
-			break;
-
-		case 6:  
-			// Restore in progress
-			poll_restore();
-			break;
-
-		default:
-			console.log("Nothing to do for state:" + data.state);
-			break;
-		}
-
-	})
-	.fail(function() {
-		setState(1);	
-		console.log("request failed");
-	});
+	console.log("Call getStatus, state: " + current_state);
+	getStatus();
 	
 });
 </script>
