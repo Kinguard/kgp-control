@@ -56,7 +56,7 @@ private:
 	bool InitializeSD();
 	bool RegisterKeys();
 	string GetBackupPassword();
-	bool GetCertificate(const string& opiname, const string& company="OPI");
+	bool GetCertificate(const string& fqdn, const string& company="OPI");
 	bool GetSignedCert(const string& opiname);
 	bool GetPasswordUSB();
 	bool GetPasswordRoot();
