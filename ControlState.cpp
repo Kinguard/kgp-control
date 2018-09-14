@@ -2,6 +2,7 @@
 
 #include <libutils/Process.h>
 #include <libutils/Thread.h>
+#include <libutils/String.h>
 #include <libopi/Secop.h>
 #include <libopi/SysInfo.h>
 
@@ -277,7 +278,7 @@ void ControlState::StInit(EventData *data)
 		if( users.size() > 0 )
 		{
 			// We have users on SD, skip register user
-			if( this->app->GuessOPIName() && this->app->SetDNSName( this->app->opi_name ) )
+			if( this->app->GuessOPIName() && this->app->SetDNSName() )
 			{
 				this->RegisterEvent( State::Completed, nullptr );
 			}
@@ -432,7 +433,9 @@ void ControlState::StOpiName(EventData *data)
 		ControlData *arg = dynamic_cast<ControlData*>(data);
 		logg << Logger::Info << "StOpiName 2";
 
-		if( this->app->SetDNSName(arg->data["opiname"].asString() ) )
+		list<string> fqdn = String::Split(arg->data["opiname"].asString(), ".",2);
+		logg << Logger::Info << "Got fqdn: " << fqdn.front() << "." << fqdn.back() << lend;
+		if( this->app->SetDNSName(fqdn.front(),fqdn.back() ) )
 		{
 			this->RegisterEvent( State::Completed, nullptr);
 		}
@@ -531,7 +534,7 @@ void ControlState::DoRestore(const string &path)
 
 				if( this->app->GuessOPIName() )
 				{
-					if( this->app->SetDNSName( this->app->opi_name ) )
+					if( this->app->SetDNSName() )
 					{
 						// Trigger not register since we call this outside of process context
 						this->TriggerEvent( State::Completed, nullptr);

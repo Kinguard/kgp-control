@@ -1,5 +1,8 @@
-apt update
-apt install cryptsetup-bin
+if [ "$1" == "update" ]
+then
+	apt update
+	apt install cryptsetup-bin
+fi
 
 
 service secop stop

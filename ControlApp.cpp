@@ -421,7 +421,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
             else if( cmd == "getdomains" )
 			{
                 Json::Value ret(Json::objectValue);
-                ret["domains"]=Json::arrayValue;
+				ret["domains"]=Json::arrayValue;
 				list<string> domains;
 				if ( SysConfig().HasKey("dns","availabledomains"))
 				{
@@ -434,11 +434,11 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 				}
 				else
 				{
-                for(auto domain: sysinfo.Domains)
-                {
-                    ret["domains"].append(domain);
-                }
-                ret["domain"]=sysinfo.Domains[sysinfo.Type()];
+					for(auto domain: sysinfo.Domains)
+					{
+						ret["domains"].append(domain);
+					}
+					ret["domain"]=sysinfo.Domains[sysinfo.Type()];
 				}
 				return ret;
 			}
@@ -760,27 +760,33 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 
 	return true;
 }
-
-bool ControlApp::SetDNSName(const string &opiname)
+bool ControlApp::SetDNSName()
 {
-    logg << Logger::Debug << "Set dns name: " << opiname << lend;
+	return this->SetDNSName(this->opi_name,this->domain);
+}
+bool ControlApp::SetDNSName(const string &opiname,const string &domain)
+{
+	logg << Logger::Debug << "Set dns, hostname: " << opiname << " domain: " << domain << lend;
+	string fqdn = opiname +"."+domain;
 	DnsServer dns;
-	if( ! dns.UpdateDynDNS(this->unit_id, opiname) )
+	if( ! dns.UpdateDynDNS(this->unit_id, fqdn) )
 	{
-		logg << Logger::Error << "Failed to update Dyndns ("<< this->unit_id << ") ("<< opiname <<")"<<lend;
+		logg << Logger::Error << "Failed to update Dyndns ("<< this->unit_id << ") ("<< fqdn <<")"<<lend;
 		this->global_error = "Failed to update DynDNS";
 		return false;
 	}
 
-	if( !this->GetCertificate(opiname, "OPI") )
+	logg << Logger::Debug << "Request OP certificate: "<<this->global_error<<lend;
+	if( !this->GetCertificate(fqdn, "OPI") )
 	{
         logg << Logger::Error << "Failed to get certificate for device name: "<<this->global_error<<lend;
 		return false;
 	}
 
-	list<string> parts=String::Split(opiname, ".",2);
-	this->opi_name = parts.front();
-	this->domain = parts.back();
+	this->opi_name = opiname;
+	this->domain = domain;
+
+	this->WriteConfig();
 
 	/*
 	 * If we have no first user this indicates old SD card with info and users
@@ -793,7 +799,7 @@ bool ControlApp::SetDNSName(const string &opiname)
 			// Add first user email on opidomain
 			OPI::MailConfig mc;
 			mc.ReadConfig();
-			mc.SetAddress(opiname,this->first_user,this->first_user);
+			mc.SetAddress(fqdn,this->first_user,this->first_user);
 			mc.WriteConfig();
 
             string aliases = SAREA + SCFG.GetKeyAsString("mail","vmailbox");
@@ -808,7 +814,7 @@ bool ControlApp::SetDNSName(const string &opiname)
 				return false;
 			}
 
-			File::Write("/etc/mailname", opiname, 0644);
+			File::Write("/etc/mailname", fqdn, 0644);
 		}
 		catch(runtime_error& err)
 		{
@@ -818,14 +824,12 @@ bool ControlApp::SetDNSName(const string &opiname)
 		}
 	}
 
-	this->WriteConfig();
 
-
-    logg << Logger::Debug << "Get signed Certificate for '"<< opiname <<"'"<<lend;
-    if( ! this->GetSignedCert(opiname) )
+	logg << Logger::Debug << "Get signed Certificate for '"<< fqdn <<"'"<<lend;
+	if( ! this->GetSignedCert(fqdn) )
     {
         // This can fail if portforwards does not work, then the above cert will be used.
-        logg << Logger::Notice << "Failed to get signed Certificate for device name: "<< opiname <<lend;
+		logg << Logger::Notice << "Failed to get signed Certificate for device name: "<< fqdn <<lend;
     }
 
 	return true;
@@ -979,7 +983,7 @@ string ControlApp::GetBackupPassword()
 	return Base64Encode( ukey );
 }
 
-bool ControlApp::GetCertificate(const string &opiname, const string &company)
+bool ControlApp::GetCertificate(const string &fqdn, const string &company)
 {
 
 	/*
@@ -996,9 +1000,9 @@ bool ControlApp::GetCertificate(const string &opiname, const string &company)
     string syscert = SCFG.GetKeyAsString("hostinfo","syscert");
     string dnsauthkey = SCFG.GetKeyAsString("dns","dnsauthkey");
 
-    string csrfile = File::GetPath(SCFG.GetKeyAsString("hostinfo","syscert"))+"/"+SCFG.GetKeyAsString("hostinfo","hostname")+".csr";
+	string csrfile = File::GetPath(SCFG.GetKeyAsString("hostinfo","syscert"))+"/"+String::Split(fqdn,".",2).front()+".csr";
 
-    if( ! CryptoHelper::MakeCSR(dnsauthkey, csrfile, opiname, company) )
+	if( ! CryptoHelper::MakeCSR(dnsauthkey, csrfile, fqdn, company) )
 	{
 		this->global_error = "Failed to make certificate signing request";
 		return false;
@@ -1053,15 +1057,15 @@ private:
 };
 
 void SignerThread::Run()
-{
-	tie(this->result, ignore) = Process::Exec("/usr/share/kinguard-certhandler/letsencrypt.sh -ac");
-}
+	{
+		tie(this->result, ignore) = Process::Exec("/usr/share/kinguard-certhandler/letsencrypt.sh -ac");
+	}
 
 bool SignerThread::Result()
-{
-	// Only valid upon completed run
-	return this->result;
-}
+	{
+		// Only valid upon completed run
+		return this->result;
+	}
 
 SignerThread::~SignerThread()
 {
@@ -1218,9 +1222,10 @@ bool ControlApp::GuessOPIName()
 
 		if( name != "" && domain != "" )
 		{
-			this->opi_name = name + "." + domain;
+			this->opi_name = name;
+			this->domain = domain;
 
-			logg << Logger::Debug << "OPI-name, " << this->opi_name <<  ", sucessfully read from sysconfig"<<lend;
+			logg << Logger::Debug << "OPI-name, " << this->opi_name << "domain: " << this->domain << ", sucessfully read from sysconfig"<<lend;
 			return true;
 		}
 		logg << Logger::Notice << "OPI-name not found in sysconfig ("<<name<<")"<<", ("<<domain<<")"<<lend;
@@ -1233,13 +1238,10 @@ bool ControlApp::GuessOPIName()
 	// If not found try figure out from mail-addresses
 	try
 	{
-		OPI::MailConfig mc;
-		//TODO: refactor this into sysconfig
-		const vector<string> valid_domains = {
-			"op-i.me",
-			"mykeep.net"
-		};
+		logg << Logger::Notice << "Trying to guess fqdn from mailconfig" <<lend;
 
+		OPI::MailConfig mc;
+		list<string> valid_domains= SCFG.GetKeyAsStringList("dns","availabledomains");
 		mc.ReadConfig();
 		list<string> names;
 		list<string> domains = mc.GetDomains();
@@ -1257,8 +1259,9 @@ bool ControlApp::GuessOPIName()
 		{
 			return false;
 		}
-
-		this->opi_name = names.front();
+		list<string> fqdn = String::Split(names.front(),".",2);
+		this->opi_name = fqdn.front();
+		this->domain = fqdn.back();
 
 		return true;
 	}
@@ -1270,6 +1273,7 @@ bool ControlApp::GuessOPIName()
 }
 void ControlApp::WriteConfig()
 {
+	logg << Logger::Notice << "Writing config" <<lend;
 	SysConfig sysconfig(true);
 
 	if( this->unit_id != "" )

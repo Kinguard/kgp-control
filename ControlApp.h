@@ -48,7 +48,8 @@ private:
 	bool DoUnlock(const string& pwd, bool savepass);
 	bool DoInit(bool savepassword );
 	bool AddUser(const std::string user, const std::string display, const std::string password);
-	bool SetDNSName( const std::string& opiname);
+	bool SetDNSName();
+	bool SetDNSName(const std::string& opiname, const string &domain);
 	bool SecopUnlocked();
 
 	// Helper methods
