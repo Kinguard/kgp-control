@@ -1,3 +1,9 @@
+#nav-buttons {
+	width : 75%;
+}
+#nav-buttons button {
+	margin : 5px;
+}
 
 #login-bg {
 	overflow : auto;
@@ -59,10 +65,10 @@ nav button span {
 	margin-top : 20px;
 }
 form label {
-	width : 200px;
+	width : 90%;
 	display : block;
 }
-form label.pwd_on_usb {
+form label.inline {
 	display : inline;
 }
 form input[type='checkbox'] {

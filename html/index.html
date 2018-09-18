@@ -20,6 +20,21 @@
 
 </head>
 <body class="claro" id="theBody">
+<div id="nav-buttons" class="">
+	<button type="button" class="navbutton" opi-page="5" id="b5" title="">Restore Backup</button>
+	<button type="button" class="navbutton" opi-page="6" id="b6" title="">Restore In Progress</button>
+	<button type="button" class="navbutton" opi-page="7" id="b7" title="">Add User</button>
+	<button type="button" class="navbutton" opi-page="10" id="b10" title="">Unlock</button>
+	<button type="button" class="navbutton" opi-page="13" id="b13" title="">Shutdown In Progress</button>
+    <button type="button" class="navbutton" opi-page="14" id="b14" title="">Reboot In Progress</button>
+    <button type="button" class="navbutton" opi-page="15" id="b15" title="">Post Init</button>
+    <button type="button" class="navbutton" opi-page="17" id="b17" title="">Storage Error</button>
+    <button type="button" class="navbutton" opi-page="18" id="b18" title="">Device Name</button>
+    <button type="button" class="navbutton" opi-page="19" id="b19" title="">Known Unit-id</button>
+    <button type="button" class="navbutton" opi-page="20" id="b20" title="">Master pwd / Unlock</button>
+    <button type="button" class="navbutton" opi-page="99" id="b99" title="">Init in progress</button>
+</div>
+
 <nav id="nav-shutdown">
 	<div id="shutdown">
 		<button type="button" class="shutdown" id="btn-shutdown"><img src='img/shutdown.png' /><span>Shutdown <span class="typename"></span></span></button>
@@ -34,25 +49,6 @@
 
 <div id="login-bg">
 <section id="login">
-	<div id="nav" class="hidden">
-	<button type="button" class="navbutton" opi-page="1" id="b1" title="">1</button>
-	<button type="button" class="navbutton" opi-page="2" id="b2" title="">2</button>
-	<button type="button" class="navbutton" opi-page="3" id="b3" title="">3</button>
-	<button type="button" class="navbutton" opi-page="4" id="b4" title="">4</button>
-	<button type="button" class="navbutton" opi-page="5" id="b5" title="">5</button>
-	<button type="button" class="navbutton" opi-page="6" id="b6" title="">6</button>
-	<button type="button" class="navbutton" opi-page="7" id="b7" title="">7</button>
-	<button type="button" class="navbutton" opi-page="8" id="b8" title="">8</button>
-	<button type="button" class="navbutton" opi-page="9" id="b9" title="">9</button>
-	<button type="button" class="navbutton" opi-page="10" id="b10" title="">10</button>
-	<button type="button" class="navbutton" opi-page="11" id="b11" title="">11</button>
-	<button type="button" class="navbutton" opi-page="12" id="b12" title="">12</button>
-        <button type="button" class="navbutton" opi-page="13" id="b13" title="">13</button>
-        <button type="button" class="navbutton" opi-page="14" id="b14" title="">14</button>
-        <button type="button" class="navbutton" opi-page="15" id="b15" title="">15</button>
-        <button type="button" class="navbutton" opi-page="16" id="b16" title="">16</button>
-        <button type="button" class="navbutton" opi-page="17" id="b17" title="">17</button>
-	</div>
 	<div id="page_error" class="page hidden">
 	<h1>Error - Unable to retrieve status</h1>
 	<p>Server replied with an unknown error</p>
@@ -156,7 +152,7 @@
 	<div id="page_password" class="page hidden">
 		<h1>Select Master Password</h1>
 		<form id="pwdform">
-			<div id="div_unit_id">
+			<div id="div_unit_id" class="hidden">
 				<p class="form-group">
 				<label for='unit_id'><span class="typename"></span> Activation Code</label>
 				<input
@@ -164,7 +160,7 @@
 					type ="text"
 					id ="unit_id"
 					name ="unit_id"
-					data-validation="custom"
+					data-validation=""
 					data-validation-regexp= '^[\w\d\-]{36}$'
 				/> 
 				</p>
@@ -195,7 +191,7 @@
 			</div>
 			<div>	
 				<p class="form-group">
-				<label class="pwd_on_usb" for='f_pwdform_save'>Store master password on USB</label>
+				<label class="inline" for='f_pwdform_save'>Store master password on USB</label>
 				<input 
 					type="checkbox" 
 					name="save"
@@ -278,28 +274,57 @@
 		<h1>Select Device Name</h1>
 		<form id="opinameform">
 			<div>
-				<p class="form-group">
-				<label for="domain">Select domain to use</label>
-				<select
-					id="select_domain"
-					name="domain"
-					title="Domain name"
-				>
-				</select>
-				</p>
-				<p class="form-group">
-				<label for="opiname">Device name</label>
-				<input 
-					type="text" 	
-					id="opiname"
-					name="opiname"
-					title="OPI name"
-					data-validation="alphanumeric" data-validation-allowing="-_"
-					class="lowercase"
-					data-validation-error-msg="Device name is required during setup, ('a-z,-' allowed)"
-				/>
-				<span id="opi_namestate" class="help-block form-nameerror"></span>
-				</p>
+				<div id="div-devicename">
+					<p class="form-group">
+					<label for="opiname">Device name</label>
+					<input 
+						type="text" 	
+						id="opiname"
+						name="opiname"
+						title="OPI name"
+						data-validation="alphanumeric" data-validation-allowing="-"
+						class="lowercase"
+						data-validation-error-msg="Device name is required during setup, ('a-z,-' allowed)"
+					/>
+					<span id="opi_namestate" class="help-block form-nameerror"></span>
+					</p>
+				</div>
+				<div id="div-opdomains" class="hidden">
+					<p class="form-group">
+					<label for="domain">Select domain to use</label>
+					<select
+						id="select_domain"
+						name="domain"
+						title="Domain name"
+						disabled="disabled"
+					>
+					</select>
+					</p>
+				</div>
+				<div id="div-customdomain">
+					<p class="form-group">
+						<label for="domain">Enter domain to use (optional)</label>
+						<input
+							type="text"
+							id="customdomain"
+							name="domain"
+							title="Custom Domain"
+							class="lowercase"
+							helpindex="customdomain"
+							data-validation="custom"
+							data-validation-regexp= "(^$|(?=^.{4,253}$)(^((?!-)[a-zA-Z0-9-]{0,62}[a-zA-Z0-9]\.)+[a-zA-Z]{2,63}$))"
+						/>
+					</p>
+				</div>
+				<div id="div-checkbox-customdomain" class="hidden">
+					<p class="form-group">
+						<label class="inline" for="checkbox-customdomain">Use custom domain</label>
+						<input
+							type="checkbox"
+							id="checkbox-customdomain"
+						/>
+					</p>
+				</div>
 				<div>
 					<button 
 						type="submit"
@@ -327,7 +352,7 @@
 				</div>
 				<div>	
 					<p class="form-group">
-					<label class="pwd_on_usb"  for='f_mpwd_save'>Store master password on USB</label>
+					<label class="inline"  for='f_mpwd_save'>Store master password on USB</label>
 					<input
 						id="f_mpwd_save" 
 						type="checkbox" 
@@ -362,7 +387,7 @@
 				</div>
 				<div>	
 					<p class="form-group">
-					<label class="pwd_on_usb" for='f_mpwd_knownid_save'>Store master password on USB</label>
+					<label class="inline" for='f_mpwd_knownid_save'>Store master password on USB</label>
 					<input 
 						type="checkbox" 
 						name="save"
@@ -454,6 +479,8 @@ $("button[type='cancel']").click(function() {
 
 $(".navbutton").click(function() {
 	setState($(this).attr('opi-page'));
+	$(".navbutton").removeClass("active");
+	$(this).addClass("active");
 	// only to populate with dummy data
 	if($(this).attr('opi-page') == 5) {
 		populate_paths(restore_paths);
@@ -677,18 +704,53 @@ function done(fqdn) {
 
 function setHelp(type="") {
 	$.each($('input[title]'), function() {
-		if(helptext[$(this).attr("name")+"_"+type]) {
+
+		if (helptext[$(this).attr("helpindex")]) {
+			console.log("helpindex found" + $(this).attr("helpindex"));
+			console.log(helptext[$(this).attr("helpindex")]);
+			$(this).attr("title", helptext[$(this).attr("helpindex")]);
+		
+		} else if (helptext[$(this).attr("name")+"_"+type]) {
 			$(this).attr("title", helptext[$(this).attr("name")+"_"+type]);
-		} else if(helptext[$(this).attr("name")]) {
+
+		} else if (helptext[$(this).attr("name")]) {
 			$(this).attr("title", helptext[$(this).attr("name")]);
 		}
-	});
 
+	});
 }
+
 function getType() {
 	//console.log("Trying to determine system type");
 	systype = false;
 	$.get("/gettype",function(data) {
+		if ( data.provider ) {
+			// handle sprecific provider setups
+			console.log("Setting up system for provider: "+data.provider);
+			switch (data.provider.toLowerCase()) {
+				case "openproducts":
+					// enable unitid
+					$("#div_unit_id").removeClass("hidden");
+					$("#unit_id").attr("data-validation","custom");
+					// enable OP domains
+					$("#div-checkbox-customdomain").removeClass("hidden");
+					$("#div-opdomains").removeClass("hidden");
+					$("#select_domain").prop("disabled",false);
+					// disable custom domain
+					$("#div-customdomain").addClass("hidden");
+					$("#help-customdomain").addClass("hidden");
+					$("#customdomain").prop("disabled",true);
+					$("#customdomain").prop("data-validation","");
+
+					break;
+				default:
+					console.log("Nothing to do for provider: "+data.provider);
+					break;
+			}
+		} else {
+			console.log("No provider found.");
+		}
+		
 		systype = data.type;
 		if (data.type=="Armada") {
 			$("span.typename").text("KEEP");
@@ -775,11 +837,24 @@ function getStatus() {
 }
 
 var opiname_check = false;
-$("#opiname").keyup( function() {
+function checkname() {
+	// Do not check with server for custom domains.
 	if(opiname_check) opiname_check.abort(); // abort any ongoing checks 
+	if (! $("#select_domain").is(":enabled")) {
+		return;
+	} else {
+		domain = $("#select_domain").val();
+	}
+	/*
+	} else if ($("#customdomain").is(":enabled") && ($("#customdomain").val() != "") ) {
+		domain = $("#customdomain").val();
+	} else {
+		domain = "";
+	}
+	*/
 	opiname_check = $.ajax({
 		url : "/checkname",
-		data : JSON.stringify({ opiname : $("#opiname").val(), domain : $("#select_domain").val()}),
+		data : JSON.stringify({ opiname : $("#opiname").val(), domain : domain}),
 		contentType : "application/json",
 		type : "POST",
 	}).done(function(data) {
@@ -797,6 +872,40 @@ $("#opiname").keyup( function() {
 			console.log("NAME NOT OK");
 		}
 	});	
+}
+
+$("#opiname").keyup( function() {
+	checkname();
+});
+$("#customdomain").keyup( function() {
+	checkname();
+});
+$("#select_domain").change( function() {
+	checkname();
+});
+
+$("#checkbox-customdomain").change( function() {
+	if ( $(this).prop("checked") ) {
+		console.log("checked");
+	} else {
+		console.log("cleared");
+	}
+	console.log("checkbox val:" + $(this).val());
+	if ($(this).prop("checked")) {
+		$("#div-customdomain").hide();
+		$("#div-customdomain").removeClass("hidden");
+		$("#div-customdomain").slideDown();
+		$("#div-opdomains").slideUp();
+		$("#div-opdomains").slideUp();
+		$("#customdomain").prop("disabled",false);
+		$("#select_domain").prop("disabled",true);
+	} else {
+		$("#div-customdomain").slideUp();
+		$("#div-opdomains").slideDown();		
+		$("#customdomain").prop("disabled",true);
+		$("#select_domain").prop("disabled",false);
+	}
+	checkname();
 });
 
 $("input").keypress(function(e) {

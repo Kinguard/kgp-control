@@ -33,6 +33,9 @@ helptext = {
 				"The full name (FQDN) will be 'DeviceName'.mykeep.net",
 	opiname_keep : "Select the name you wish to use to find your device.<br>",
 	masterpassword : "Enter the <strong>master password</strong> to unlock your device<br>"+
-					"(This is the password chosen during setup, not a user password)"
+					"(This is the password chosen during setup, not a user password)",
+	customdomain : "Enter the domain that you want your device to respond to and try to generate certificate for.<br>"+
+			"If you do not know, or do not have a domain, leave blank.<br> <br>"+
+			"Note that DNS records need to be updated manually"
 		
 };
