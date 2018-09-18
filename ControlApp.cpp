@@ -416,6 +416,17 @@ Json::Value ControlApp::WebCallback(Json::Value v)
             {
                 Json::Value ret;
                 ret["type"] = sysinfo.SysTypeText[sysinfo.Type()];
+				if ( SCFG.HasKey("hostinfo","provider") )
+				{
+					try
+					{
+						ret["provider"] = SCFG.GetKeyAsString("hostinfo","provider");
+					}
+					catch( std::runtime_error& err)
+					{
+						logg << Logger::Error << "Failed to read 'provider' from config."<< err.what() << lend;
+					}
+				}
                 return ret;
             }
             else if( cmd == "getdomains" )
