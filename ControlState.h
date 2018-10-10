@@ -18,7 +18,7 @@ public:
 
 	Json::Value data;
 
-	virtual ~ControlData() {}
+	virtual ~ControlData(){}
 };
 
 class ControlState : public StateMachine

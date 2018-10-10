@@ -5,6 +5,8 @@
 #include "ConnTest.h"
 #include "PasswordFile.h"
 #include "StorageManager.h"
+#include "BackupManager.h"
+#include "IdentityManager.h"
 
 #include <libutils/FileUtils.h>
 #include <libutils/ConfigFile.h>
@@ -149,12 +151,9 @@ void ControlApp::StopWebserver()
 	logg << Logger::Debug << "Stopping webserver" << lend;
 	if( this->ws != nullptr )
 	{
-		// If we have launhed a signer thread wait for it to complete
-		// before shutting down webserver.
-		if( this->signerthread )
-		{
-			this->signerthread->Join();
-		}
+		// ID manager might have outstanding work, make sure its completed
+		// before we shutdown webserver
+		IdentityManager::Instance().CleanUp();
 
 		this->ws->Stop();
 	}
@@ -178,10 +177,16 @@ void ControlApp::Main()
 	this->state = ControlState::State::AskInitCheckRestore;
 	this->skiprestore = false;
 
-    if( SCFG.HasKey("hostinfo", "unitid") )
+	if( SCFG.HasKey("hostinfo", "unitid") )
 	{
 		this->state = ControlState::State::AskUnlock;
         this->unit_id = SCFG.GetKeyAsString("hostinfo", "unitid");
+	}
+
+	// None OP device
+	if( SCFG.HasKey("dns", "provider") && SCFG.GetKeyAsString("dns", "provider") != "OpenProducts" )
+	{
+		this->state = ControlState::State::AskUnlock;
 	}
 
 	// Preconditions
@@ -247,7 +252,7 @@ void ControlApp::Main()
 		ConnTest ct(SCFG.GetKeyAsString( "setup", "conntesthost"));
 		this->connstatus = ct.DoTest();
 	}
-	else
+	else if ( this->state != ControlState::State::Completed )
 	{
 		logg << Logger::Debug << "Starting redirect service on port 80"<<lend;
 		redirector = TcpServerPtr( new TcpServer(80) );
@@ -632,7 +637,8 @@ bool ControlApp::DoInit( bool savepassword )
 		ret = this->RegisterKeys();
 	}
 
-	if( ret)
+	//TODO: Better check for op-provider or not
+	if( ret && this->unit_id != "")
 	{
 		// Assume that we fail and only set to true if we succeed
 		ret = false;
@@ -666,7 +672,8 @@ bool ControlApp::DoInit( bool savepassword )
 		logg << Logger::Debug << "Not saving password on successful init"<<lend;
 	}
 
-	if( ret )
+	//TODO: better management for non-op device
+	if( ret && this->unit_id != "")
 	{
 		stringstream pk;
         for( auto row: File::GetContent(SCFG.GetKeyAsString("dns","dnspubkey")) )
@@ -767,19 +774,17 @@ bool ControlApp::SetDNSName()
 bool ControlApp::SetDNSName(const string &opiname,const string &domain)
 {
 	logg << Logger::Debug << "Set dns, hostname: " << opiname << " domain: " << domain << lend;
-	string fqdn = opiname +"."+domain;
-	DnsServer dns;
-	if( ! dns.UpdateDynDNS(this->unit_id, fqdn) )
+
+	IdentityManager& idmgr = IdentityManager::Instance();
+	if( ! idmgr.HasDNSProvider() )
 	{
-		logg << Logger::Error << "Failed to update Dyndns ("<< this->unit_id << ") ("<< fqdn <<")"<<lend;
-		this->global_error = "Failed to update DynDNS";
+		logg << Logger::Error << "No DNS provider available" << lend;
+		this->global_error = "No DNS provider available";
 		return false;
 	}
 
-	logg << Logger::Debug << "Request OP certificate: "<<this->global_error<<lend;
-	if( !this->GetCertificate(fqdn, "OPI") )
+	if( ! idmgr.AddDnsName(opiname, domain ) )
 	{
-        logg << Logger::Error << "Failed to get certificate for device name: "<<this->global_error<<lend;
 		return false;
 	}
 
@@ -796,6 +801,7 @@ bool ControlApp::SetDNSName(const string &opiname,const string &domain)
 	{
 		try
 		{
+			string fqdn = opiname +"."+domain;
 			// Add first user email on opidomain
 			OPI::MailConfig mc;
 			mc.ReadConfig();
@@ -823,14 +829,6 @@ bool ControlApp::SetDNSName(const string &opiname,const string &domain)
 			return false;
 		}
 	}
-
-
-	logg << Logger::Debug << "Get signed Certificate for '"<< fqdn <<"'"<<lend;
-	if( ! this->GetSignedCert(fqdn) )
-    {
-        // This can fail if portforwards does not work, then the above cert will be used.
-		logg << Logger::Notice << "Failed to get signed Certificate for device name: "<< fqdn <<lend;
-    }
 
 	return true;
 }
@@ -961,7 +959,10 @@ bool ControlApp::RegisterKeys( )
             File::Write(dnspubkey, dns.PubKeyAsPEM(), 0644 );
 		}
 
-		ControlApp::WriteBackupConfig( this->GetBackupPassword());
+		Json::Value backupcfg;
+		backupcfg["password"] = this->GetBackupPassword();
+
+		BackupManager::Configure( backupcfg );
 
 		this->WriteConfig( );
 	}
@@ -981,110 +982,6 @@ string ControlApp::GetBackupPassword()
 	vector<byte> ukey(key.begin(), key.end());
 
 	return Base64Encode( ukey );
-}
-
-bool ControlApp::GetCertificate(const string &fqdn, const string &company)
-{
-
-	/*
-	 *
-	 * This is a workaround for a bug in the authserver that loses our
-	 * credentials when we login with dns-key
-	 *
-	 */
-	if( ! this->DoLogin() )
-	{
-		this->global_error = "Failed to login to OP servers";
-		return false;
-	}
-    string syscert = SCFG.GetKeyAsString("hostinfo","syscert");
-    string dnsauthkey = SCFG.GetKeyAsString("dns","dnsauthkey");
-
-	string csrfile = File::GetPath(SCFG.GetKeyAsString("hostinfo","syscert"))+"/"+String::Split(fqdn,".",2).front()+".csr";
-
-	if( ! CryptoHelper::MakeCSR(dnsauthkey, csrfile, fqdn, company) )
-	{
-		this->global_error = "Failed to make certificate signing request";
-		return false;
-	}
-
-    string csr = File::GetContentAsString(csrfile, true);
-
-	AuthServer s(this->unit_id);
-
-	int resultcode;
-	Json::Value ret;
-	tie(resultcode, ret) = s.GetCertificate(csr,this->token );
-
-	if( resultcode != 200 )
-	{
-		logg << Logger::Error << "Failed to get csr "<<resultcode <<lend;
-		this->global_error = "Failed to get certificate from OP servers";
-		return false;
-	}
-
-	if( ! ret.isMember("cert") || ! ret["cert"].isString() )
-	{
-		logg << Logger::Error << "Malformed reply from server " <<lend;
-		this->global_error = "Unexpected reply from OP server when retrieving certificate";
-		return false;
-	}
-
-	// Make sure we have no symlinked tempcert in place
-    unlink( syscert.c_str() );
-
-    File::Write( syscert, ret["cert"].asString(), 0644);
-
-#if 0
-	cout << "Resultcode: "<<resultcode<<endl;
-	cout << "Retobj\n"<<ret.toStyledString()<<endl;
-#endif
-
-	return true;
-}
-
-class SignerThread: public Utils::Thread
-{
-public:
-	SignerThread(const string& name): Thread(false), opiname(name) {}
-
-	virtual void Run();
-	bool Result();
-	virtual ~SignerThread();
-private:
-	string opiname;
-	bool result;
-};
-
-void SignerThread::Run()
-	{
-		tie(this->result, ignore) = Process::Exec("/usr/share/kinguard-certhandler/letsencrypt.sh -ac");
-	}
-
-bool SignerThread::Result()
-	{
-		// Only valid upon completed run
-		return this->result;
-	}
-
-SignerThread::~SignerThread()
-{
-}
-
-bool ControlApp::GetSignedCert(const string &opiname)
-{
-	try
-	{
-		logg << Logger::Debug << "Launching detached signer thread" << lend;
-		this->signerthread = ThreadPtr( new SignerThread(opiname) );
-		this->signerthread->Start();
-	}
-	catch( std::runtime_error& err)
-	{
-		logg << Logger::Error << "Failed to launch signer thread: " << err.what() << lend;
-		return false;
-	}
-	return true;
 }
 
 bool ControlApp::GetPasswordUSB()
@@ -1293,146 +1190,6 @@ void ControlApp::WriteConfig()
 }
 
 
-void ControlApp::WriteBackupConfig(const string &password)
-{
-    string authfile = SCFG.GetKeyAsString("backup","authfile");
-    string path = File::GetPath( authfile );
-
-	if( ! File::DirExists( path ) )
-	{
-		File::MkPath( path ,0755);
-	}
-
-	stringstream ss;
-	ss << "[s3op]\n"
-		<< "storage-url: s3op://\n"
-		<< "backend-login: NotUsed\n"
-		<< "backend-password: NotUsed\n"
-		<< "fs-passphrase: " << password<<"\n\n"
-
-		<< "[local]\n"
-		<< "storage-url: local://\n"
-        << "fs-passphrase: " << password<<endl
-
-        << "[s3]\n"
-        << "storage-url: s3://\n"
-        << "fs-passphrase: " << password<<endl;
-
-
-    File::Write(authfile, ss.str(), 0600 );
-}
-
-bool ControlApp::SetupRestoreEnv()
-{
-	logg << Logger::Debug << "Setting up environment for restore"<<lend;
-	// Make sure we have environment to work from.
-	// TODO: Lot of duplicated code here :(
-	// Generate temporary keys to use
-	RSAWrapper ob;
-	ob.GenerateKeys();
-
-#define TMP_PRIV "/tmp/tmpkey.priv"
-#define TMP_PUB "/tmp/tmpkey.pub"
-
-    string sysauthkey = SCFG.GetKeyAsString("hostinfo","sysauthkey");
-    string syspubkey = SCFG.GetKeyAsString("hostinfo","syspubkey");
-
-
-	// Write to disk
-	string priv_path = File::GetPath( TMP_PRIV );
-	if( ! File::DirExists( priv_path ) )
-	{
-		File::MkPath( priv_path, 0755);
-	}
-
-	string pub_path = File::GetPath( TMP_PUB );
-	if( ! File::DirExists( pub_path ) )
-	{
-		File::MkPath( pub_path, 0755);
-	}
-
-	File::Write(TMP_PRIV, ob.PrivKeyAsPEM(), 0600 );
-	File::Write(TMP_PUB, ob.PubKeyAsPEM(), 0644 );
-
-	// Remove possible old keys
-    unlink( sysauthkey.c_str() );
-    unlink( syspubkey.c_str() );
-
-    if( symlink( TMP_PRIV , sysauthkey.c_str() ) )
-	{
-		unlink( TMP_PRIV );
-		unlink( TMP_PUB );
-		logg << Logger::Notice << "Failed to symlink private key"<<lend;
-		return false;
-	}
-
-    if( symlink( TMP_PUB , syspubkey.c_str() ) )
-	{
-        unlink( sysauthkey.c_str() );
-		unlink( TMP_PRIV );
-		unlink( TMP_PUB );
-		logg << Logger::Notice << "Failed to symlink public key"<<lend;
-		return false;
-	}
-
-	AuthServer s(this->unit_id);
-
-	string challenge;
-	int resultcode;
-	tie(resultcode,challenge) = s.GetChallenge();
-
-	if( resultcode != 200 )
-	{
-        unlink( sysauthkey.c_str() );
-        unlink( syspubkey.c_str() );
-		unlink( TMP_PRIV );
-		unlink( TMP_PUB );
-		logg << Logger::Notice << "Failed to get challenge " << resultcode <<lend;
-		return false;
-	}
-
-	string signedchal = CryptoHelper::Base64Encode( ob.SignMessage( challenge ) );
-	Json::Value ret;
-	tie(resultcode, ret) = s.SendSignedChallenge( signedchal );
-
-	if( resultcode != 403 )
-	{
-        unlink( sysauthkey.c_str() );
-        unlink( syspubkey.c_str() );
-		unlink( TMP_PRIV );
-		unlink( TMP_PUB );
-		logg << Logger::Notice << "Failed to send challenge " << resultcode <<lend;
-		return false;
-	}
-
-	challenge = ret["challange"].asString();
-
-	SecVector<byte> key = PBKDF2(SecString(this->masterpassword.c_str(), this->masterpassword.size() ), 32 );
-	AESWrapper aes( key );
-
-	string cryptchal = Base64Encode( aes.Encrypt( challenge ) );
-
-	tie(resultcode, ret) = s.SendSecret(cryptchal, Base64Encode( ob.PubKeyAsPEM() ) );
-
-	if( resultcode != 200 )
-	{
-        unlink( sysauthkey.c_str() );
-        unlink( syspubkey.c_str() );
-		unlink( TMP_PRIV );
-		unlink( TMP_PUB );
-		logg << Logger::Notice << "Failed to send secret ("
-			 << resultcode
-			 << ") '" << ret["Message"].asString()<<"'"
-			 <<lend;
-		logg << "Response : "<< ret.toStyledString()<<lend;
-		return false;
-	}
-
-	this->WriteConfig();
-
-	return true;
-}
-
 Json::Value ControlApp::CheckRestore()
 {
 	logg << Logger::Debug << "Check if restore should be performed"<<lend;
@@ -1458,96 +1215,24 @@ Json::Value ControlApp::CheckRestore()
 		return Json::nullValue;
 	}
 
+	// Call backupmanager get backups
+	Json::Value retval = BackupManager::Instance().GetBackups();
 
-	if( ! this->backuphelper )
+	if( retval != Json::nullValue )
 	{
-		// Make sure we have no leftovers from earlier attempts
-		this->CleanupRestoreEnv();
-
-		if( ! this->SetupRestoreEnv() )
+		//Update cache with backups
+		if( retval.isMember("local") )
 		{
-			logg << Logger::Error << "Failed to set up restore environment"<<lend;
-			return Json::nullValue;
-		}
-		this->backuphelper = BackupHelperPtr( new BackupHelper( this->GetBackupPassword() ) );
-	}
-	else
-	{
-		// Entered password might have been changed
-		this->backuphelper->SetPassword( this->GetBackupPassword() );
-	}
-
-	Json::Value retval;
-	bool hasdata = false;
-	// Check local
-	if( this->backuphelper->MountLocal() )
-	{
-		list<string> local = this->backuphelper->GetLocalBackups();
-		for( const auto& val: local)
-		{
-			hasdata = true;
-			retval["local"].append(val);
+			this->cache[ControlState::State::AskRestore]["local"] = retval["local"];
 		}
 
-		this->cache[ControlState::State::AskRestore]["local"] = retval["local"];
-		this->backuphelper->UmountLocal();
-	}
-	else
-	{
-		logg << Logger::Debug << "Mount local failed" << lend;
-	}
-
-	// Check remote
-	if( this->backuphelper->MountRemote() )
-	{
-		list<string> remote = this->backuphelper->GetRemoteBackups();
-		for( const auto& val: remote)
+		if( retval.isMember("remote") )
 		{
-			hasdata = true;
-			retval["remote"].append(val);
+			this->cache[ControlState::State::AskRestore]["remote"] = retval["remote"];
 		}
-		this->cache[ControlState::State::AskRestore]["remote"] = retval["remote"];
-		this->backuphelper->UmountRemote();
-	}
-	else
-	{
-		logg << Logger::Debug << "Mount remote failed" << lend;
 	}
 
-	if( ! hasdata )
-	{
-		logg << Logger::Debug << "Clean up restore env since no data available"<<lend;
-		this->CleanupRestoreEnv();
-	}
-
-	return hasdata ? retval : Json::nullValue ;
-
-}
-
-void ControlApp::CleanupRestoreEnv()
-{
-	logg << Logger::Debug << "Clean up restore environment"<<lend;
-    string sysauthkey = SCFG.GetKeyAsString("hostinfo","sysauthkey");
-    string syspubkey = SCFG.GetKeyAsString("hostinfo","syspubkey");
-
-	if( this->backuphelper )
-	{
-		this->backuphelper->UmountLocal();
-		this->backuphelper->UmountRemote();
-	}
-
-    if( File::LinkExists( sysauthkey ) )
-	{
-        unlink( sysauthkey.c_str() );
-	}
-
-    if( File::LinkExists( syspubkey ) )
-	{
-        unlink( syspubkey.c_str() );
-	}
-
-	unlink( TMP_PRIV );
-	unlink( TMP_PUB );
+	return retval;
 }
 
 bool ControlApp::DoRestore(const string &path)
@@ -1560,65 +1245,12 @@ bool ControlApp::DoRestore(const string &path)
 		return false;
 	}
 
-	StorageManager& mgr=StorageManager::Instance();
-	if( ! mgr.mountDevice( TMP_MOUNT ) )
+
+	if( ! BackupManager::Instance().RestoreBackup(path) )
 	{
-		logg << Logger::Error << "Failed to mount SD for backup: "<< mgr.Error()<<lend;
-		this->global_error = "Restore backup - Failed to access SD card";
+		this->global_error = BackupManager::Instance().StrError();
 		return false;
 	}
-
-// Temp workaround to figure out if this is a local or remote backup
-// Todo: Refactor in libopi
-#define LOCALBACKUP	"/tmp/localbackup"
-#define REMOTEBACKUP "/tmp/remotebackup"
-
-	if( path.substr(0,strlen(LOCALBACKUP) ) == LOCALBACKUP )
-	{
-		logg << Logger::Debug << "Do restore from local backup "<< path << lend;
-		if( ! this->backuphelper->MountLocal() )
-		{
-			logg << Logger::Error << "Failed to (re)mount local backup" << lend;
-			this->global_error = "Restore backup - failed to retrieve local backup";
-			return false;
-		}
-	}
-	else if( path.substr(0, strlen(REMOTEBACKUP)) == REMOTEBACKUP )
-	{
-		logg << Logger::Debug << "Do restore from remote backup "<< path << lend;
-		if( ! this->backuphelper->MountRemote() )
-		{
-			logg << Logger::Error << "Failed to (re)mount remote backup" << lend;
-			this->global_error = "Restore backup - failed to retrieve remote backup";
-			return false;
-		}
-	}
-	else
-	{
-		logg << Logger::Error << "Malformed restore path: " << path << lend;
-		this->global_error = "Restore backup - Malformed source path" ;
-		return false;
-	}
-
-	if( !this->backuphelper->RestoreBackup( path ) )
-	{
-		StorageManager::umountDevice();
-		this->global_error = "Restore Backup - restore failed";
-		return false;
-	}
-
-	try
-	{
-		StorageManager::umountDevice();
-	}
-	catch( ErrnoException& err)
-	{
-		logg << Logger::Error << "Failed to umount SD after backup: "<< err.what()<<lend;
-		this->global_error = "Restore backup - Failed to remove SD card";
-		return false;
-	}
-
-	logg << Logger::Debug << "Restore completed sucessfully"<<lend;
 
 	return true;
 }

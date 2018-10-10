@@ -359,6 +359,7 @@ bool StorageManager::InitializeLUKS(const string &device, const string& password
 
 	if( ! this->unlockLUKS( device, password ) )
 	{
+		logg << Logger::Notice << "Unable to unlock device" << lend;
 		return false;
 	}
 
@@ -539,6 +540,7 @@ bool StorageManager::InitializeLVM(bool partition)
 				{
 					break;
 				}
+				retries--;
 			}
 			if( retries == 0 )
 			{

@@ -6,6 +6,7 @@
 #include <libopi/Secop.h>
 #include <libopi/SysInfo.h>
 
+#include "IdentityManager.h"
 #include "StorageManager.h"
 #include "ControlApp.h"
 #include "Config.h"
@@ -404,7 +405,14 @@ void ControlState::StAddUser(EventData *data)
 
 	if( this->app->AddUser(arg->data["username"].asString(), arg->data["displayname"].asString(), arg->data["password"].asString()) )
 	{
-		this->RegisterEvent( State::AskOpiName, nullptr);
+		if( IdentityManager::Instance().HasDNSProvider() )
+		{
+			this->RegisterEvent( State::AskOpiName, nullptr);
+		}
+		else
+		{
+			this->RegisterEvent( State::Completed, nullptr );
+		}
 	}
 	else
 	{
@@ -569,17 +577,12 @@ void ControlState::DoRestore(const string &path)
 			this->TriggerEvent( State::Error, nullptr);
 		}
 
-		// Clean up after restore, umount etc
-		this->app->CleanupRestoreEnv();
 	}
 	else
 	{
 		// Restore failed return to previous state
 		// TODO: howto handle failure?
 		//status = false;
-
-		// Clean up after restore, umount etc
-		this->app->CleanupRestoreEnv();
 
 		// Figure out what state to return to
 		if( ! StorageManager::StorageAreaExists() )

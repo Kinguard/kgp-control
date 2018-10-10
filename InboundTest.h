@@ -27,7 +27,7 @@ private:
 	void Redirect( Utils::Net::SocketPtr c );
 public:
 
-	TcpServer(int port);
+	TcpServer(uint16_t port);
 
 	int Port();
 
@@ -41,7 +41,7 @@ typedef shared_ptr<TcpServer> TcpServerPtr;
 class InboundTest : public NoCopy
 {
 public:
-	InboundTest(const vector<int>& ports);
+	InboundTest(const vector<uint16_t>& ports);
 
 	void Start();
 
