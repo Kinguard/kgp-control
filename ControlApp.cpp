@@ -6,7 +6,6 @@
 #include "PasswordFile.h"
 #include "StorageManager.h"
 #include "BackupManager.h"
-#include "IdentityManager.h"
 
 #include <libutils/FileUtils.h>
 #include <libutils/ConfigFile.h>
@@ -16,6 +15,8 @@
 
 #include <libopi/Secop.h>
 #include <libopi/DiskHelper.h>
+#include <libopi/IdentityManager.h>
+
 #include <libopi/ServiceHelper.h>
 #include <libopi/CryptoHelper.h>
 #include <libopi/AuthServer.h>

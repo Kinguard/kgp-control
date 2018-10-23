@@ -1,7 +1,7 @@
 #ifndef BACKUPMANAGER_H
 #define BACKUPMANAGER_H
 
-#include "BaseManager.h"
+#include <libopi/BaseManager.h>
 
 #include <libopi/BackupHelper.h>
 #include <libutils/ClassTools.h>
@@ -17,7 +17,7 @@ using namespace std;
 
 // TODO: most likely should reside in libopi
 
-class BackupManager: public BaseManager
+class BackupManager: public OPI::BaseManager
 {
 private:
 	BackupManager();

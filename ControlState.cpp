@@ -1,12 +1,12 @@
 #include "ControlState.h"
 
+#include <libopi/IdentityManager.h>
 #include <libutils/Process.h>
 #include <libutils/Thread.h>
 #include <libutils/String.h>
 #include <libopi/Secop.h>
 #include <libopi/SysInfo.h>
 
-#include "IdentityManager.h"
 #include "StorageManager.h"
 #include "ControlApp.h"
 #include "Config.h"
@@ -27,14 +27,16 @@ public:
 	}
 
 
-	virtual ~ScopedLog()
-	{
-		logg << this->level << "ControlState " << this->msg << " : completed"<< lend;
-	}
+	virtual ~ScopedLog();
 private:
 	string msg;
 	Logger::LogLevel level;
 };
+
+ScopedLog::~ScopedLog()
+{
+	logg << this->level << "ControlState " << this->msg << " : completed"<< lend;
+}
 
 ControlState::ControlState(ControlApp *app, uint8_t state): app(app)
 {
