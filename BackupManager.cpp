@@ -9,9 +9,6 @@
 
 #include "StorageManager.h"
 
-#define TMP_PRIV "/tmp/tmpkey.priv"
-#define TMP_PUB "/tmp/tmpkey.pub"
-
 #define TMP_MOUNT		"/mnt/opi/"
 
 // Convenience defines
@@ -202,27 +199,11 @@ void BackupManager::CleanupRestoreEnv()
 		return;
 	}
 
-	string sysauthkey = SCFG.GetKeyAsString("hostinfo","sysauthkey");
-	string syspubkey = SCFG.GetKeyAsString("hostinfo","syspubkey");
-
 	if( this->backuphelper )
 	{
 		this->backuphelper->UmountLocal();
 		this->backuphelper->UmountRemote();
 	}
-
-	if( File::LinkExists( sysauthkey ) )
-	{
-		unlink( sysauthkey.c_str() );
-	}
-
-	if( File::LinkExists( syspubkey ) )
-	{
-		unlink( syspubkey.c_str() );
-	}
-
-	unlink( TMP_PRIV );
-	unlink( TMP_PUB );
 }
 
 bool BackupManager::SetupRestoreEnv()
@@ -241,50 +222,6 @@ bool BackupManager::SetupRestoreEnv()
 	RSAWrapper ob;
 	ob.GenerateKeys();
 
-#define TMP_PRIV "/tmp/tmpkey.priv"
-#define TMP_PUB "/tmp/tmpkey.pub"
-
-	string sysauthkey = SCFG.GetKeyAsString("hostinfo","sysauthkey");
-	string syspubkey = SCFG.GetKeyAsString("hostinfo","syspubkey");
-
-
-	// Write to disk
-	string priv_path = File::GetPath( TMP_PRIV );
-	if( ! File::DirExists( priv_path ) )
-	{
-		File::MkPath( priv_path, 0755);
-	}
-
-	string pub_path = File::GetPath( TMP_PUB );
-	if( ! File::DirExists( pub_path ) )
-	{
-		File::MkPath( pub_path, 0755);
-	}
-
-	File::Write(TMP_PRIV, ob.PrivKeyAsPEM(), 0600 );
-	File::Write(TMP_PUB, ob.PubKeyAsPEM(), 0644 );
-
-	// Remove possible old keys
-	unlink( sysauthkey.c_str() );
-	unlink( syspubkey.c_str() );
-
-	if( symlink( TMP_PRIV , sysauthkey.c_str() ) )
-	{
-		unlink( TMP_PRIV );
-		unlink( TMP_PUB );
-		logg << Logger::Notice << "Failed to symlink private key"<<lend;
-		return false;
-	}
-
-	if( symlink( TMP_PUB , syspubkey.c_str() ) )
-	{
-		unlink( sysauthkey.c_str() );
-		unlink( TMP_PRIV );
-		unlink( TMP_PUB );
-		logg << Logger::Notice << "Failed to symlink public key"<<lend;
-		return false;
-	}
-
 	AuthServer s(this->unitid);
 
 	string challenge;
@@ -293,10 +230,6 @@ bool BackupManager::SetupRestoreEnv()
 
 	if( resultcode != 200 )
 	{
-		unlink( sysauthkey.c_str() );
-		unlink( syspubkey.c_str() );
-		unlink( TMP_PRIV );
-		unlink( TMP_PUB );
 		logg << Logger::Notice << "Failed to get challenge " << resultcode <<lend;
 		return false;
 	}
@@ -307,10 +240,6 @@ bool BackupManager::SetupRestoreEnv()
 
 	if( resultcode != 403 )
 	{
-		unlink( sysauthkey.c_str() );
-		unlink( syspubkey.c_str() );
-		unlink( TMP_PRIV );
-		unlink( TMP_PUB );
 		logg << Logger::Notice << "Failed to send challenge " << resultcode <<lend;
 		return false;
 	}
@@ -328,10 +257,6 @@ bool BackupManager::SetupRestoreEnv()
 
 	if( resultcode != 200 )
 	{
-		unlink( sysauthkey.c_str() );
-		unlink( syspubkey.c_str() );
-		unlink( TMP_PRIV );
-		unlink( TMP_PUB );
 		logg << Logger::Notice << "Failed to send secret ("
 			 << resultcode
 			 << ") '" << ret["Message"].asString()<<"'"

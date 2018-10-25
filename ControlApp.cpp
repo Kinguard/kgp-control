@@ -876,9 +876,7 @@ bool ControlApp::InitializeStorage()
 bool ControlApp::RegisterKeys( )
 {
 	logg << Logger::Debug << "Register keys"<<lend;
-	string sysauthkey = SCFG.GetKeyAsString("hostinfo","sysauthkey");
-	string syspubkey = SCFG.GetKeyAsString("hostinfo","syspubkey");
-    string dnsauthkey = SCFG.GetKeyAsString("dns","dnsauthkey");
+	string dnsauthkey = SCFG.GetKeyAsString("dns","dnsauthkey");
     string dnspubkey = SCFG.GetKeyAsString("dns","dnspubkey");
     try{
 		Secop s;
@@ -903,26 +901,6 @@ bool ControlApp::RegisterKeys( )
 			RSAWrapper ob;
 			ob.GenerateKeys();
 
-			// Write to disk
-            string priv_path = File::GetPath( sysauthkey );
-			if( ! File::DirExists( priv_path ) )
-			{
-				File::MkPath( priv_path, 0755);
-			}
-
-            string pub_path = File::GetPath( syspubkey );
-			if( ! File::DirExists( pub_path ) )
-			{
-				File::MkPath( pub_path, 0755);
-			}
-
-			logg << Logger::Debug << "Possibly removing old private key"<<lend;
-            unlink( sysauthkey.c_str() );
-            unlink( syspubkey.c_str() );
-
-            File::Write(sysauthkey, ob.PrivKeyAsPEM(), 0600 );
-            File::Write(syspubkey, ob.PubKeyAsPEM(), 0644 );
-
 			// Write to secop
 			map<string,string> data;
 
@@ -931,9 +909,6 @@ bool ControlApp::RegisterKeys( )
 			data["privkey"] = Base64Encode(ob.GetPrivKeyAsDER());
 			s.AppAddIdentifier("op-backend", data);
 		}
-		// Todo: if keys in secop, does not mean they are on disk.
-		// perhaps move that part out here to make sure keys exist
-		// on disk.
 
         string priv_path = File::GetPath( dnsauthkey );
 		if( ! File::DirExists( priv_path ) )
