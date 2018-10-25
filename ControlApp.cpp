@@ -593,9 +593,9 @@ bool ControlApp::DoInit( bool savepassword )
 {
 	bool ret = true;
 
-	if ( ! this->InitializeSD() )
+	if ( ! this->InitializeStorage() )
 	{
-		logg << Logger::Error << "Failed to unlock SD card" <<lend;
+		logg << Logger::Error << "Failed to initialize storage area" <<lend;
 		return false;
 	}
 
@@ -866,7 +866,7 @@ bool ControlApp::SecopUnlocked()
 	return (st != Secop::Uninitialized) && (st != Secop::Unknown);
 }
 
-bool ControlApp::InitializeSD()
+bool ControlApp::InitializeStorage()
 {
 	logg << Logger::Debug << "Initialize sd card"<<lend;
 
@@ -876,8 +876,8 @@ bool ControlApp::InitializeSD()
 bool ControlApp::RegisterKeys( )
 {
 	logg << Logger::Debug << "Register keys"<<lend;
-    string sysauthkey = SCFG.GetKeyAsString("hostinfo","sysauthkey");
-    string syspubkey = SCFG.GetKeyAsString("hostinfo","syspubkey");
+	string sysauthkey = SCFG.GetKeyAsString("hostinfo","sysauthkey");
+	string syspubkey = SCFG.GetKeyAsString("hostinfo","syspubkey");
     string dnsauthkey = SCFG.GetKeyAsString("dns","dnsauthkey");
     string dnspubkey = SCFG.GetKeyAsString("dns","dnspubkey");
     try{
@@ -1240,7 +1240,7 @@ bool ControlApp::DoRestore(const string &path)
 {
 	logg << Logger::Debug << "Do restore backup"<<lend;
 	// Setup SD-card
-	if( ! this->InitializeSD() )
+	if( ! this->InitializeStorage() )
 	{
 		this->global_error ="Restore backup - failed to initialize SD card";
 		return false;

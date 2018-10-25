@@ -53,7 +53,7 @@ private:
 	bool SecopUnlocked();
 
 	// Helper methods
-	bool InitializeSD();
+	bool InitializeStorage();
 	bool RegisterKeys();
 	string GetBackupPassword();
 	bool GetPasswordUSB();
