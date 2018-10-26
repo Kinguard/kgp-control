@@ -50,6 +50,7 @@ private:
 	bool AddUser(const std::string user, const std::string display, const std::string password);
 	bool SetDNSName();
 	bool SetDNSName(const std::string& opiname, const string &domain);
+	bool SetHostName();
 	bool SecopUnlocked();
 
 	// Helper methods

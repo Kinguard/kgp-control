@@ -60,6 +60,7 @@ ControlState::ControlState(ControlApp *app, uint8_t state): app(app)
 		{ State::AddUser,				std::bind( &ControlState::StAddUser, this, std::placeholders::_1 )},
 		{ State::AskOpiName,			std::bind( &ControlState::StAskOpiName, this, std::placeholders::_1 )},
 		{ State::OpiName,				std::bind( &ControlState::StOpiName, this, std::placeholders::_1 )},
+		{ State::Hostname,				std::bind( &ControlState::StHostName, this, std::placeholders::_1 )},
 		{ State::AskInitCheckRestore,	std::bind( &ControlState::StAskInitCheckRestore, this, std::placeholders::_1 )},
 		{ State::AskReInitCheckRestore,	std::bind( &ControlState::StAskReInitCheckRestore, this, std::placeholders::_1 )},
 	};
@@ -413,7 +414,7 @@ void ControlState::StAddUser(EventData *data)
 		}
 		else
 		{
-			this->RegisterEvent( State::Completed, nullptr );
+			this->RegisterEvent( State::Hostname, nullptr );
 		}
 	}
 	else
@@ -454,6 +455,21 @@ void ControlState::StOpiName(EventData *data)
 			this->status = false;
 			this->RegisterEvent( State::AskOpiName, nullptr);
 		}
+	}
+}
+
+void ControlState::StHostName(EventData *data)
+{
+	ScopedLog l("StHostName");
+	(void) data;
+
+	if( this->app->SetHostName() )
+	{
+		this->RegisterEvent( State::Completed, nullptr);
+	}
+	else
+	{
+		this->RegisterEvent( State::Error, nullptr );
 	}
 }
 

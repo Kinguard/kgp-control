@@ -36,6 +36,7 @@
 #define SCFG	(OPI::SysConfig())
 #define SAREA (SCFG.GetKeyAsString("filesystem","storagemount"))
 
+#define IS_OP	(SCFG.HasKey("dns", "provider") && SCFG.GetKeyAsString("dns", "provider") == "OpenProducts")
 
 using namespace Utils;
 using namespace std::placeholders;
@@ -164,6 +165,7 @@ void ControlApp::Main()
 {
     logg << Logger::Info << "------ !!!   TODO  !!!! ---------"<<lend;
     logg << Logger::Info << "Wrap/test reading of sysconfig keys to not get unwanted exceptions."<<lend;
+	logg << Logger::Info << "------ !!!   End TODO  !!!! ---------"<<lend;
 
     if( this->options["debug"] == "1" )
 	{
@@ -522,7 +524,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 
 bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 {
-	logg << Logger::Debug << "Unlock sd card"<<lend;
+	logg << Logger::Debug << "Unlock storage"<<lend;
 
 	if( ! StorageManager::Instance().Open(pwd) )
 	{
@@ -534,7 +536,7 @@ bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 
     if( ! StorageManager::mountDevice( SCFG.GetKeyAsString("filesystem","storagemount") ) )
 	{
-		this->global_error = "Unable to access SD card";
+		this->global_error = "Unable to access storage";
 		return false;
 	}
 
@@ -591,7 +593,6 @@ bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 
 bool ControlApp::DoInit( bool savepassword )
 {
-	bool ret = true;
 
 	if ( ! this->InitializeStorage() )
 	{
@@ -619,10 +620,11 @@ bool ControlApp::DoInit( bool savepassword )
 		if( ! this->SecopUnlocked())
 		{
 			logg << Logger::Debug << "Trying to unlock secop"<<lend;
-			ret = Secop().Init( this->masterpassword );
-			if( ! ret )
+
+			if( ! Secop().Init( this->masterpassword ) )
 			{
 				this->global_error = "Wrong password for password store";
+				return false;
 			}
 		}
 	}
@@ -633,23 +635,30 @@ bool ControlApp::DoInit( bool savepassword )
 		return false;
 	}
 
-	if( ret )
+	if( !this->RegisterKeys() )
 	{
-		ret = this->RegisterKeys();
+		return false;
 	}
 
-	//TODO: Better check for op-provider or not
-	if( ret && this->unit_id != "")
+	// Setup backup config
+	Json::Value backupcfg;
+	backupcfg["password"] = this->GetBackupPassword();
+
+	BackupManager::Configure( backupcfg );
+
+	this->WriteConfig( );
+
+	// We only try to login if we run an OP enabled device
+	bool loggedin = false;
+	if( IS_OP )
 	{
-		// Assume that we fail and only set to true if we succeed
-		ret = false;
 		for( int i=0; i<3; i++ )
 		{
 			try
 			{
-				ret = this->DoLogin();
-				if( ret )
+				if( this->DoLogin() )
 				{
+					loggedin = true;
 					break;
 				}
 			}
@@ -657,24 +666,27 @@ bool ControlApp::DoInit( bool savepassword )
 			{
 				this->global_error ="Failed to login with OP server ("+string(err.what())+")";
 				logg << Logger::Notice << "Failed to login to backend: "<< err.what()<<lend;
-				ret = false;
+				return false;
 			}
 		}
 	}
 
 	// Possibly save password to usb device
-	if( ret && savepassword )
+	if( loggedin && savepassword )
 	{
 		logg << Logger::Debug << "Try saving password on successful init"<<lend;
-		ret = this->SetPasswordUSB();
+		if( ! this->SetPasswordUSB() )
+		{
+			return false;
+		}
 	}
 	else
 	{
 		logg << Logger::Debug << "Not saving password on successful init"<<lend;
 	}
 
-	//TODO: better management for non-op device
-	if( ret && this->unit_id != "")
+	//Only on OP-enabled devices
+	if( IS_OP )
 	{
 		stringstream pk;
         for( auto row: File::GetContent(SCFG.GetKeyAsString("dns","dnspubkey")) )
@@ -683,14 +695,14 @@ bool ControlApp::DoInit( bool savepassword )
 		}
 		DnsServer dns;
 		string pubkey = Base64Encode( pk.str() );
-		ret = dns.RegisterPublicKey(this->unit_id, pubkey, this->token );
-		if( ! ret )
+		if( ! dns.RegisterPublicKey(this->unit_id, pubkey, this->token ) )
 		{
 			this->global_error ="Failed to register dns key";
+			return false;
 		}
 	}
 
-	return ret;
+	return true;
 }
 
 bool ControlApp::AddUser(const string user, const string display, const string password)
@@ -834,6 +846,42 @@ bool ControlApp::SetDNSName(const string &opiname,const string &domain)
 	return true;
 }
 
+/**
+ * @brief ControlApp::SetHostName, set static hostname and get self signed cert
+ *        THis is the alternative/fallback if we have no DNS-provider
+ * @return true upon success
+ */
+bool ControlApp::SetHostName()
+{
+	// CUrrently hardcode this, most likely change this later and ask user?
+	try {
+		IdentityManager& idmgr = IdentityManager::Instance();
+
+		if( ! idmgr.SetHostname("kgpunit") || ! idmgr.SetDomain("localdomain") )
+		{
+			logg << Logger::Notice << "Failed to set hostname or domain" << lend;
+			this->global_error = "Failed to set hostname or domain";
+			return false;
+		}
+
+		if( ! idmgr.CreateCertificate() )
+		{
+			logg << Logger::Notice << "Failed to create certificate" << lend;
+			this->global_error = "Failed to create certificate";
+			return false;
+		}
+
+	}
+	catch( runtime_error& err)
+	{
+		logg << Logger::Error << "Failed to set hostname: "<< err.what() << lend;
+		this->global_error = string("Failed to set hostname (") + err.what() + string(")");
+		return false;
+	}
+
+	return true;
+}
+
 bool ControlApp::SecopUnlocked()
 {
 	Secop::State st = Secop::Unknown;
@@ -868,7 +916,7 @@ bool ControlApp::SecopUnlocked()
 
 bool ControlApp::InitializeStorage()
 {
-	logg << Logger::Debug << "Initialize sd card"<<lend;
+	logg << Logger::Debug << "Initialize storage device" << lend;
 
 	return StorageManager::Instance().Initialize(this->masterpassword);
 }
@@ -876,41 +924,19 @@ bool ControlApp::InitializeStorage()
 bool ControlApp::RegisterKeys( )
 {
 	logg << Logger::Debug << "Register keys"<<lend;
-	string dnsauthkey = SCFG.GetKeyAsString("dns","dnsauthkey");
-    string dnspubkey = SCFG.GetKeyAsString("dns","dnspubkey");
     try{
-		Secop s;
 
-		s.SockAuth();
-		list<map<string,string>> ids;
-
-		try
+		// Create sysauth keys and register in Secop if not present
+		if( IS_OP )
 		{
-			ids = s.AppGetIdentifiers("op-backend");
-		}
-		catch( __attribute__((unused)) runtime_error& err )
-		{
-			// Do nothing, appid is missing but thats ok.
+			AuthServer::Setup();
 		}
 
-		if( ids.size() == 0 )
-		{
-			logg << Logger::Debug << "No keys in secop" << lend;
-			s.AppAddID("op-backend");
+		// Create "dns"-key
+		string dnsauthkey = SCFG.GetKeyAsString("dns","dnsauthkey");
+		string dnspubkey = SCFG.GetKeyAsString("dns","dnspubkey");
 
-			RSAWrapper ob;
-			ob.GenerateKeys();
-
-			// Write to secop
-			map<string,string> data;
-
-			data["type"] = "backendkeys";
-			data["pubkey"] = Base64Encode(ob.GetPubKeyAsDER());
-			data["privkey"] = Base64Encode(ob.GetPrivKeyAsDER());
-			s.AppAddIdentifier("op-backend", data);
-		}
-
-        string priv_path = File::GetPath( dnsauthkey );
+		string priv_path = File::GetPath( dnsauthkey );
 		if( ! File::DirExists( priv_path ) )
 		{
 			File::MkPath( priv_path, 0755);
@@ -934,13 +960,6 @@ bool ControlApp::RegisterKeys( )
             File::Write(dnsauthkey, dns.PrivKeyAsPEM(), 0600 );
             File::Write(dnspubkey, dns.PubKeyAsPEM(), 0644 );
 		}
-
-		Json::Value backupcfg;
-		backupcfg["password"] = this->GetBackupPassword();
-
-		BackupManager::Configure( backupcfg );
-
-		this->WriteConfig( );
 	}
 	catch( runtime_error& err)
 	{
@@ -1005,7 +1024,7 @@ bool ControlApp::GetPasswordUSB()
 
 bool ControlApp::GetPasswordRoot()
 {
-	logg << Logger::Debug << "Get password from mmc"<<lend;
+	logg << Logger::Debug << "Get password from os storage"<<lend;
 
 	bool ret = false;
 
@@ -1146,7 +1165,7 @@ bool ControlApp::GuessOPIName()
 }
 void ControlApp::WriteConfig()
 {
-	logg << Logger::Notice << "Writing config" <<lend;
+	logg << Logger::Notice << "Uppdating sysconfig" <<lend;
 	SysConfig sysconfig(true);
 
 	if( this->unit_id != "" )
