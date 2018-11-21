@@ -3,7 +3,8 @@
 #include "mongoose.h"
 #include <libopi/DnsServer.h>
 #include <libopi/SysConfig.h>
-#include <libopi/IdentityManager.h>
+
+#include <kinguard/IdentityManager.h>
 
 #include <libutils/String.h>
 #include <libutils/Logger.h>
@@ -463,9 +464,9 @@ int WebServer::handle_checkname(mg_connection *conn)
     {
         fqdn = String::Trimmed( req["opiname"].asString(), "\t " )+"."+String::Trimmed( req["domain"].asString(), "\t " );
 
-		OPI::IdentityManager& imgr = OPI::IdentityManager::Instance();
+		KGP::IdentityManager& imgr = KGP::IdentityManager::Instance();
 
-		if( ! imgr.HasDNSProvider() )
+		if( ! imgr.HasDnsProvider() )
 		{
 			logg << Logger::Info << "Request for dns check name when not supported"<<lend;
 			mg_send_status(conn, 501);

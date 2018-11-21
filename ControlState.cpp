@@ -1,42 +1,21 @@
 #include "ControlState.h"
 
-#include <libopi/IdentityManager.h>
 #include <libutils/Process.h>
 #include <libutils/Thread.h>
 #include <libutils/String.h>
 #include <libopi/Secop.h>
 #include <libopi/SysInfo.h>
 
-#include "StorageManager.h"
+
+#include <kinguard/IdentityManager.h>
+#include <kinguard/StorageManager.h>
+
 #include "ControlApp.h"
 #include "Config.h"
 
 using namespace OPI;
+using namespace KGP;
 using namespace Utils;
-
-class ScopedLog
-{
-public:
-	ScopedLog() = delete;
-	ScopedLog(const ScopedLog&) = delete;
-	ScopedLog& operator=(const ScopedLog&) = delete;
-
-	ScopedLog(const string& message, Logger::LogLevel level = Logger::Debug): msg(message), level(level)
-	{
-		logg << this->level << "ControlState " << this->msg << " : started"<< lend;
-	}
-
-
-	virtual ~ScopedLog();
-private:
-	string msg;
-	Logger::LogLevel level;
-};
-
-ScopedLog::~ScopedLog()
-{
-	logg << this->level << "ControlState " << this->msg << " : completed"<< lend;
-}
 
 ControlState::ControlState(ControlApp *app, uint8_t state): app(app)
 {
@@ -408,7 +387,7 @@ void ControlState::StAddUser(EventData *data)
 
 	if( this->app->AddUser(arg->data["username"].asString(), arg->data["displayname"].asString(), arg->data["password"].asString()) )
 	{
-		if( IdentityManager::Instance().HasDNSProvider() )
+		if( IdentityManager::Instance().HasDnsProvider() )
 		{
 			this->RegisterEvent( State::AskOpiName, nullptr);
 		}

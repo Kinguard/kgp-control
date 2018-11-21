@@ -5,26 +5,30 @@
 #include "ConnTest.h"
 #include "PasswordFile.h"
 #include "StorageManager.h"
-#include "BackupManager.h"
+
 
 #include <libutils/FileUtils.h>
 #include <libutils/ConfigFile.h>
 #include <libutils/UserGroups.h>
 #include <libutils/Process.h>
 #include <libutils/Thread.h>
+#include <libutils/String.h>
 
 #include <libopi/Secop.h>
 #include <libopi/DiskHelper.h>
-#include <libopi/IdentityManager.h>
 
 #include <libopi/ServiceHelper.h>
 #include <libopi/CryptoHelper.h>
 #include <libopi/AuthServer.h>
 #include <libopi/DnsServer.h>
-#include <libopi/MailConfig.h>
 #include <libopi/SysInfo.h>
 #include <libopi/Notification.h>
 #include <libopi/SysConfig.h>
+
+#include <kinguard/BackupManager.h>
+#include <kinguard/MailManager.h>
+#include <kinguard/IdentityManager.h>
+
 #include <functional>
 
 #include <syslog.h>
@@ -44,6 +48,7 @@ using namespace std::placeholders;
 using namespace OPI;
 using namespace OPI::CryptoHelper;
 
+using namespace KGP;
 
 //#define DEBUG (logg << Logger::Debug)
 
@@ -698,6 +703,7 @@ bool ControlApp::DoInit( bool savepassword )
 		if( ! dns.RegisterPublicKey(this->unit_id, pubkey, this->token ) )
 		{
 			this->global_error ="Failed to register dns key";
+			logg << Logger::Error << this->global_error << lend;
 			return false;
 		}
 	}
@@ -732,49 +738,26 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 
 	this->first_user = user;
 
-    const string localmail(SCFG.GetKeyAsString("filesystem", "storagemount")+SCFG.GetKeyAsString("mail", "localmail"));
-    const string virtual_aliases(SCFG.GetKeyAsString("filesystem", "storagemount") + SCFG.GetKeyAsString("mail","virtualalias"));
-	try
-	{
-		// Add user to localdomain mailboxfile
+	MailManager &mmgr = MailManager::Instance();
 
-		OPI::MailMapFile mmf( localmail );
-		mmf.ReadConfig();
-		mmf.SetAddress("localdomain", user, user);
-		mmf.WriteConfig();
-
-		chown( localmail.c_str(), User::UserToUID("postfix"), Group::GroupToGID("postfix") );
-	}
-	catch( runtime_error& err)
+	// Set local mail address
+	if( ! mmgr.SetLocalAddress( user ) )
 	{
-		this->global_error = string("Failed to add user mailbox (")+err.what()+")";
+		this->global_error = mmgr.StrError();
 		return false;
 	}
 
 	// Add this user as receiver of administrative mail
-	try
+	if( ! mmgr.AddUserAlias("/^postmaster@/",user+"@localdomain") ||
+			! mmgr.AddUserAlias("/^root@/",user+"@localdomain"))
 	{
-		OPI::MailAliasFile mf( virtual_aliases );
-
-		mf.AddUser("/^postmaster@/",user+"@localdomain");
-		mf.AddUser("/^root@/",user+"@localdomain");
-
-		mf.WriteConfig();
-	}
-	catch( runtime_error& err)
-	{
-		this->global_error = string("Failed to create user mail mapping (")+err.what()+")";
+		this->global_error = mmgr.StrError();
 		return false;
 	}
 
-	chown( virtual_aliases.c_str(), User::UserToUID("postfix"), Group::GroupToGID("postfix") );
-
-	bool ret;
-	tie(ret,ignore) = Process::Exec( (string("/usr/sbin/postmap ") + localmail) .c_str() );
-
-	if( !ret )
+	if( !mmgr.Synchronize()	)
 	{
-		this->global_error = "Failed to create user mail mapping";
+		this->global_error = mmgr.StrError();
 		return false;
 	}
 
@@ -789,7 +772,7 @@ bool ControlApp::SetDNSName(const string &opiname,const string &domain)
 	logg << Logger::Debug << "Set dns, hostname: " << opiname << " domain: " << domain << lend;
 
 	IdentityManager& idmgr = IdentityManager::Instance();
-	if( ! idmgr.HasDNSProvider() )
+	if( ! idmgr.HasDnsProvider() )
 	{
 		logg << Logger::Error << "No DNS provider available" << lend;
 		this->global_error = "No DNS provider available";
@@ -814,25 +797,13 @@ bool ControlApp::SetDNSName(const string &opiname,const string &domain)
 	{
 		try
 		{
-			string fqdn = opiname +"."+domain;
 			// Add first user email on opidomain
-			OPI::MailConfig mc;
-			mc.ReadConfig();
-			mc.SetAddress(fqdn,this->first_user,this->first_user);
-			mc.WriteConfig();
+			string fqdn = opiname +"."+domain;
 
-            string aliases = SAREA + SCFG.GetKeyAsString("mail","vmailbox");
-            chown( aliases.c_str(), User::UserToUID("postfix"), Group::GroupToGID("postfix") );
+			MailManager& mmgr = MailManager::Instance();
+			mmgr.SetAddress(fqdn,this->first_user,this->first_user);
 
-			bool ret;
-            tie(ret, ignore) = Process::Exec("/usr/sbin/postmap " + aliases);
-
-			if( !ret )
-			{
-				this->global_error = "Failed to create user mail mapping";
-				return false;
-			}
-
+			//TODO: Add to mailmanager
 			File::Write("/etc/mailname", fqdn, 0644);
 		}
 		catch(runtime_error& err)
@@ -857,7 +828,7 @@ bool ControlApp::SetHostName()
 	try {
 		IdentityManager& idmgr = IdentityManager::Instance();
 
-		if( ! idmgr.SetHostname("kgpunit") || ! idmgr.SetDomain("localdomain") )
+		if( ! idmgr.SetFqdn("kgpunit", "localdomain") )
 		{
 			logg << Logger::Notice << "Failed to set hostname or domain" << lend;
 			this->global_error = "Failed to set hostname or domain";
@@ -1132,11 +1103,11 @@ bool ControlApp::GuessOPIName()
 	{
 		logg << Logger::Notice << "Trying to guess fqdn from mailconfig" <<lend;
 
-		OPI::MailConfig mc;
+		MailManager& mmgr = MailManager::Instance();
+
 		list<string> valid_domains= SCFG.GetKeyAsStringList("dns","availabledomains");
-		mc.ReadConfig();
 		list<string> names;
-		list<string> domains = mc.GetDomains();
+		list<string> domains = mmgr.GetDomains();
 		for( const string& domain: domains )
 		{
 			list<string> parts=String::Split(domain, ".",2);
