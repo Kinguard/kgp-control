@@ -41,14 +41,13 @@ void TcpServer::Redirect( Utils::Net::SocketPtr c )
 	string url = this->headers["host"]+this->url;
 
 	ss << "HTTP/1.1 307 Temporary Redirect\r\n"
-		  //<< "Location: https://www.openproducts.com\r\n"
 		<< "Location: https://"<<url<<"\r\n"
 		<< "Connection: close\n\n";
 
 	c->Write(ss.str().c_str(), ss.str().size());
 }
 
-TcpServer::TcpServer(int port):
+TcpServer::TcpServer(uint16_t port):
 		Thread(false),
 		s( OPI::sysinfo.NetworkDevice(), port),
 		port(port),
@@ -104,9 +103,9 @@ void TcpServer::Run()
 	logg << Logger::Debug << "Test server at " << this->port << " terminating" << lend;
 }
 
-InboundTest::InboundTest(const vector<int> &ports)
+InboundTest::InboundTest(const vector<uint16_t> &ports)
 {
-	for(int port: ports)
+	for(uint16_t port: ports)
 	{
 		try
 		{

@@ -1,5 +1,5 @@
 Config.h
-CMakeLists.txt.user
+CMakeLists.txt.user*
 obj-x86_64-linux-gnu/
 debian/files
 debian/opi-control/
@@ -8,4 +8,5 @@ debian/opi-control.*.debhelper
 debian/opi-control.debhelper.log
 html/.*
 *~
+*.pem
 ControlApp.cpp.pa

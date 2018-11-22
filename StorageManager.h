@@ -42,6 +42,7 @@ public:
 
 	/**
 	 * @brief StorageAreaExists check if storage area is existant
+	 *        I.e. all used components available lvm, luks etc
 	 * @return true if area exists
 	 */
 	static bool StorageAreaExists();

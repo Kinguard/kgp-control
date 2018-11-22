@@ -2,7 +2,8 @@ project(opi-control)
 cmake_minimum_required(VERSION 2.8)
 
 include( FindPkgConfig )
-pkg_check_modules ( LIBOPI REQUIRED libopi>=1.6.33 )
+pkg_check_modules ( LIBOPI REQUIRED libopi>=1.6.42 )
+pkg_check_modules ( LIBKGP REQUIRED libkinguard)
 pkg_check_modules ( LIBSSL REQUIRED openssl )
 
 set (OPI_CONTROL_VERSION_MAJOR 1)
@@ -33,6 +34,7 @@ aux_source_directory(. SRC_LIST)
 include_directories (
 		"${PROJECT_SOURCE_DIR}"
 		"${LIBOPI_INCLUDE_DIRS}"
+		"${LIBKGP_INCLUDE_DIRS}"
 	)
 
 add_definitions( -std=c++11 -Wall )
@@ -42,6 +44,7 @@ add_subdirectory( pwdctrl )
 
 target_link_libraries( ${PROJECT_NAME}
 	${LIBOPI_LDFLAGS}
+	${LIBKGP_LDFLAGS}
 	${LIBSSL_LDFLAGS}
 	)
 

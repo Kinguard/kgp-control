@@ -6,34 +6,16 @@
 #include <libopi/Secop.h>
 #include <libopi/SysInfo.h>
 
-#include "StorageManager.h"
+
+#include <kinguard/IdentityManager.h>
+#include <kinguard/StorageManager.h>
+
 #include "ControlApp.h"
 #include "Config.h"
 
 using namespace OPI;
+using namespace KGP;
 using namespace Utils;
-
-class ScopedLog
-{
-public:
-	ScopedLog() = delete;
-	ScopedLog(const ScopedLog&) = delete;
-	ScopedLog& operator=(const ScopedLog&) = delete;
-
-	ScopedLog(const string& message, Logger::LogLevel level = Logger::Debug): msg(message), level(level)
-	{
-		logg << this->level << "ControlState " << this->msg << " : started"<< lend;
-	}
-
-
-	virtual ~ScopedLog()
-	{
-		logg << this->level << "ControlState " << this->msg << " : completed"<< lend;
-	}
-private:
-	string msg;
-	Logger::LogLevel level;
-};
 
 ControlState::ControlState(ControlApp *app, uint8_t state): app(app)
 {
@@ -57,6 +39,7 @@ ControlState::ControlState(ControlApp *app, uint8_t state): app(app)
 		{ State::AddUser,				std::bind( &ControlState::StAddUser, this, std::placeholders::_1 )},
 		{ State::AskOpiName,			std::bind( &ControlState::StAskOpiName, this, std::placeholders::_1 )},
 		{ State::OpiName,				std::bind( &ControlState::StOpiName, this, std::placeholders::_1 )},
+		{ State::Hostname,				std::bind( &ControlState::StHostName, this, std::placeholders::_1 )},
 		{ State::AskInitCheckRestore,	std::bind( &ControlState::StAskInitCheckRestore, this, std::placeholders::_1 )},
 		{ State::AskReInitCheckRestore,	std::bind( &ControlState::StAskReInitCheckRestore, this, std::placeholders::_1 )},
 	};
@@ -404,7 +387,14 @@ void ControlState::StAddUser(EventData *data)
 
 	if( this->app->AddUser(arg->data["username"].asString(), arg->data["displayname"].asString(), arg->data["password"].asString()) )
 	{
-		this->RegisterEvent( State::AskOpiName, nullptr);
+		if( IdentityManager::Instance().HasDnsProvider() )
+		{
+			this->RegisterEvent( State::AskOpiName, nullptr);
+		}
+		else
+		{
+			this->RegisterEvent( State::Hostname, nullptr );
+		}
 	}
 	else
 	{
@@ -444,6 +434,21 @@ void ControlState::StOpiName(EventData *data)
 			this->status = false;
 			this->RegisterEvent( State::AskOpiName, nullptr);
 		}
+	}
+}
+
+void ControlState::StHostName(EventData *data)
+{
+	ScopedLog l("StHostName");
+	(void) data;
+
+	if( this->app->SetHostName() )
+	{
+		this->RegisterEvent( State::Completed, nullptr);
+	}
+	else
+	{
+		this->RegisterEvent( State::Error, nullptr );
 	}
 }
 
@@ -569,17 +574,12 @@ void ControlState::DoRestore(const string &path)
 			this->TriggerEvent( State::Error, nullptr);
 		}
 
-		// Clean up after restore, umount etc
-		this->app->CleanupRestoreEnv();
 	}
 	else
 	{
 		// Restore failed return to previous state
 		// TODO: howto handle failure?
 		//status = false;
-
-		// Clean up after restore, umount etc
-		this->app->CleanupRestoreEnv();
 
 		// Figure out what state to return to
 		if( ! StorageManager::StorageAreaExists() )

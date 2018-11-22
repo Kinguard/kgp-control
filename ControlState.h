@@ -18,7 +18,7 @@ public:
 
 	Json::Value data;
 
-	virtual ~ControlData() {}
+	virtual ~ControlData(){}
 };
 
 class ControlState : public StateMachine
@@ -49,6 +49,7 @@ public:
 			AskOpiName,				// 18
 			AskReInitCheckRestore,	// 19
 			AskInitCheckRestore,	// 20
+			Hostname,			// 21
 		};
 	};
 
@@ -84,6 +85,7 @@ protected:
 	void StAddUser(EventData* data);
 	void StAskOpiName(EventData* data);
 	void StOpiName(EventData* data);
+	void StHostName(EventData* data);
 	void StAskUnlock(EventData* data);
 	void StDoUnlock(EventData* data);
 	void StTerminate(EventData* data);

@@ -4,6 +4,8 @@
 #include <libopi/DnsServer.h>
 #include <libopi/SysConfig.h>
 
+#include <kinguard/IdentityManager.h>
+
 #include <libutils/String.h>
 #include <libutils/Logger.h>
 #include <libutils/FileUtils.h>
@@ -461,24 +463,26 @@ int WebServer::handle_checkname(mg_connection *conn)
     )
     {
         fqdn = String::Trimmed( req["opiname"].asString(), "\t " )+"."+String::Trimmed( req["domain"].asString(), "\t " );
-        OPI::DnsServer dns;
-        int result_code;
-        Json::Value ret;
-        tie(result_code, ret) = dns.CheckOPIName( fqdn );
 
-        if( result_code == 200 || result_code == 403 )
-        {
-            mg_send_header( conn, "Content-Type", "application/json");
-            mg_send_header( conn, "Cache-Control", "no-cache");
-            mg_printf_data( conn, "{\"available\":%d}", result_code==200?1:0);
-        }
-        else
-        {
-            logg << Logger::Info << "Request for dns check name failed"<<lend;
-            mg_send_status(conn, 502);
-            mg_send_header( conn, "Cache-Control", "no-cache");
-            mg_printf_data( conn, "Operation failed");
-        }
+		KGP::IdentityManager& imgr = KGP::IdentityManager::Instance();
+
+		if( ! imgr.HasDnsProvider() )
+		{
+			logg << Logger::Info << "Request for dns check name when not supported"<<lend;
+			mg_send_status(conn, 501);
+			mg_send_header( conn, "Cache-Control", "no-cache");
+			mg_printf_data( conn, "Operation not supported");
+			return MG_TRUE;
+		}
+
+		bool available = imgr.DnsNameAvailable(
+				String::Trimmed( req["opiname"].asString(), "\t " ),
+				String::Trimmed( req["domain"].asString(), "\t " ));
+
+		mg_send_header( conn, "Content-Type", "application/json");
+		mg_send_header( conn, "Cache-Control", "no-cache");
+		mg_printf_data( conn, "{\"available\":%d}", available);
+
     }
     else
     {

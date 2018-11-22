@@ -359,6 +359,7 @@ bool StorageManager::InitializeLUKS(const string &device, const string& password
 
 	if( ! this->unlockLUKS( device, password ) )
 	{
+		logg << Logger::Notice << "Unable to unlock device" << lend;
 		return false;
 	}
 
@@ -378,8 +379,8 @@ bool StorageManager::setupStorageArea(const string &device)
 
 		if( this->device_new )
 		{
-			logg << Logger::Debug << "Sync mmc to storage device " << device <<lend;
-			// Sync data from emmc to sd
+			logg << Logger::Debug << "Sync template data to storage device " << device <<lend;
+			// Sync data from root to storage
 			DiskHelper::Mount( device , TMP_MOUNT );
 
 			DiskHelper::SyncPaths(mountpoint, TMP_MOUNT);
@@ -395,7 +396,7 @@ bool StorageManager::setupStorageArea(const string &device)
 	catch( ErrnoException& err)
 	{
 		logg << Logger::Error << "Finalize unlock failed: " << err.what() << lend;
-		this->global_error = "Unable to access SD card";
+		this->global_error = "Unable to access storage device";
 		return false;
 	}
 
@@ -539,6 +540,7 @@ bool StorageManager::InitializeLVM(bool partition)
 				{
 					break;
 				}
+				retries--;
 			}
 			if( retries == 0 )
 			{

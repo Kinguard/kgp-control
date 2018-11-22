@@ -50,28 +50,23 @@ private:
 	bool AddUser(const std::string user, const std::string display, const std::string password);
 	bool SetDNSName();
 	bool SetDNSName(const std::string& opiname, const string &domain);
+	bool SetHostName();
 	bool SecopUnlocked();
 
 	// Helper methods
-	bool InitializeSD();
+	bool InitializeStorage();
 	bool RegisterKeys();
 	string GetBackupPassword();
-	bool GetCertificate(const string& fqdn, const string& company="OPI");
-	bool GetSignedCert(const string& opiname);
 	bool GetPasswordUSB();
 	bool GetPasswordRoot();
 	bool SetPasswordUSB();
 	bool SetPasswordRoot();
 	bool GuessOPIName();
 	void WriteConfig();
-	static void WriteBackupConfig(const string& password);
 
 	// Helpers for restore backup
-	bool SetupRestoreEnv();
 	Json::Value CheckRestore();
-	void CleanupRestoreEnv();
 	bool DoRestore(const string& path);
-	OPI::BackupHelperPtr backuphelper;
 	bool skiprestore; // User opted to not do restore
 
 	enum Ledstate {
@@ -88,7 +83,6 @@ private:
 	EventHandler evhandler;
 
 	void StopWebserver();
-	ThreadPtr signerthread; // Used by letsencrypt signer thread
 };
 
 #endif // CONTROLAPP_H
