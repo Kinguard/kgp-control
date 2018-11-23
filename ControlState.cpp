@@ -3,12 +3,10 @@
 #include <libutils/Process.h>
 #include <libutils/Thread.h>
 #include <libutils/String.h>
-#include <libopi/Secop.h>
-#include <libopi/SysInfo.h>
-
 
 #include <kinguard/IdentityManager.h>
 #include <kinguard/StorageManager.h>
+#include <kinguard/UserManager.h>
 
 #include "ControlApp.h"
 #include "Config.h"
@@ -254,9 +252,8 @@ void ControlState::StInit(EventData *data)
 
 	if( this->app->DoInit( arg->data["savepassword"].asBool() ) )
 	{
-		Secop s;
-		s.SockAuth();
-		vector<string> users = s.GetUsers();
+		UserManagerPtr umgr = UserManager::Instance();
+		list<UserPtr> users = umgr->GetUsers();
 
 		if( users.size() > 0 )
 		{
@@ -530,9 +527,8 @@ void ControlState::DoRestore(const string &path)
 
 		if( this->app->DoInit( false ) )
 		{
-			Secop s;
-			s.SockAuth();
-			vector<string> users = s.GetUsers();
+			UserManagerPtr umgr = UserManager::Instance();
+			list<UserPtr> users = umgr->GetUsers();
 
 			if( users.size() > 0 )
 			{

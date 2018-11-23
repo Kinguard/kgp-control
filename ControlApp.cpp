@@ -15,18 +15,17 @@
 #include <libutils/String.h>
 
 #include <libopi/Secop.h>
-#include <libopi/DiskHelper.h>
-
-#include <libopi/ServiceHelper.h>
-#include <libopi/CryptoHelper.h>
-#include <libopi/AuthServer.h>
-#include <libopi/DnsServer.h>
 #include <libopi/SysInfo.h>
-#include <libopi/Notification.h>
 #include <libopi/SysConfig.h>
+#include <libopi/DnsServer.h>
+#include <libopi/DiskHelper.h>
+#include <libopi/AuthServer.h>
+#include <libopi/Notification.h>
+#include <libopi/ServiceHelper.h>
 
-#include <kinguard/BackupManager.h>
 #include <kinguard/MailManager.h>
+#include <kinguard/UserManager.h>
+#include <kinguard/BackupManager.h>
 #include <kinguard/IdentityManager.h>
 
 #include <functional>
@@ -40,7 +39,7 @@
 #define SCFG	(OPI::SysConfig())
 #define SAREA (SCFG.GetKeyAsString("filesystem","storagemount"))
 
-#define IS_OP	(SCFG.HasKey("dns", "provider") && SCFG.GetKeyAsString("dns", "provider") == "OpenProducts")
+#define IS_OP	(IdentityManager::Instance().HasDnsProvider())
 
 using namespace Utils;
 using namespace std::placeholders;
@@ -191,8 +190,8 @@ void ControlApp::Main()
         this->unit_id = SCFG.GetKeyAsString("hostinfo", "unitid");
 	}
 
-	// None OP device
-	if( SCFG.HasKey("dns", "provider") && SCFG.GetKeyAsString("dns", "provider") != "OpenProducts" )
+	// None OP device, currently that is the same as not having a dns-provider
+	if( ! IdentityManager::Instance().HasDnsProvider() )
 	{
 		this->state = ControlState::State::AskUnlock;
 	}
@@ -447,22 +446,24 @@ Json::Value ControlApp::WebCallback(Json::Value v)
                 Json::Value ret(Json::objectValue);
 				ret["domains"]=Json::arrayValue;
 				list<string> domains;
-				if ( SysConfig().HasKey("dns","availabledomains"))
+				IdentityManager& idmgr = IdentityManager::Instance();
+
+				if( idmgr.HasDnsProvider() )
 				{
-					domains = SysConfig().GetKeyAsStringList("dns","availabledomains");
+					list<string> domains = idmgr.DnsAvailableDomains();
 					for(auto domain: domains)
 					{
 						ret["domains"].append(domain);
 					}
-					ret["domain"]=domains.front();
-				}
-				else
-				{
-					for(auto domain: sysinfo.Domains)
+					if( domains.size() > 0 )
 					{
-						ret["domains"].append(domain);
+						ret["domain"]=domains.front();
 					}
-					ret["domain"]=sysinfo.Domains[sysinfo.Type()];
+					else
+					{
+						// Really should not happen
+						logg << Logger::Error << "Missing DNS providers!"<<lend;
+					}
 				}
 				return ret;
 			}
@@ -704,6 +705,9 @@ bool ControlApp::DoInit( bool savepassword )
 	//Only on OP-enabled devices
 	if( IS_OP )
 	{
+		// TODO: THis have to go into IdManager somehow.
+		// Function exists in Manager but is private.
+		// Maybe integrate in AddDNSname or similar
 		stringstream pk;
         for( auto row: File::GetContent(SCFG.GetKeyAsString("dns","dnspubkey")) )
 		{
@@ -732,45 +736,15 @@ bool ControlApp::AddUser(const string user, const string display, const string p
 		return false;
 	}
 
-	Secop s;
-	s.SockAuth();
+	UserManagerPtr umgr = UserManager::Instance();
 
-	if( ! s.CreateUser(user, password, display) )
+	if( ! umgr->AddUser(user, password, display, true) )
 	{
-		this->global_error = "Failed to create user (User exists?)";
-		return false;
-	}
-
-	if( ! s.AddGroupMember("admin", user) )
-	{
-		this->global_error = "Failed to make user admin";
+		this->global_error = umgr->StrError();
 		return false;
 	}
 
 	this->first_user = user;
-
-	MailManager &mmgr = MailManager::Instance();
-
-	// Set local mail address
-	if( ! mmgr.SetLocalAddress( user ) )
-	{
-		this->global_error = mmgr.StrError();
-		return false;
-	}
-
-	// Add this user as receiver of administrative mail
-	if( ! mmgr.AddUserAlias("/^postmaster@/",user+"@localdomain") ||
-			! mmgr.AddUserAlias("/^root@/",user+"@localdomain"))
-	{
-		this->global_error = mmgr.StrError();
-		return false;
-	}
-
-	if( !mmgr.Synchronize()	)
-	{
-		this->global_error = mmgr.StrError();
-		return false;
-	}
 
 	return true;
 }
@@ -783,6 +757,14 @@ bool ControlApp::SetDNSName(const string &opiname,const string &domain)
 	logg << Logger::Debug << "Set dns, hostname: " << opiname << " domain: " << domain << lend;
 
 	IdentityManager& idmgr = IdentityManager::Instance();
+
+	if( ! idmgr.SetFqdn(opi_name, domain) )
+	{
+		this->global_error = idmgr.StrError();
+		logg << Logger::Error << this->global_error<< lend;
+		return false;
+	}
+
 	if( ! idmgr.HasDnsProvider() )
 	{
 		logg << Logger::Error << "No DNS provider available" << lend;
@@ -792,6 +774,8 @@ bool ControlApp::SetDNSName(const string &opiname,const string &domain)
 
 	if( ! idmgr.AddDnsName(opiname, domain ) )
 	{
+		this->global_error = idmgr.StrError();
+		logg << Logger::Error << this->global_error << lend;
 		return false;
 	}
 
@@ -813,9 +797,6 @@ bool ControlApp::SetDNSName(const string &opiname,const string &domain)
 
 			MailManager& mmgr = MailManager::Instance();
 			mmgr.SetAddress(fqdn,this->first_user,this->first_user);
-
-			//TODO: Add to mailmanager
-			File::Write("/etc/mailname", fqdn, 0644);
 		}
 		catch(runtime_error& err)
 		{
@@ -906,54 +887,22 @@ bool ControlApp::InitializeStorage()
 bool ControlApp::RegisterKeys( )
 {
 	logg << Logger::Debug << "Register keys"<<lend;
-    try{
 
-		// Create sysauth keys and register in Secop if not present
-		if( IS_OP )
-		{
-			AuthServer::Setup();
-		}
+	IdentityManager& idmgr = IdentityManager::Instance();
 
-		// Create "dns"-key
-		string dnsauthkey = SCFG.GetKeyAsString("dns","dnsauthkey");
-		string dnspubkey = SCFG.GetKeyAsString("dns","dnspubkey");
-
-		string priv_path = File::GetPath( dnsauthkey );
-		if( ! File::DirExists( priv_path ) )
-		{
-			File::MkPath( priv_path, 0755);
-		}
-
-        string pub_path = File::GetPath( dnspubkey );
-		if( ! File::DirExists( pub_path ) )
-		{
-			File::MkPath( pub_path, 0755);
-		}
-
-        if( ! File::FileExists( dnsauthkey) || ! File::FileExists( dnspubkey ) )
-		{
-			RSAWrapper dns;
-			dns.GenerateKeys();
-
-			// Could be leftover symlinks, remove
-            unlink( dnsauthkey.c_str() );
-            unlink( dnspubkey.c_str() );
-
-            File::Write(dnsauthkey, dns.PrivKeyAsPEM(), 0600 );
-            File::Write(dnspubkey, dns.PubKeyAsPEM(), 0644 );
-		}
-	}
-	catch( runtime_error& err)
+	if( ! idmgr.RegisterKeys() )
 	{
-		this->global_error = "Failed to register keys " + string(err.what());
-		logg << Logger::Notice << "Failed to register keys " << err.what() << lend;
+		this->global_error = idmgr.StrError();
+		logg << Logger::Error << this->global_error <<lend;
 		return false;
 	}
+
 	return true;
 }
 
 string ControlApp::GetBackupPassword()
 {
+	//TODO: Move to BackupManager?
 	SecString spass(this->masterpassword.c_str(), this->masterpassword.size() );
 	SecVector<byte> key = PBKDF2( spass, 20);
 	vector<byte> ukey(key.begin(), key.end());
@@ -1087,12 +1036,13 @@ bool ControlApp::SetPasswordRoot()
 bool ControlApp::GuessOPIName()
 {
 	logg << Logger::Debug << "Guess opi-name"<<lend;
-	// First try sysconfig
-    try
+	IdentityManager& idmgr = IdentityManager::Instance();
+	try
 	{
 
-        string name = SCFG.GetKeyAsString("hostinfo","hostname");
-        string domain = SCFG.GetKeyAsString("hostinfo","domain");
+		string name, domain;
+
+		tie(name, domain) = idmgr.GetFqdn();
 
 		if( name != "" && domain != "" )
 		{
@@ -1106,7 +1056,7 @@ bool ControlApp::GuessOPIName()
 	}
     catch (std::runtime_error& e)
     {
-		logg << Logger::Notice << "Failed to read hostname / domain from sysconfig (" << e.what() << ")" <<lend;
+		logg << Logger::Notice << "Failed to retrieve hostname or domain (" << e.what() << ")" <<lend;
     }
 
 	// If not found try figure out from mail-addresses
@@ -1116,7 +1066,7 @@ bool ControlApp::GuessOPIName()
 
 		MailManager& mmgr = MailManager::Instance();
 
-		list<string> valid_domains= SCFG.GetKeyAsStringList("dns","availabledomains");
+		list<string> valid_domains = idmgr.DnsAvailableDomains();
 		list<string> names;
 		list<string> domains = mmgr.GetDomains();
 		for( const string& domain: domains )
@@ -1154,16 +1104,6 @@ void ControlApp::WriteConfig()
 	{
 		sysconfig.PutKey("hostinfo","unitid",this->unit_id);
 	}
-
-	if( this->opi_name != "" )
-	{
-		sysconfig.PutKey("hostinfo","hostname",this->opi_name);
-	}
-	if( this->domain != "" )
-	{
-		sysconfig.PutKey("hostinfo","domain",this->domain);
-	}
-
 }
 
 
