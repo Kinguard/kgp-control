@@ -1,3 +1,9 @@
+opi-control (1.1.41) vili; urgency=medium
+
+  * Check if usb-device already mounted befort try mount it
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 11 Dec 2018 13:48:13 +0100
+
 opi-control (1.1.40) vili; urgency=medium
 
   * libkinguard adaptations

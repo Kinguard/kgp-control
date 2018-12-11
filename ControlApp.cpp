@@ -982,8 +982,9 @@ bool ControlApp::GetPasswordRoot()
 
 bool ControlApp::SetPasswordUSB()
 {
-	logg << Logger::Debug << "Store password on "<<sysinfo.PasswordDevice()<<lend;
+	logg << Logger::Debug << "Store password on device "<<sysinfo.PasswordDevice()<<lend;
 	bool ret = false;
+	bool wasmounted = false;
 
 	if( ! DiskHelper::DeviceExists( sysinfo.PasswordDevice() ) )
 	{
@@ -998,14 +999,22 @@ bool ControlApp::SetPasswordUSB()
 			File::MkDir("/mnt/usb", 0755);
 		}
 
-		DiskHelper::Mount( sysinfo.PasswordDevice(), "/mnt/usb", false, false, "");
+		string mpath = DiskHelper::IsMounted( sysinfo.PasswordDevice());
+		wasmounted = mpath != "";
 
-		if( ! File::DirExists( "/mnt/usb/opi" ) )
+		if( ! wasmounted  )
 		{
-			File::MkDir("/mnt/usb/opi", 0755);
+			DiskHelper::Mount( sysinfo.PasswordDevice(), "/mnt/usb", false, false, "");
+			mpath = "/mnt/usb";
 		}
 
-		PasswordFile::Write("/mnt/usb/opi/opicred.bin", this->masterpassword );
+		if( ! File::DirExists( mpath + "/opi" ) )
+		{
+			File::MkDir(mpath + "/opi", 0755);
+		}
+
+		logg << Logger::Debug << "Storing password at " << mpath + "/opi/opicred.bin" << lend;
+		PasswordFile::Write( mpath + "/opi/opicred.bin", this->masterpassword );
 
 		ret = true;
 	}
@@ -1020,7 +1029,7 @@ bool ControlApp::SetPasswordUSB()
 		this->global_error ="Failed to save password on device";
 	}
 
-	if( DiskHelper::IsMounted( sysinfo.PasswordDevice() ) != "" )
+	if( ! wasmounted && DiskHelper::IsMounted( sysinfo.PasswordDevice() ) != "" )
 	{
 		DiskHelper::Umount( sysinfo.PasswordDevice() );
 	}
