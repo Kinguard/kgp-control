@@ -23,9 +23,12 @@ vgremove pool
 pvremove /dev/sda1
 wipefs -a /dev/disk/by-path/platform-f10a8000.sata-ata-2-part1
 rm /var/opi/secop/secop.db
-sed -i 's/\"\(unitid\)/\"\#\1/' /etc/kinguard/sysconfig.json
-sed -i 's/\"\(domain\)/\"\#\1/' /etc/kinguard/sysconfig.json
-sed -i 's/\"\(hostname\)/\"\#\1/' /etc/kinguard/sysconfig.json
+if [ -e /etc/kinguard/sysconfig.json ]
+then
+	sed -i 's/\"\(unitid\)/\"\#\1/' /etc/kinguard/sysconfig.json
+	sed -i 's/\"\(domain\)/\"\#\1/' /etc/kinguard/sysconfig.json
+	sed -i 's/\"\(hostname\)/\"\#\1/' /etc/kinguard/sysconfig.json
+fi
 
 rm -rf /usr/share/kinguard-certhandler/dehydrated/accounts/*
 rm /etc/opi/web*
@@ -33,10 +36,10 @@ rm -rf /etc/opi/signed_certs
 ln -s /etc/opi/dnspriv.pem /etc/opi/web_key.pem
 ln -s /etc/opi/opi.cert /etc/opi/web_cert.pem
 
-./opi-control -D
-
-
-
+if [ -e ./opi-control ]
+then
+	./opi-control -D
+fi
 
 
 # för PC
