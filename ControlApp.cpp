@@ -167,11 +167,11 @@ void ControlApp::StopWebserver()
 
 void ControlApp::Main()
 {
-    logg << Logger::Info << "------ !!!   TODO  !!!! ---------"<<lend;
-    logg << Logger::Info << "Wrap/test reading of sysconfig keys to not get unwanted exceptions."<<lend;
+	logg << Logger::Info << "------ !!!   TODO  !!!! ---------"<<lend;
+	logg << Logger::Info << "Wrap/test reading of sysconfig keys to not get unwanted exceptions."<<lend;
 	logg << Logger::Info << "------ !!!   End TODO  !!!! ---------"<<lend;
 
-    if( this->options["debug"] == "1" )
+	if( this->options["debug"] == "1" )
 	{
 		logg << Logger::Info << "Increase logging to debug level "<<lend;
 		logg.SetLevel(Logger::Debug);
@@ -187,7 +187,7 @@ void ControlApp::Main()
 	if( SCFG.HasKey("hostinfo", "unitid") )
 	{
 		this->state = ControlState::State::AskUnlock;
-        this->unit_id = SCFG.GetKeyAsString("hostinfo", "unitid");
+		this->unit_id = SCFG.GetKeyAsString("hostinfo", "unitid");
 	}
 
 	// None OP device, currently that is the same as not having a dns-provider
@@ -229,7 +229,16 @@ void ControlApp::Main()
 		if( StorageManager::UseLocking() && ! StorageManager::StorageAreaExists() )
 		{
 			logg << Logger::Debug << "Config correct but no luksdevice do initialization"<<lend;
-			this->state = ControlState::State::AskReInitCheckRestore;
+			if( IdentityManager::Instance().HasDnsProvider() )
+			{
+				this->state = ControlState::State::AskReInitCheckRestore;
+			}
+			else
+			{
+				// None OP device, we assume this is a new setup for now
+				// TODO: This should be revisited and refactored Mantis #516
+				this->state = ControlState::State::AskInitCheckRestore;
+			}
 		}
 	}
 
@@ -424,26 +433,26 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			{
 				return this->connstatus;
 			}
-            else if( cmd == "gettype" )
-            {
-                Json::Value ret;
-                ret["type"] = sysinfo.SysTypeText[sysinfo.Type()];
-				if ( SCFG.HasKey("hostinfo","provider") )
-				{
-					try
-					{
-						ret["provider"] = SCFG.GetKeyAsString("hostinfo","provider");
-					}
-					catch( std::runtime_error& err)
-					{
-						logg << Logger::Error << "Failed to read 'provider' from config."<< err.what() << lend;
-					}
-				}
-                return ret;
-            }
-            else if( cmd == "getdomains" )
+			else if( cmd == "gettype" )
 			{
-                Json::Value ret(Json::objectValue);
+				Json::Value ret;
+				ret["type"] = sysinfo.SysTypeText[sysinfo.Type()];
+
+				// Short circuit for now
+				// Todo: revisit and refactor when we have better method
+				if ( IdentityManager::Instance().HasDnsProvider() )
+				{
+					ret["provider"] = "openproducts";
+				}
+				else
+				{
+					ret["provider"] = "kgp";
+				}
+				return ret;
+			}
+			else if( cmd == "getdomains" )
+			{
+				Json::Value ret(Json::objectValue);
 				ret["domains"]=Json::arrayValue;
 				list<string> domains;
 				IdentityManager& idmgr = IdentityManager::Instance();
@@ -551,7 +560,7 @@ bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 
 	logg << Logger::Debug << "Storage device opened"<< lend;
 
-    if( ! StorageManager::mountDevice( SCFG.GetKeyAsString("filesystem","storagemount") ) )
+	if( ! StorageManager::mountDevice( SCFG.GetKeyAsString("filesystem","storagemount") ) )
 	{
 		this->global_error = "Unable to access storage";
 		return false;
@@ -709,7 +718,7 @@ bool ControlApp::DoInit( bool savepassword )
 		// Function exists in Manager but is private.
 		// Maybe integrate in AddDNSname or similar
 		stringstream pk;
-        for( auto row: File::GetContent(SCFG.GetKeyAsString("dns","dnspubkey")) )
+		for( auto row: File::GetContent(SCFG.GetKeyAsString("dns","dnspubkey")) )
 		{
 			pk << row << "\n";
 		}
@@ -1063,10 +1072,10 @@ bool ControlApp::GuessOPIName()
 		}
 		logg << Logger::Notice << "OPI-name not found in sysconfig ("<<name<<")"<<", ("<<domain<<")"<<lend;
 	}
-    catch (std::runtime_error& e)
-    {
+	catch (std::runtime_error& e)
+	{
 		logg << Logger::Notice << "Failed to retrieve hostname or domain (" << e.what() << ")" <<lend;
-    }
+	}
 
 	// If not found try figure out from mail-addresses
 	try

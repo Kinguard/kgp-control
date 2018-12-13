@@ -1,3 +1,12 @@
+opi-control (1.1.42) vili; urgency=medium
+
+  * Whitespace cleanups
+  * Change returned status code in handle theme
+  * Rework /gettype request to check dns-provider
+  * Always use InitCheckRestore on none op-systems
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 13 Dec 2018 22:17:38 +0100
+
 opi-control (1.1.41) vili; urgency=medium
 
   * Check if usb-device already mounted befort try mount it
