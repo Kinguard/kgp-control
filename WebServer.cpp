@@ -130,14 +130,21 @@ static bool validate_initdata(const Json::Value& v)
 		return false;
 	}
 
-	if( ! v.isMember("unit_id") || !v["unit_id"].isString() )
-	{
-		return false;
-	}
+	KGP::IdentityManager& imgr = KGP::IdentityManager::Instance();
+	if( imgr.HasDnsProvider() ) {
+		if (! v.isMember("unit_id") || !v["unit_id"].isString() )
+		{
+			return false;
+		}
 
-	if( String::Trimmed( v["unit_id"].asString(), "\t ") == "" )
+		if( String::Trimmed( v["unit_id"].asString(), "\t ") == "" )
+		{
+			return false;
+		}
+	}
+	else
 	{
-		return false;
+		logg << Logger::Debug << "Skip requirement for unitid" << lend;
 	}
 
 	if( ! v.isMember("save") || !v["save"].isBool() )
