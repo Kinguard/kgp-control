@@ -289,12 +289,12 @@
 					<span id="opi_namestate" class="help-block form-nameerror"></span>
 					</p>
 				</div>
+				<input type="hidden" name="domain" id="domaincontainer" value=""/>
 				<div id="div-opdomains" class="hidden">
 					<p class="form-group">
 					<label for="domain">Select domain to use</label>
 					<select
 						id="select_domain"
-						name="domain"
 						title="Domain name"
 						disabled="disabled"
 					>
@@ -307,7 +307,6 @@
 						<input
 							type="text"
 							id="customdomain"
-							name="domain"
 							title="Custom Domain"
 							class="lowercase"
 							helpindex="customdomain"
@@ -839,11 +838,17 @@ function getStatus() {
 var opiname_check = false;
 function checkname() {
 	// Do not check with server for custom domains.
-	if(opiname_check) opiname_check.abort(); // abort any ongoing checks 
+	if(opiname_check) opiname_check.abort(); // abort any ongoing checks
+
+	// set the active domain value to domain containder id
 	if (! $("#select_domain").is(":enabled")) {
+		$("#domaincontainer").val( $("#customdomain").val() );
+		console.log("Setting domain to custom domain name:" + $("#domaincontainer").val() );
 		return;
 	} else {
 		domain = $("#select_domain").val();
+		$("#domaincontainer").val( domain );
+		console.log("Setting domain to: " + $("#domaincontainer").val());
 	}
 	/*
 	} else if ($("#customdomain").is(":enabled") && ($("#customdomain").val() != "") ) {

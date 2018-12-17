@@ -1,3 +1,9 @@
+opi-control (1.1.43) vili; urgency=medium
+
+  * Fix setting hostname correctly
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 17 Dec 2018 15:00:54 +0100
+
 opi-control (1.1.42) vili; urgency=medium
 
   * Whitespace cleanups

@@ -767,7 +767,7 @@ bool ControlApp::SetDNSName(const string &opiname,const string &domain)
 
 	IdentityManager& idmgr = IdentityManager::Instance();
 
-	if( ! idmgr.SetFqdn(opi_name, domain) )
+	if( ! idmgr.SetFqdn(opiname, domain) )
 	{
 		this->global_error = idmgr.StrError();
 		logg << Logger::Error << this->global_error<< lend;
