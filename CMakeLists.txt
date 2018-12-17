@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8)
 
 include( FindPkgConfig )
 pkg_check_modules ( LIBOPI REQUIRED libopi>=1.6.42 )
-pkg_check_modules ( LIBKGP REQUIRED libkinguard)
+pkg_check_modules ( LIBKGP REQUIRED libkinguard>=1.0.8 )
 pkg_check_modules ( LIBSSL REQUIRED openssl )
 
 set (OPI_CONTROL_VERSION_MAJOR 1)

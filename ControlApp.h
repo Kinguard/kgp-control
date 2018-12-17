@@ -56,7 +56,6 @@ private:
 	// Helper methods
 	bool InitializeStorage();
 	bool RegisterKeys();
-	string GetBackupPassword();
 	bool GetPasswordUSB();
 	bool GetPasswordRoot();
 	bool SetPasswordUSB();

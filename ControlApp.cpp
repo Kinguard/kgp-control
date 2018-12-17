@@ -666,12 +666,6 @@ bool ControlApp::DoInit( bool savepassword )
 		return false;
 	}
 
-	// Setup backup config
-	Json::Value backupcfg;
-	backupcfg["password"] = this->GetBackupPassword();
-
-	BackupManager::Configure( backupcfg );
-
 	this->WriteConfig( );
 
 	// We only try to login if we run an OP enabled device
@@ -696,9 +690,15 @@ bool ControlApp::DoInit( bool savepassword )
 			}
 		}
 	}
+	else
+	{
+		// None OP, we are by definition logged in.
+		// Todo: Revise when needed.
+		loggedin = true;
+	}
 
 	// Possibly save password to usb device
-	if( loggedin && savepassword )
+	if(  loggedin && savepassword )
 	{
 		logg << Logger::Debug << "Try saving password on successful init"<<lend;
 		if( ! this->SetPasswordUSB() )
@@ -907,16 +907,6 @@ bool ControlApp::RegisterKeys( )
 	}
 
 	return true;
-}
-
-string ControlApp::GetBackupPassword()
-{
-	//TODO: Move to BackupManager?
-	SecString spass(this->masterpassword.c_str(), this->masterpassword.size() );
-	SecVector<byte> key = PBKDF2( spass, 20);
-	vector<byte> ukey(key.begin(), key.end());
-
-	return Base64Encode( ukey );
 }
 
 bool ControlApp::GetPasswordUSB()
@@ -1149,6 +1139,12 @@ Json::Value ControlApp::CheckRestore()
 
 		return Json::nullValue;
 	}
+
+	logg << Logger::Debug << "Initializing backup manager" << lend;
+	// Setup backup config
+	Json::Value backupcfg;
+	backupcfg["password"] = this->masterpassword;
+	BackupManager::Configure( backupcfg );
 
 	// Call backupmanager get backups
 	Json::Value retval = BackupManager::Instance().GetBackups();
