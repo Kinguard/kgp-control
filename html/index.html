@@ -784,6 +784,8 @@ function getDomains() {
 	  		  	$("#select_domain").append('<option value="'+domains[i]+'" '+selected+'>'+domains[i]+'</option>');
 			} 
 		}
+		// set the default domain to selected value
+		$("#domaincontainer").val( $("#select_domain").val() );
 	}, "json" )
 	.fail(function() {
 		console.log("Request 'Domains' failed.");
