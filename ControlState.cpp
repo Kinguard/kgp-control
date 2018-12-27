@@ -323,7 +323,7 @@ void ControlState::StReInit(EventData *data)
 	if( this->app->DoInit(arg->data["save"].asBool() ) )
 	{
 		this->app->evhandler.AddEvent( 50, bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinit") );
-		this->RegisterEvent( State::AskAddUser, nullptr);
+		this->RegisterEvent( State::AskOpiName, nullptr);
 	}
 	else
 	{
@@ -384,14 +384,7 @@ void ControlState::StAddUser(EventData *data)
 
 	if( this->app->AddUser(arg->data["username"].asString(), arg->data["displayname"].asString(), arg->data["password"].asString()) )
 	{
-		if( IdentityManager::Instance().HasDnsProvider() )
-		{
-			this->RegisterEvent( State::AskOpiName, nullptr);
-		}
-		else
-		{
-			this->RegisterEvent( State::Hostname, nullptr );
-		}
+		this->RegisterEvent( State::Completed, nullptr);
 	}
 	else
 	{
@@ -424,7 +417,16 @@ void ControlState::StOpiName(EventData *data)
 		logg << Logger::Info << "Got fqdn: " << fqdn.front() << "." << fqdn.back() << lend;
 		if( this->app->SetDNSName(fqdn.front(),fqdn.back() ) )
 		{
-			this->RegisterEvent( State::Completed, nullptr);
+			list<UserPtr> users = UserManager::Instance()->GetUsers();
+			if( users.size() > 0 )
+			{
+				// Users exist, we are done
+				this->RegisterEvent( State::Completed, nullptr);
+			}
+			else
+			{
+				this->RegisterEvent( State::AskAddUser, nullptr );
+			}
 		}
 		else
 		{
@@ -558,7 +560,7 @@ void ControlState::DoRestore(const string &path)
 			else
 			{
 				logg << Logger::Debug << "No users in system not able to set name"<<lend;
-				this->TriggerEvent( State::AskAddUser, nullptr);
+				this->TriggerEvent( State::AskOpiName, nullptr);
 			}
 
 		}

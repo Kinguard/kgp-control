@@ -1,3 +1,10 @@
+opi-control (1.1.45) vili; urgency=medium
+
+  * PA Nilsson, Hide navigation buttons
+  * Rearrange setup flow, opi-name before users
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 27 Dec 2018 22:56:51 +0100
+
 opi-control (1.1.44) vili; urgency=medium
 
   * PA Nilsson: Make sure that domain is always provided to setdns.
