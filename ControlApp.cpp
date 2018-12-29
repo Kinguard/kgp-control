@@ -711,6 +711,14 @@ bool ControlApp::DoInit( bool savepassword )
 		logg << Logger::Debug << "Not saving password on successful init"<<lend;
 	}
 
+	// Save password for backup encryption
+
+	// Setup backup config
+	logg << Logger::Debug << "Save backup config"<<lend;
+	Json::Value backupcfg;
+	backupcfg["password"] = this->masterpassword;
+	BackupManager::Configure( backupcfg );
+
 	//Only on OP-enabled devices
 	if( IS_OP )
 	{

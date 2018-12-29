@@ -1,3 +1,9 @@
+opi-control (1.1.46) vili; urgency=medium
+
+  * Write backup config from DoInit. 
+
+ -- PA Nilsson <pa@openproducts.se>  Sat, 29 Dec 2018 10:52:17 +0100
+
 opi-control (1.1.45) vili; urgency=medium
 
   * PA Nilsson, Hide navigation buttons
