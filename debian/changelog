@@ -1,3 +1,9 @@
+opi-control (1.1.4i7) vili; urgency=medium
+
+  *  Update dependencies on libkinguard
+
+ -- Tor Krill <tor@openproducts.se>  Wed, 09 Jan 2019 11:19:34 +0100
+
 opi-control (1.1.46) vili; urgency=medium
 
   * Write backup config from DoInit. 
