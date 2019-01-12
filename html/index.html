@@ -282,9 +282,7 @@
 						id="opiname"
 						name="opiname"
 						title="OPI name"
-						data-validation="alphanumeric" data-validation-allowing="-"
 						class="lowercase"
-						data-validation-error-msg="Device name is required during setup, ('a-z,-' allowed)"
 					/>
 					<span id="opi_namestate" class="help-block form-nameerror"></span>
 					</p>
@@ -841,6 +839,23 @@ var opiname_check = false;
 function checkname() {
 	// Do not check with server for custom domains.
 	if(opiname_check) opiname_check.abort(); // abort any ongoing checks
+
+
+	if ($("#opiname").val() == "") {
+			$("#opi_namestate").parent().removeClass("has-success");
+			$("#opi_namestate").parent().removeClass("has-error");
+			$("#opi_namestate").text("");
+			return;
+	}
+
+
+	var allowedChars = new RegExp("^[a-z-]*$");
+	if ( ! allowedChars.test($("#opiname").val()) ){
+		$("#opi_namestate").parent().addClass("has-error");
+		$("#opi_namestate").text("Use only 'a-z' and '-'.");
+		console.log("Illegal character found.");
+		return;
+	}
 
 	// set the active domain value to domain containder id
 	if (! $("#select_domain").is(":enabled")) {
