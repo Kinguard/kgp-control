@@ -1055,6 +1055,16 @@ $(document).ready( function() {
 						$("#validation_error_msg").text(err.message);
 						console.log(err.message);
 					}
+
+					if (result.state == 18) {
+						console.log("state 18");
+						// opi name state
+						$("#opi_namestate").text("Name not available/denied");
+						$("#opi_namestate").parent().removeClass("has-success");
+						$("#opi_namestate").parent().addClass("has-error");
+						$("#btnOpiname").attr("disabled","disabled");
+					}
+
 						
 				} else {
 					// clear opiname input box messages
