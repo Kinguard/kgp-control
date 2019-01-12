@@ -1,3 +1,9 @@
+opi-control (1.1.48) vili; urgency=medium
+
+  * Fix opi-name error messages. 
+
+ -- PA Nilsson <pa@openproducts.se>  Sat, 12 Jan 2019 10:11:55 +0100
+
 opi-control (1.1.47) vili; urgency=medium
 
   *  Update dependencies on libkinguard
