@@ -24,5 +24,6 @@ Depends: ${shlibs:Depends}, ${misc:Depends},
 	secop,
 	rsync,
 	openssl
+Pre-Depends: kgp-ccheck (>=1.9)
 Description: OPI control application
  opi-control manages startup and unlocking of OPI 

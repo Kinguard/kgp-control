@@ -1,3 +1,9 @@
+opi-control (1.1.49) vili; urgency=medium
+
+  * Move sysinfo patchning to kgp-ccheck
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 25 Jan 2019 16:19:11 +0100
+
 opi-control (1.1.48) vili; urgency=medium
 
   * Fix opi-name error messages. 
