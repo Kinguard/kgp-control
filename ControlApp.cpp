@@ -775,6 +775,7 @@ bool ControlApp::SetDNSName(const string &opiname,const string &domain)
 
 	IdentityManager& idmgr = IdentityManager::Instance();
 
+
 	if( ! idmgr.SetFqdn(opiname, domain) )
 	{
 		this->global_error = idmgr.StrError();
@@ -782,24 +783,27 @@ bool ControlApp::SetDNSName(const string &opiname,const string &domain)
 		return false;
 	}
 
-	if( ! idmgr.HasDnsProvider() )
+	/* If the domain is in the list of available domains, check with provider.
+	*  if the domain is "custom", there is no DNS provider to check with...
+	*/
+
+	if (idmgr.DnsDomainAvailable(domain) )
 	{
-		logg << Logger::Error << "No DNS provider available" << lend;
-		this->global_error = "No DNS provider available";
-		return false;
+		logg << Logger::Debug << "Domain is managed" << lend;
+		if( ! idmgr.HasDnsProvider() )
+		{
+			logg << Logger::Error << "No DNS provider available" << lend;
+			this->global_error = "No DNS provider available";
+			return false;
+		}
+
+		if( ! idmgr.AddDnsName(opiname, domain ) )
+		{
+			this->global_error = idmgr.StrError();
+			logg << Logger::Error << this->global_error << lend;
+			return false;
+		}
 	}
-
-	if( ! idmgr.AddDnsName(opiname, domain ) )
-	{
-		this->global_error = idmgr.StrError();
-		logg << Logger::Error << this->global_error << lend;
-		return false;
-	}
-
-	this->opi_name = opiname;
-	this->domain = domain;
-
-	this->WriteConfig();
 
 	/*
 	 * If we have no first user this indicates old SD card with info and users
