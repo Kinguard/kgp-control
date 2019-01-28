@@ -786,7 +786,6 @@ bool ControlApp::SetDNSName(const string &opiname,const string &domain)
 	/* If the domain is in the list of available domains, check with provider.
 	*  if the domain is "custom", there is no DNS provider to check with...
 	*/
-
 	if (idmgr.DnsDomainAvailable(domain) )
 	{
 		logg << Logger::Debug << "Domain is managed" << lend;
@@ -803,6 +802,11 @@ bool ControlApp::SetDNSName(const string &opiname,const string &domain)
 			logg << Logger::Error << this->global_error << lend;
 			return false;
 		}
+	}
+	else
+	{
+		SysConfig sysconfig(true);
+		sysconfig.PutKey("dns","enabled",false);
 	}
 
 	/*

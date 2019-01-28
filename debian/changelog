@@ -1,3 +1,9 @@
+opi-control (1.1.51) vili; urgency=medium
+
+  * Disable OP DNS when using custom domain. 
+
+ -- PA Nilsson <pa@openproducts.se>  Mon, 28 Jan 2019 21:35:53 +0100
+
 opi-control (1.1.50) vili; urgency=medium
 
   * PA Nilsson: Untested fix for #535
