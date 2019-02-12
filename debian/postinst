@@ -23,7 +23,7 @@ case "$1" in
 		# Fix faulty notification upon upgrade
 		if dpkg --compare-versions "$2" lt "1.1.32" ;
 		then
-			msgs=$(grep -d skip -l "Shutting down" /var/spool/kgp-notify/*)
+			msgs=$(grep -d skip -l "Shutting down" /var/spool/kgp-notify/* | echo "")
 			for msg in $msgs
 			do
 				msgid=$(basename $msg)
