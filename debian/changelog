@@ -1,3 +1,9 @@
+opi-control (1.1.53) vili; urgency=medium
+
+  * Fix typo in postinst
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 12 Feb 2019 16:24:49 +0100
+
 opi-control (1.1.52) vili; urgency=medium
 
   * Dont fail in postinst if new install #546
