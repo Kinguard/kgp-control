@@ -252,27 +252,8 @@ void ControlState::StInit(EventData *data)
 
 	if( this->app->DoInit( arg->data["savepassword"].asBool() ) )
 	{
-		UserManagerPtr umgr = UserManager::Instance();
-		list<UserPtr> users = umgr->GetUsers();
-
-		if( users.size() > 0 )
-		{
-			// We have users on SD, skip register user
-			if( this->app->GuessOPIName() && this->app->SetDNSName() )
-			{
-				this->RegisterEvent( State::Completed, nullptr );
-			}
-			else
-			{
-				this->RegisterEvent( State::AskOpiName, nullptr);
-			}
-			this->app->evhandler.AddEvent( 50, std::bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinstall"));
-		}
-		else
-		{
-			this->RegisterEvent( State::AskAddUser, nullptr );
-		}
-		// TODO: try reuse opi-name and opi_unitid
+		this->app->evhandler.AddEvent( 50, std::bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinstall"));
+		this->RegisterEvent( State::AskOpiName, nullptr);
 	}
 	else
 	{
