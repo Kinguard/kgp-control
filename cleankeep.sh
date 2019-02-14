@@ -98,7 +98,7 @@ then
 	rm -rf /usr/share/kinguard-certhandler/dehydrated/accounts/*
 	rm /etc/opi/web*
 	rm -rf /etc/opi/signed_certs
-	rm -f /etc/mailname
+	echo "keep" > /etc/mailname
 	ln -s /etc/opi/dnspriv.pem /etc/opi/web_key.pem
 	ln -s /etc/opi/opi.cert /etc/opi/web_cert.pem
 fi
