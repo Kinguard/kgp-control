@@ -392,7 +392,7 @@ void ControlState::StOpiName(EventData *data)
 	else
 	{
 		ControlData *arg = dynamic_cast<ControlData*>(data);
-		logg << Logger::Info << "StOpiName 2";
+		logg << Logger::Info << "StOpiName 2" << lend;
 
 		list<string> fqdn = String::Split(arg->data["opiname"].asString(), ".",2);
 		logg << Logger::Info << "Got fqdn: " << fqdn.front() << "." << fqdn.back() << lend;

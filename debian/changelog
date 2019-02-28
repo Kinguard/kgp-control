@@ -1,3 +1,10 @@
+opi-control (1.1.55) vili; urgency=medium
+
+  * Get certificate when setting opi-name
+  * Some minor additions to cleankeep
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 28 Feb 2019 15:05:23 +0100
+
 opi-control (1.1.54) vili; urgency=medium
 
   * Fix setup flow when doing initial install without any backups #549

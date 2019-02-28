@@ -99,6 +99,11 @@ then
 	rm /etc/opi/web*
 	rm -rf /etc/opi/signed_certs
 	echo "keep" > /etc/mailname
+        rm -f /etc/opi/dns*.pem
+        rm -f /etc/opi/opi.cert
+	ln -s /usr/share/nginx-opi/opi-tmpcert.pem /etc/opi/opi.cert
+	ln -s /usr/share/nginx-opi/opi-tmpkey.pem /etc/opi/dnspriv.pem
+	openssl rsa -in /etc/opi/dnspriv.pem -pubout > /etc/opi/dnspub.pem
 	ln -s /etc/opi/dnspriv.pem /etc/opi/web_key.pem
 	ln -s /etc/opi/opi.cert /etc/opi/web_cert.pem
 fi

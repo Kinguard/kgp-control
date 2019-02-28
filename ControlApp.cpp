@@ -75,6 +75,7 @@ void ControlApp::Startup()
 
 bool ControlApp::DoLogin()
 {
+	logg << Logger::Debug << "Logging in to OP backend" << lend;
 	AuthServer s( this->unit_id);
 	int resultcode;
 	Json::Value ret;
@@ -725,6 +726,7 @@ bool ControlApp::DoInit( bool savepassword )
 		// TODO: THis have to go into IdManager somehow.
 		// Function exists in Manager but is private.
 		// Maybe integrate in AddDNSname or similar
+		logg << Logger::Debug << "Register public dnskey with backend"<< lend;
 		stringstream pk;
 		for( auto row: File::GetContent(SCFG.GetKeyAsString("dns","dnspubkey")) )
 		{
@@ -808,6 +810,18 @@ bool ControlApp::SetDNSName(const string &opiname,const string &domain)
 		SysConfig sysconfig(true);
 		sysconfig.PutKey("dns","enabled",false);
 	}
+
+	logg << Logger::Info << "Generate certificate for unit" << lend;
+
+	// Backend should be set by certhandler
+	if( ! idmgr.CreateCertificate() )
+	{
+		this->global_error ="Failed to generate certificate:";
+		this->global_error += idmgr.StrError();
+		logg << Logger::Error << this->global_error << lend;
+		return false;
+	}
+
 
 	/*
 	 * If we have no first user this indicates old SD card with info and users
