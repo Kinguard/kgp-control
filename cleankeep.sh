@@ -62,7 +62,6 @@ fi
 
 echo "Stoping services using storage"
 service secop stop
-service opi-authproxy stop
 service mysql stop
 service opi-control stop
 service nginx stop
