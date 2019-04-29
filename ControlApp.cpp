@@ -224,7 +224,7 @@ void ControlApp::Main()
 		this->state = ControlState::State::Error;
 	}
 
-	// We have a valid config and a device but device is not a luks container
+	// We have a valid config, or none OP device, and a device but device is not a luks container
 	if( this->state == ControlState::State::AskUnlock )
 	{
 		if( StorageManager::UseLocking() && ! StorageManager::StorageAreaExists() )
