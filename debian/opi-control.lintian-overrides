@@ -1,0 +1,15 @@
+opi-control binary: source-is-missing html/js/jquery.min.js
+opi-control binary: source-is-missing html/js/jquery.qtip.min.js
+opi-control binary: source-is-missing html/js/form-validator/date.js line length is 1032 characters (>512)
+opi-control binary: source-is-missing html/js/form-validator/file.js line length is 2817 characters (>512)
+opi-control binary: source-is-missing html/js/form-validator/html5.js line length is 2439 characters (>512)
+opi-control binary: source-is-missing html/js/form-validator/location.dev.js line length is 3556 characters (>512)
+opi-control binary: source-is-missing html/js/form-validator/location.js line length is 5249 characters (>512)
+opi-control binary: source-is-missing html/js/form-validator/security.js line length is 6781 characters (>512)
+opi-control binary: source-is-missing html/js/form-validator/sweden.dev.js line length is 3207 characters (>512)
+opi-control binary: source-is-missing html/js/form-validator/sweden.js line length is 6808 characters (>512)
+opi-control binary: source-is-missing html/js/form-validator/uk.js line length is 729 characters (>512)
+opi-control binary: possible-gpl-code-linked-with-openssl
+opi-control binary: privacy-breach-uses-embedded-file
+opi-control binary: embedded-javascript-library
+opi-control binary: init.d-script-not-included-in-package
