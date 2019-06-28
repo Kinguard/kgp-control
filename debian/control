@@ -14,7 +14,7 @@ Build-Depends: debhelper (>= 8.0.0), cmake, dh-systemd (>= 1.5),
 	libparted0-dev,
 	libudev-dev,
 	pkg-config
-Standards-Version: 3.9.4
+Standards-Version: 3.9.8
 Homepage:http://www.openproducts.se
 
 Package: opi-control

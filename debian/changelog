@@ -1,4 +1,4 @@
-opi-control (1.1.56) vili; urgency=medium
+opi-control (1.1.57) vili; urgency=medium
 
   * Return failure upon exit if exception caught
   * Change service to restart on failure
@@ -7,6 +7,13 @@ opi-control (1.1.56) vili; urgency=medium
     directives
 
  -- Tor Krill <tor@openproducts.se>  Fri, 28 Jun 2019 14:37:30 +0200
+
+opi-control (1.1.56) vili; urgency=medium
+
+  * Lintian fixes
+  * Remove exit on failure on postinst
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 04 Jun 2019 13:47:18 +0200
 
 opi-control (1.1.55) vili; urgency=medium
 
