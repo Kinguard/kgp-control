@@ -1,3 +1,10 @@
+opi-control (1.1.56) vili; urgency=medium
+
+  * Lintian fixes
+  * Remove exit on failure on postinst
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 04 Jun 2019 13:47:18 +0200
+
 opi-control (1.1.55) vili; urgency=medium
 
   * Get certificate when setting opi-name
