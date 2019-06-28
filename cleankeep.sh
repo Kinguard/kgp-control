@@ -56,6 +56,7 @@ fi
 if [ $DO_SETUP -eq 1 ]
 then
 	echo "Setup system"
+	sed -i  "s/elli/vili/; s/debian-stable/debian-unstable/" /etc/apt/sources.list.d/keep.list
 	apt update
 	apt install cryptsetup-bin
 fi
@@ -105,6 +106,7 @@ then
 	openssl rsa -in /etc/opi/dnspriv.pem -pubout > /etc/opi/dnspub.pem
 	ln -s /etc/opi/dnspriv.pem /etc/opi/web_key.pem
 	ln -s /etc/opi/opi.cert /etc/opi/web_cert.pem
+	touch /etc/opi/firstboot
 fi
 
 if [ -d /etc/kinguard/scripts/ccheck ]

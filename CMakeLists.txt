@@ -10,13 +10,6 @@ set (OPI_CONTROL_VERSION_MAJOR 1)
 set (OPI_CONTROL_VERSION_MINOR 0)
 set (OPI_CONTROL_APP_NAME "opi-control")
 
-#message( ${OPI_BUILD} )
-if(OPI_BUILD MATCHES deb)
-	set ( OPI_BUILD_PACKAGE 1 )
-else()
-	set ( OPI_BUILD_LOCAL 1 )
-endif()
-
 configure_file (
 	"${PROJECT_SOURCE_DIR}/Config.h.in"
 	"${PROJECT_SOURCE_DIR}/Config.h"

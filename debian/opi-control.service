@@ -5,9 +5,10 @@ After=network-online.target opi-access.service opi-postsetup.service
 
 [Service]
 Type=forking
-RemainAfterExit=yes
 PIDFile=/var/run/opi-control.pid
 ExecStart=/usr/sbin/opi-control -d
+Restart=on-failure
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target

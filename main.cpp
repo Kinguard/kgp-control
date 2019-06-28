@@ -18,8 +18,10 @@ int main(int argc, char** argv)
 	}
 	catch( std::runtime_error& err)
 	{
-		logg << Logger::Error << "Caught exception " << err.what() << lend;
+		logg << Logger::Error << "Caught exception: " << err.what() << lend;
+		ret = EXIT_FAILURE;
 	}
 
+	logg << Logger::Error << "Terminating with exit value: "<< ret << lend;
 	return ret;
 }

@@ -13,26 +13,23 @@
 #include <string>
 #include <map>
 
-#ifdef OPI_BUILD_PACKAGE
-#define DOCUMENT_ROOT	"/usr/share/opi-control/web"
-#else
-#define DOCUMENT_ROOT	"../opi-control/html"
-#endif
-
-#define LISTENING_PORT	"443"
-
 using namespace Utils;
 using namespace std;
 
 std::map<std::pair<std::string,std::string>, std::function<int(mg_connection *)> > WebServer::routes;
 std::function<Json::Value(Json::Value)> WebServer::callback;
 
-WebServer::WebServer(std::function<Json::Value(Json::Value)> cb):
+string WebServer::documentroot;
+
+WebServer::WebServer(std::function<Json::Value(Json::Value)> cb, const string &docroot, uint16_t port):
 	Utils::Thread(false),
 	doRun(true),
-	server(nullptr)
+	server(nullptr),
+	port(port)
 {
 	WebServer::callback = cb;
+	documentroot = docroot;
+	this->portstring = to_string(this->port);
 	routes[std::make_pair("/configure","POST")] = WebServer::handle_init;
 	routes[std::make_pair("/init","POST")] = WebServer::handle_init;
 	routes[std::make_pair("/reinit","POST")] = WebServer::handle_reinit;
@@ -63,7 +60,7 @@ void WebServer::PreRun()
 	const string keypath = cfg.GetKeyAsString("webcertificate", "activekey");
 
 	this->server = mg_create_server(nullptr, WebServer::ev_handler);
-	mg_set_option(this->server, "document_root", DOCUMENT_ROOT);
+	mg_set_option(this->server, "document_root", WebServer::documentroot.c_str());
 
 	if( ! File::FileExists( certpath ) && ! File::LinkExists( certpath ) )
 	{
@@ -88,7 +85,7 @@ void WebServer::PreRun()
 
 	mg_set_option(this->server, "ssl_private_key",keypath.c_str());
 
-	mg_set_option(this->server, "listening_port",LISTENING_PORT);
+	mg_set_option(this->server, "listening_port",this->portstring.c_str());
 
 	// Redirect all 404 to our index page
 	mg_set_option(this->server, "url_rewrites","404=/");
@@ -695,7 +692,7 @@ int WebServer::handle_theme(mg_connection *conn)
 		else
 		{
 			themefile="/themes/" + theme + "/" + uri[1];
-			if( File::FileExists(DOCUMENT_ROOT + themefile))
+			if( File::FileExists(WebServer::documentroot + themefile))
 			{
 				mg_send_status(conn,307);
 				mg_send_header( conn, "Cache-Control", "no-cache");

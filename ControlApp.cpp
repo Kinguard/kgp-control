@@ -69,7 +69,7 @@ void ControlApp::Startup()
 	Utils::SigHandler::Instance().AddHandler(SIGHUP, std::bind(&ControlApp::SigHup, this, _1) );
 
 	this->options.AddOption( Option('D', "debug", Option::ArgNone,"0","Debug logging") );
-
+	this->options.AddOption( Option('r', "webroot", Option::ArgRequired, "/usr/share/opi-control/web", "webroot to use"));
 	curl_global_init(CURL_GLOBAL_DEFAULT);
 }
 
@@ -282,7 +282,7 @@ void ControlApp::Main()
 
 		this->statemachine = ControlStatePtr( new ControlState( this, static_cast<uint8_t>(this->state) ) );
 
-		this->ws = WebServerPtr( new WebServer( std::bind(&ControlApp::WebCallback,this, _1)) );
+		this->ws = WebServerPtr( new WebServer( std::bind(&ControlApp::WebCallback,this, _1), this->options["webroot"]) );
 
 		if( this->state == ControlState::State::Error )
 		{

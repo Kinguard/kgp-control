@@ -1,3 +1,13 @@
+opi-control (1.1.56) vili; urgency=medium
+
+  * Return failure upon exit if exception caught
+  * Change service to restart on failure
+  * Adding runtime option for web root
+  * Refactor webserver initialization removing compile time
+    directives
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 28 Jun 2019 14:37:30 +0200
+
 opi-control (1.1.55) vili; urgency=medium
 
   * Get certificate when setting opi-name

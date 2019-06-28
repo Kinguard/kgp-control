@@ -11,10 +11,11 @@
 #include <json/json.h>
 #include "mongoose.h"
 
+
 class WebServer : public Utils::Thread, Utils::NoCopy
 {
 public:
-	WebServer(std::function< Json::Value (Json::Value)>);
+	WebServer(std::function<Json::Value(Json::Value)> cb, const std::string &docroot, uint16_t port=443);
 
 	void Stop();
 
@@ -46,6 +47,9 @@ private:
 	static std::function<Json::Value(Json::Value)> callback;
 	bool doRun;
 	struct mg_server *server;
+	static std::string documentroot;
+	std::string portstring;
+	uint16_t port;
 };
 
 typedef std::shared_ptr<WebServer> WebServerPtr;

@@ -7,9 +7,6 @@
 #define OPI_CONTROL_VERSION_MINOR @OPI_CONTROL_VERSION_MINOR@
 #define OPI_CONTROL_APP_NAME "@OPI_CONTROL_APP_NAME@"
 
-#cmakedefine OPI_BUILD_PACKAGE
-#cmakedefine OPI_BUILD_LOCAL
-
 #define TMP_MOUNT		"/mnt/opi/"
 
 #endif
