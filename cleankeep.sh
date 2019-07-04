@@ -6,11 +6,15 @@ DO_SETUP=0
 DO_INIT=0
 DO_REINIT=0
 DO_REBOOT=0
+DEVICE=keep
+STDEV=/dev/disk/by-path/platform-f10a8000.sata-ata-2-part1
 
 usageandexit()
 {		# show help
 		echo "Usage: cleankeep.sh [OPTION]"
 		echo " -h|-?	This help"
+		echo " -d [DEV] device to assume, default keep"
+		echo "		vaild names include keep, rpi3"
 		echo " -s	Setup system and install needed packages"
 		echo " -i	Clean system for an initial setup or restore"
 		echo " -r	Clean storage area and setup for a reinit"
@@ -22,7 +26,7 @@ usageandexit()
 # Parse cmdline
 OPTIND=1
 
-while getopts "h?sirb" opt
+while getopts "h?sirbd:" opt
 do
 	case "$opt" in
 	h|\?)
@@ -40,12 +44,28 @@ do
 	b)
 		DO_REBOOT=1
 		;;
+	d)
+		DEVICE=${OPTARG}
+		;;
 	*)
 		echo "ERROR parsing commandline"
 		exit 3
 		;;
 	esac
 done
+
+
+case $DEVICE in
+	keep)
+		;;
+	rpi3)
+		STDEV=/dev/disk/by-path/platform-3f980000.usb-usb-0:1.5:1.0-scsi-0:0:0:0-part1
+		;;
+	*)
+		echo "Unknown device $DEVICE"
+		exit 3
+		;;
+esac
 
 if [ $DO_INIT -eq 0 ] && [ $DO_REINIT -eq 0 ]
 then
@@ -81,7 +101,7 @@ then
 	echo "Wiping storage area"
 	vgremove pool
 	pvremove /dev/sda1
-	wipefs -a /dev/disk/by-path/platform-f10a8000.sata-ata-2-part1
+	wipefs -a $STDEV
 fi
 
 if [ $DO_INIT -eq 1 ]
