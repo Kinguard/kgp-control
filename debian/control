@@ -11,7 +11,7 @@ Build-Depends: debhelper (>= 8.0.0), cmake, dh-systemd (>= 1.5),
 	libkinguard-dev (>= 1.0.9),
 	libssl-dev,
 	libcryptsetup-dev,
-	libparted0-dev,
+	libparted-dev,
 	libudev-dev,
 	pkg-config
 Standards-Version: 3.9.8
