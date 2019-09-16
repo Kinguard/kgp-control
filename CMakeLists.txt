@@ -16,10 +16,10 @@ configure_file (
 )
 
 add_definitions(
-		-DNS_ENABLE_SSL
-		-DMONGOOSE_NO_CGI
-		-DMONGOOSE_NO_DAV
-		-DMONGOOSE_NO_AUTH
+		-DMG_ENABLE_SSL
+#		-DMONGOOSE_NO_CGI
+#		-DMONGOOSE_NO_DAV
+#		-DMONGOOSE_NO_AUTH
 	 )
 
 aux_source_directory(. SRC_LIST)

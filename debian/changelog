@@ -1,3 +1,9 @@
+opi-control (1.1.59) vili; urgency=medium
+
+  * Update mongoose to latest
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 16 Sep 2019 15:12:12 +0200
+
 opi-control (1.1.58) vili; urgency=medium
 
   * Buster adaptations

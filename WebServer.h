@@ -26,27 +26,29 @@ public:
 	virtual ~WebServer();
 private:
 
-	static int handle_init(struct mg_connection *conn);
-	static int handle_reinit(struct mg_connection *conn);
-	static int handle_restore(struct mg_connection *conn);
-	static int handle_unlock(struct mg_connection *conn);
-	static int handle_status(struct mg_connection *conn);
-	static int handle_user(struct mg_connection *conn);
-	static int handle_checkname(struct mg_connection *conn);
-	static int handle_selectname(struct mg_connection *conn);
-	static int handle_portstatus(struct mg_connection *conn);
-	static int handle_terminate(struct mg_connection *conn);
-	static int handle_shutdown(struct mg_connection *conn);
-	static int handle_type(struct mg_connection *conn);
-	static int handle_domains(struct mg_connection *conn);
-    static int handle_theme(struct mg_connection *conn);
+	static int handle_init(struct mg_connection *conn, struct http_message *http);
+	static int handle_reinit(struct mg_connection *conn, struct http_message *http);
+	static int handle_restore(struct mg_connection *conn, struct http_message *http);
+	static int handle_unlock(struct mg_connection *conn, struct http_message *http);
+	static int handle_status(struct mg_connection *conn, struct http_message *http);
+	static int handle_user(struct mg_connection *conn, struct http_message *http);
+	static int handle_checkname(struct mg_connection *conn, struct http_message *http);
+	static int handle_selectname(struct mg_connection *conn, struct http_message *http);
+	static int handle_portstatus(struct mg_connection *conn, struct http_message *http);
+	static int handle_terminate(struct mg_connection *conn, struct http_message *http);
+	static int handle_shutdown(struct mg_connection *conn, struct http_message *http);
+	static int handle_type(struct mg_connection *conn, struct http_message *http);
+	static int handle_domains(struct mg_connection *conn, struct http_message *http);
+	static int handle_theme(struct mg_connection *conn, struct http_message *http);
 
-	static int ev_handler(struct mg_connection *conn, enum mg_event ev);
-	static bool parse_json(struct mg_connection *conn, Json::Value& val);
-	static 	std::map<std::pair<std::string,std::string>, std::function<int(mg_connection *)> > routes;
+	static void ev_handler(struct mg_connection *conn, int ev, void *p);
+	static bool parse_json(struct mg_connection *conn, http_message *hm, Json::Value& val);
+	static 	std::map<std::pair<std::string,std::string>, std::function<int(mg_connection *, struct http_message *)> > routes;
 	static std::function<Json::Value(Json::Value)> callback;
 	bool doRun;
-	struct mg_server *server;
+	struct mg_mgr mgr;
+	struct mg_connection *conn;
+	static struct mg_serve_http_opts s_http_server_opts;
 	static std::string documentroot;
 	std::string portstring;
 	uint16_t port;

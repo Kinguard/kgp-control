@@ -16,15 +16,14 @@
 using namespace Utils;
 using namespace std;
 
-std::map<std::pair<std::string,std::string>, std::function<int(mg_connection *)> > WebServer::routes;
+std::map<std::pair<std::string,std::string>, std::function<int(mg_connection *, struct http_message *)> > WebServer::routes;
 std::function<Json::Value(Json::Value)> WebServer::callback;
-
+struct mg_serve_http_opts WebServer::s_http_server_opts;
 string WebServer::documentroot;
 
 WebServer::WebServer(std::function<Json::Value(Json::Value)> cb, const string &docroot, uint16_t port):
 	Utils::Thread(false),
 	doRun(true),
-	server(nullptr),
 	port(port)
 {
 	WebServer::callback = cb;
@@ -59,8 +58,7 @@ void WebServer::PreRun()
 	const string certpath = cfg.GetKeyAsString("webcertificate", "activecert");
 	const string keypath = cfg.GetKeyAsString("webcertificate", "activekey");
 
-	this->server = mg_create_server(nullptr, WebServer::ev_handler);
-	mg_set_option(this->server, "document_root", WebServer::documentroot.c_str());
+	struct mg_bind_opts bind_opts;
 
 	if( ! File::FileExists( certpath ) && ! File::LinkExists( certpath ) )
 	{
@@ -71,9 +69,6 @@ void WebServer::PreRun()
 		logg << Logger::Debug << "Using certificate file: " << certpath << lend;
 	}
 
-	mg_set_option(this->server, "ssl_certificate",certpath.c_str());
-
-
 	if( ! File::FileExists( keypath ) && ! File::LinkExists( keypath ) )
 	{
 		logg << Logger::Error << "Unable to locate private key file: " << keypath << lend;
@@ -83,23 +78,37 @@ void WebServer::PreRun()
 		logg << Logger::Debug << "Using private key file: " << keypath << lend;
 	}
 
-	mg_set_option(this->server, "ssl_private_key",keypath.c_str());
+	logg << Logger::Debug << "Starting up using port "<< this->portstring << " (" << this->port << ")"<<lend;
 
-	mg_set_option(this->server, "listening_port",this->portstring.c_str());
+	mg_mgr_init( &this->mgr, nullptr);
+	memset(&bind_opts, 0, sizeof(bind_opts));
 
+	bind_opts.ssl_cert = certpath.c_str();
+	bind_opts.ssl_key = keypath.c_str();
+	const char *errmsg;
+	bind_opts.error_string = &errmsg;
+	this->conn = mg_bind_opt( &(this->mgr), this->portstring.c_str(), WebServer::ev_handler, bind_opts);
+
+	if( ! this->conn )
+	{
+		logg << Logger::Crit << "Unable to create webserver connection [" << errmsg << "]" << lend;
+
+	}
+
+	mg_set_protocol_http_websocket(this->conn);
+	WebServer::s_http_server_opts.document_root = WebServer::documentroot.c_str();
 	// Redirect all 404 to our index page
-	mg_set_option(this->server, "url_rewrites","404=/");
+	// This seems not supported any more. We patch mg_http_send_error to fix this for now.
+	WebServer::s_http_server_opts.enable_directory_listing = "no";
 
-#if 0
-	mg_set_option( this->server, "access_log_file", "mg_logfile.txt");
-#endif
+	logg << Logger::Debug << "Using webroot " << WebServer::s_http_server_opts.document_root << lend;
 }
 
 void WebServer::Run()
 {
-	logg << Logger::Debug << "Starting webserver on port " << mg_get_option(server, "listening_port") <<lend;
+	logg << Logger::Debug << "Starting webserver on port " << this->port <<lend;
 	while ( this->doRun ) {
-		mg_poll_server(this->server, 1000);
+		mg_mgr_poll(&this->mgr, 1000);
 	}
 }
 
@@ -107,12 +116,42 @@ void WebServer::PostRun()
 {
 	// Cleanup, and free server instance
 	logg << Logger::Debug << "Webserver shutting down!" << lend;
-	mg_destroy_server(&server);
+	mg_mgr_free(&this->mgr);
 }
 
 WebServer::~WebServer()
 {
 
+}
+
+static void send_json_reply(mg_connection *conn, const Json::Value& val )
+{
+	string reply = val.toStyledString();
+	stringstream headerstream;
+	headerstream << "Cache-Control: no-cache\r\n"
+			<< "Content-Length: " << reply.size()<<"\r\n"
+			<< "Content-Type: application/json\r\n\r\n";
+
+	string headers = headerstream.str();
+	mg_send_response_line( conn, 200, "");
+	mg_send( conn, headers.c_str(), static_cast<int>(headers.size()));
+	mg_send( conn, reply.c_str(), static_cast<int>(reply.size()) );
+}
+
+static void send_simple_reply(mg_connection *conn, int status, const string& msg, const list<string> headers={})
+{
+	stringstream hs;
+	hs << "Cache-Control: no-cache\r\n";
+	for(auto header: headers)
+	{
+		hs << header << "\r\n";
+	}
+	hs << "\r\n";
+	mg_send_response_line(conn, status, "");
+	mg_send(conn, hs.str().c_str(), static_cast<int>(hs.str().size()));
+	mg_send( conn, msg.c_str(), static_cast<int>( msg.size()) );
+
+	conn->flags |= MG_F_SEND_AND_CLOSE;
 }
 
 static bool validate_initdata(const Json::Value& v)
@@ -149,20 +188,19 @@ static bool validate_initdata(const Json::Value& v)
 		return false;
 	}
 
-
 	return true;
 }
 
-int WebServer::handle_init(mg_connection *conn)
+int WebServer::handle_init(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Got request for init"<<lend;
 
 	Json::Value req;
 
-	if( ! WebServer::parse_json(conn, req) )
+	if( ! WebServer::parse_json(conn, http, req) )
 	{
 		// True in the sense that we handled the req.
-		return MG_TRUE;
+		return true;
 	}
 
 	if(  validate_initdata( req ) )
@@ -176,18 +214,14 @@ int WebServer::handle_init(mg_connection *conn)
 			cmd["save"] = req["save"];
 			ret = WebServer::callback( cmd );
 		}
-		mg_send_header( conn, "Cache-Control", "no-cache");
-		mg_send_header( conn, "Content-Type", "application/json");
-		mg_printf_data( conn, ret.toStyledString().c_str());
+		send_json_reply(conn, ret);
 	}
 	else
 	{
-		mg_send_status(conn, 400);
-		mg_send_header( conn, "Cache-Control", "no-cache");
-		mg_printf_data( conn, "Missing argument!");
+		send_simple_reply( conn, 400, "Missing argument!");
 	}
 
-	return MG_TRUE;
+	return true;
 }
 
 
@@ -212,17 +246,17 @@ static bool validate_reinitdata(const Json::Value& v)
 }
 
 
-int WebServer::handle_reinit(mg_connection *conn)
+int WebServer::handle_reinit(mg_connection *conn, http_message *http)
 {
 	// Almost like init but from an initialized unit
 	logg << Logger::Debug << "Got request for reinit"<<lend;
 
 	Json::Value req;
 
-	if( ! WebServer::parse_json(conn, req) )
+	if( ! WebServer::parse_json(conn, http, req) )
 	{
 		// True in the sense that we handled the req.
-		return MG_TRUE;
+		return true;
 	}
 
 	if(   validate_reinitdata( req )  )
@@ -235,18 +269,14 @@ int WebServer::handle_reinit(mg_connection *conn)
 			cmd["save"] = req["save"];
 			ret = WebServer::callback( cmd );
 		}
-		mg_send_header( conn, "Cache-Control", "no-cache");
-		mg_send_header( conn, "Content-Type", "application/json");
-		mg_printf_data( conn, ret.toStyledString().c_str());
+		send_json_reply(conn, ret);
 	}
 	else
 	{
-		mg_send_status(conn, 400);
-		mg_send_header( conn, "Cache-Control", "no-cache");
-		mg_printf_data( conn, "Missing argument!");
+		send_simple_reply(conn, 400, "Missing argument!");
 	}
 
-	return MG_TRUE;
+	return true;
 }
 
 
@@ -266,16 +296,16 @@ static bool validate_restoredata(const Json::Value& v)
 }
 
 
-int WebServer::handle_restore(mg_connection *conn)
+int WebServer::handle_restore(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Got request for restore"<<lend;
 
 	Json::Value req;
 
-	if( ! WebServer::parse_json(conn, req) )
+	if( ! WebServer::parse_json(conn, http, req) )
 	{
 		// True in the sense that we handled the req.
-		return MG_TRUE;
+		return true;
 	}
 
 	if(   validate_restoredata( req )  )
@@ -288,20 +318,14 @@ int WebServer::handle_restore(mg_connection *conn)
 			cmd["restore"] = req["restore"].asString() == "1";
 			ret = WebServer::callback( cmd );
 		}
-		mg_send_header( conn, "Cache-Control", "no-cache");
-		mg_send_header( conn, "Content-Type", "application/json");
-		mg_printf_data( conn, ret.toStyledString().c_str());
+		send_json_reply(conn, ret);
 	}
 	else
 	{
-		mg_send_status(conn, 400);
-		mg_send_header( conn, "Cache-Control", "no-cache");
-		mg_printf_data( conn, "Missing argument!");
+		send_simple_reply(conn, 400, "Missing argument!");
 	}
 
-
-
-	return MG_TRUE;
+	return true;
 }
 
 static bool validate_unlockdata(const Json::Value& v)
@@ -325,16 +349,16 @@ static bool validate_unlockdata(const Json::Value& v)
 }
 
 
-int WebServer::handle_unlock(mg_connection *conn)
+int WebServer::handle_unlock(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Got request for unlock"<<lend;
 
 	Json::Value req;
 
-	if( ! WebServer::parse_json(conn, req) )
+	if( ! WebServer::parse_json(conn, http, req) )
 	{
 		// True in the sense that we handled the req.
-		return MG_TRUE;
+		return true;
 	}
 
 	if( validate_unlockdata( req ) )
@@ -347,24 +371,20 @@ int WebServer::handle_unlock(mg_connection *conn)
 			cmd["save"] = req["save"];
 			ret = WebServer::callback( cmd );
 		}
-		mg_send_header( conn, "Cache-Control", "no-cache");
-		mg_send_header( conn, "Content-Type", "application/json");
-		mg_printf_data( conn, ret.toStyledString().c_str() );
+		send_json_reply(conn, ret);
 	}
 	else
 	{
-		mg_send_status(conn, 400);
-		mg_send_header( conn, "Cache-Control", "no-cache");
-		mg_printf_data( conn, "Missing argument!");
+		send_simple_reply(conn, 400, "Missing argument!");
 	}
 
-	return MG_TRUE;
+	return true;
 }
 
-int WebServer::handle_status(mg_connection *conn)
+int WebServer::handle_status(mg_connection *conn, http_message *http)
 {
-
-
+	logg << Logger::Debug << "Handle status"<<lend;
+	(void) http;
 	Json::Value ret;
 	if( WebServer::callback != nullptr )
 	{
@@ -373,11 +393,9 @@ int WebServer::handle_status(mg_connection *conn)
 		ret = WebServer::callback( cmd );
 	}
 
-	mg_send_header( conn, "Cache-Control", "no-cache");
-	mg_send_header( conn, "Content-Type", "application/json");
-	mg_printf_data( conn, ret.toStyledString().c_str() );
+	send_json_reply(conn, ret);
 
-	return MG_TRUE;
+	return true;
 }
 
 static bool validate_user(const Json::Value& v)
@@ -411,16 +429,16 @@ static bool validate_user(const Json::Value& v)
 	return true;
 }
 
-int WebServer::handle_user(mg_connection *conn)
+int WebServer::handle_user(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Got request for adduser"<<lend;
 
 	Json::Value req;
 
-	if( ! WebServer::parse_json(conn, req) )
+	if( ! WebServer::parse_json(conn, http, req) )
 	{
 		// True in the sense that we handled the req.
-		return MG_TRUE;
+		return true;
 	}
 
 	if( validate_user(req) )
@@ -434,32 +452,28 @@ int WebServer::handle_user(mg_connection *conn)
 			cmd["password"] = String::Trimmed( req["password"].asString(), "\t " );
 			ret = WebServer::callback( cmd );
 		}
-		mg_send_header( conn, "Content-Type", "application/json");
-		mg_send_header( conn, "Cache-Control", "no-cache");
-		mg_printf_data( conn, ret.toStyledString().c_str() );
+		send_json_reply( conn, ret );
 	}
 	else
 	{
 		logg << Logger::Debug << "Request for add user had invalid arguments"<<lend;
-		mg_send_status(conn, 400);
-		mg_send_header( conn, "Cache-Control", "no-cache");
-		mg_printf_data( conn, "Invalid argument!");
+		send_simple_reply(conn, 400, "Missing argument!");
 	}
 
-	return MG_TRUE;
+	return true;
 }
 
-int WebServer::handle_checkname(mg_connection *conn)
+int WebServer::handle_checkname(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Got request for checkname"<<lend;
 
 	Json::Value req;
 	string fqdn;
 
-	if( ! WebServer::parse_json(conn, req) )
+	if( ! WebServer::parse_json(conn, http, req) )
 	{
 		// True in the sense that we handled the req.
-		return MG_TRUE;
+		return true;
 	}
 
 	if( req.isMember("opiname") && req["opiname"].isString() && String::Trimmed( req["opiname"].asString(), "\t " ) != ""  &&
@@ -473,42 +487,37 @@ int WebServer::handle_checkname(mg_connection *conn)
 		if( ! imgr.HasDnsProvider() )
 		{
 			logg << Logger::Info << "Request for dns check name when not supported"<<lend;
-			mg_send_status(conn, 501);
-			mg_send_header( conn, "Cache-Control", "no-cache");
-			mg_printf_data( conn, "Operation not supported");
-			return MG_TRUE;
+			send_simple_reply( conn, 501, "Operation not supported");
+			return true;
 		}
 
 		bool available = imgr.DnsNameAvailable(
 				String::Trimmed( req["opiname"].asString(), "\t " ),
 				String::Trimmed( req["domain"].asString(), "\t " ));
 
-		mg_send_header( conn, "Content-Type", "application/json");
-		mg_send_header( conn, "Cache-Control", "no-cache");
-		mg_printf_data( conn, "{\"available\":%d}", available);
-
+		Json::Value ret;
+		ret["available"]=available;
+		send_json_reply(conn, ret);
 	}
 	else
 	{
 		logg << Logger::Debug << "Request for check opiname arguments"<<lend;
-		mg_send_status(conn, 400);
-		mg_send_header( conn, "Cache-Control", "no-cache");
-		mg_printf_data( conn, "Invalid argument!");
+		send_simple_reply(conn, 400, "Missing argument!");
 	}
 
-	return MG_TRUE;
+	return true;
 }
 
-int WebServer::handle_selectname(mg_connection *conn)
+int WebServer::handle_selectname(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Got request for update dnsname"<<lend;
 
 	Json::Value req;
 
-	if( ! WebServer::parse_json(conn, req) )
+	if( ! WebServer::parse_json(conn, http, req) )
 	{
 		// True in the sense that we handled the req.
-		return MG_TRUE;
+		return true;
 	}
 	if( req.isMember("opiname") && req["opiname"].isString() && String::Trimmed( req["opiname"].asString(), "\t " ) != ""  &&
 		req.isMember("domain") && req["domain"].isString() && String::Trimmed( req["domain"].asString(), "\t " ) != ""
@@ -525,25 +534,22 @@ int WebServer::handle_selectname(mg_connection *conn)
 			cmd["opiname"] = fqdn;
 			ret = WebServer::callback( cmd );
 		}
-		mg_send_header( conn, "Cache-Control", "no-cache");
-		mg_send_header( conn, "Content-Type", "application/json");
-		mg_printf_data( conn, ret.toStyledString().c_str() );
+		send_json_reply(conn, ret);
 	}
 	else
 	{
 		logg << Logger::Debug << "Request for select opiname had invalid arguments"<<lend;
-		mg_send_status(conn, 400);
-		mg_send_header( conn, "Cache-Control", "no-cache");
-		mg_printf_data( conn, "Invalid argument!");
+		send_simple_reply(conn, 400, "Missing argument!");
 	}
 
-	return MG_TRUE;
+	return true;
 }
 
-int WebServer::handle_portstatus(mg_connection *conn)
+int WebServer::handle_portstatus(mg_connection *conn, http_message *http)
 {
-	logg << Logger::Debug << "Got request for portstatus"<<lend;
+	(void) http;
 
+	logg << Logger::Debug << "Got request for portstatus"<<lend;
 
 	Json::Value ret;
 	if( WebServer::callback != nullptr )
@@ -552,24 +558,21 @@ int WebServer::handle_portstatus(mg_connection *conn)
 		cmd["cmd"]="portstatus";
 		ret = WebServer::callback( cmd );
 	}
+	send_json_reply(conn, ret);
 
-	mg_send_header( conn, "Cache-Control", "no-cache");
-	mg_send_header( conn, "Content-Type", "application/json");
-	mg_printf_data( conn, ret.toStyledString().c_str() );
-
-	return MG_TRUE;
+	return true;
 }
 
-int WebServer::handle_terminate(mg_connection *conn)
+int WebServer::handle_terminate(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Got request for terminate"<<lend;
 
 	Json::Value req;
 
-	if( ! WebServer::parse_json(conn, req) )
+	if( ! WebServer::parse_json(conn, http, req) )
 	{
 		// True in the sense that we handled the req.
-		return MG_TRUE;
+		return true;
 	}
 
 	if( req.isMember("shutdown") && req["shutdown"].isBool() )
@@ -581,30 +584,26 @@ int WebServer::handle_terminate(mg_connection *conn)
 			cmd["shutdown"] = req["shutdown"];
 			ret = WebServer::callback( cmd );
 		}
-		mg_send_header( conn, "Cache-Control", "no-cache");
-		mg_send_header( conn, "Content-Type", "application/json");
-		mg_printf_data( conn, ret.toStyledString().c_str() );
+		send_json_reply(conn, ret);
 	}
 	else
 	{
-		mg_send_status(conn, 400);
-		mg_send_header( conn, "Cache-Control", "no-cache");
-		mg_printf_data( conn, "Missing argument!");
+		send_simple_reply(conn, 400, "Missing argument!");
 	}
 
-	return MG_TRUE;
+	return true;
 }
 
-int WebServer::handle_shutdown(mg_connection *conn)
+int WebServer::handle_shutdown(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Got request for shutdown"<<lend;
 
 	Json::Value req;
 
-	if( ! WebServer::parse_json(conn, req) )
+	if( ! WebServer::parse_json(conn, http, req) )
 	{
 		// True in the sense that we handled the req.
-		return MG_TRUE;
+		return true;
 	}
 
 	if( req.isMember("action") && req["action"].isString() )
@@ -616,24 +615,20 @@ int WebServer::handle_shutdown(mg_connection *conn)
 			cmd["action"] = req["action"];
 			ret = WebServer::callback( cmd );
 		}
-		mg_send_header( conn, "Cache-Control", "no-cache");
-		mg_send_header( conn, "Content-Type", "application/json");
-		mg_printf_data( conn, ret.toStyledString().c_str() );
+		send_json_reply(conn, ret);
 	}
 	else
 	{
-		mg_send_status(conn, 400);
-		mg_send_header( conn, "Cache-Control", "no-cache");
-		mg_printf_data( conn, "Missing argument!");
+		send_simple_reply(conn, 400, "Missing argument!");
 	}
 
-	return MG_TRUE;
+	return true;
 }
 
-int WebServer::handle_type(mg_connection *conn)
+int WebServer::handle_type(mg_connection *conn, http_message *http)
 {
+	(void) http;
 	logg << Logger::Debug << "Got request for type"<<lend;
-
 
 	Json::Value ret;
 	if( WebServer::callback != nullptr )
@@ -644,15 +639,14 @@ int WebServer::handle_type(mg_connection *conn)
 		ret = WebServer::callback( cmd );
 	}
 
-	mg_send_header( conn, "Cache-Control", "no-cache");
-	mg_send_header( conn, "Content-Type", "application/json");
-	mg_printf_data( conn, ret.toStyledString().c_str() );
+	send_json_reply(conn, ret);
 
-	return MG_TRUE;
+	return true;
 }
 
-int WebServer::handle_domains(mg_connection *conn)
+int WebServer::handle_domains(mg_connection *conn, http_message *http)
 {
+	(void) http;
 	logg << Logger::Debug << "Got request for domains"<<lend;
 
 
@@ -665,20 +659,19 @@ int WebServer::handle_domains(mg_connection *conn)
 		ret = WebServer::callback( cmd );
 	}
 
-	mg_send_header( conn, "Cache-Control", "no-cache");
-	mg_send_header( conn, "Content-Type", "application/json");
-	mg_printf_data( conn, ret.toStyledString().c_str() );
+	send_json_reply(conn, ret);
 
-	return MG_TRUE;
+	return true;
 }
 
-int WebServer::handle_theme(mg_connection *conn)
+int WebServer::handle_theme(mg_connection *conn, http_message *http)
 {
 	vector<string> uri;
+	string struri(http->uri.p, http->uri.len);
 
 	logg << Logger::Debug << "Got request for theme"<<lend;
 
-	String::Split(conn->uri,uri,"/",2);
+	String::Split(struri,uri,"/",2);
 	try
 	{
 		string theme,themefile;
@@ -694,12 +687,13 @@ int WebServer::handle_theme(mg_connection *conn)
 			themefile="/themes/" + theme + "/" + uri[1];
 			if( File::FileExists(WebServer::documentroot + themefile))
 			{
-				mg_send_status(conn,307);
-				mg_send_header( conn, "Cache-Control", "no-cache");
-				mg_send_header( conn, "Location", themefile.c_str());
-				mg_send_header( conn, "Content-Type", "text/html");
-				mg_printf_data( conn, "Redirect to theme file");
-				return MG_TRUE;
+				send_simple_reply( conn, 307, "Redirect to theme file",
+									{
+									   "Content-Type: text/html",
+									   string("Location: ")+themefile
+									}
+								   );
+				return true;
 			}
 			else
 			{
@@ -712,19 +706,14 @@ int WebServer::handle_theme(mg_connection *conn)
 		logg << Logger::Debug << "No theme set (" << e.what() << ")"<<lend;
 	}
 
-	mg_send_status(conn,404);
-	mg_send_header( conn, "Cache-Control", "no-cache");
-	mg_send_header( conn, "Content-Type", "text/html");
-	mg_printf_data( conn, "<h1>Not Found</h1><br>The requested URL was not found on this server.");
-	return MG_TRUE;
+	send_simple_reply(conn, 404, "<h1>Not Found</h1><br>The requested URL was not found on this server.", {"Content-Type: text/html"});
+	return true;
 }
 
 
-int WebServer::ev_handler(mg_connection *conn, mg_event ev)
+void WebServer::ev_handler(struct mg_connection *conn, int ev, void *p)
 {
-	int result = MG_FALSE;
-
-	if (ev == MG_REQUEST)
+	if (ev == MG_EV_HTTP_REQUEST)
 	{
 #if 0
 		if( conn->uri )
@@ -745,47 +734,46 @@ int WebServer::ev_handler(mg_connection *conn, mg_event ev)
 		}
 #endif
 #if 0
-		mg_printf_data(conn, "URI      [%s]\n", conn->uri);
-		mg_printf_data(conn, "Querystr [%s]\n", conn->query_string);
-		mg_printf_data(conn, "Method   [%s]\n", conn->request_method);
-		mg_printf_data(conn, "version  [%s]\n", conn->http_version);
+		mg_printf(conn, "URI      [%s]\n", conn->uri);
+		mg_printf(conn, "Querystr [%s]\n", conn->query_string);
+		mg_printf(conn, "Method   [%s]\n", conn->request_method);
+		mg_printf(conn, "version  [%s]\n", conn->http_version);
 #endif
 
+		struct http_message *hm = static_cast<struct http_message*>(p);
+		string uri(hm->uri.p, hm->uri.len);
 		string cmd;
-		if ( string(conn->uri).length() > 1 )
+		if ( uri.length() > 1 )
 		{
-			cmd = "/" + String::Split(conn->uri,"/",2).front();
+			cmd = "/" + String::Split(uri,"/",2).front();
 		}
 		else
 		{
-			cmd = conn->uri;
+			cmd = uri;
 		}
-		auto val = std::make_pair(cmd, conn->request_method);
+		auto val = std::make_pair(cmd, string(hm->method.p, hm->method.len));
 
 		if( WebServer::routes.find(val) != WebServer::routes.end() )
 		{
-			//mg_send_header( conn, "Cache-Control", "no-cache");
-			result = WebServer::routes[val](conn);
+			WebServer::routes[val](conn, hm);
+		}
+		else
+		{
+			// Try serve as static file request
+			mg_serve_http( conn, hm, WebServer::s_http_server_opts);
 		}
 
 	}
-	else if (ev == MG_AUTH)
-	{
-		result = MG_TRUE;
-	}
-
-	return result;
 }
 
-bool WebServer::parse_json(mg_connection *conn, Json::Value &val)
+bool WebServer::parse_json(mg_connection *conn, struct http_message *hm, Json::Value &val)
 {
-	string postdata(conn->content, conn->content_len);
+	string postdata(hm->body.p, hm->body.len);
 
 	if( ! Json::Reader().parse(postdata, val) )
 	{
 		logg << Logger::Info << "Failed to parse input"<<lend;
-		mg_printf_data( conn, "Unable to parse input");
-		mg_send_status(conn, 400);
+		send_simple_reply(conn, 400, "Unable to parse input");
 
 		return false;
 	}
