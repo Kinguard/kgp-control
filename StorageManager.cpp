@@ -89,6 +89,7 @@ bool StorageManager::mountDevice(const string &destination)
 	}
 	catch( ErrnoException& err)
 	{
+		logg << Logger::Error << "Failed to mount storage device: " << err.what() << lend;
 		return false;
 	}
 
