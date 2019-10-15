@@ -77,19 +77,39 @@ bool StorageManager::mountDevice(const string &destination)
 
 	logg << Logger::Debug << "Mount "<< source << " device at " << destination << lend;
 
-	try
-	{
+	try {
 		// Make sure device is not mounted (Should not happen)
 		if( DiskHelper::IsMounted( source ) != "" )
 		{
 			DiskHelper::Umount( source );
 		}
 
+	}
+	catch ( ErrnoException& err)
+	{
+		logg << Logger::Error << "Failed to make sure storage not mounted: " << err.what() << lend;
+		return false;
+	}
+
+
+	try
+	{
 		DiskHelper::Mount( source , destination );
 	}
 	catch( ErrnoException& err)
 	{
 		logg << Logger::Error << "Failed to mount storage device: " << err.what() << lend;
+
+		// Sometimes pclose failes waiting on process, in these cases operation is most likely
+		// successful and we should not error out.
+		if( errno == ECHILD )
+		{
+			if( DiskHelper::IsMounted( source ) != "" )
+			{
+				logg << Logger::Notice << "Storage is mounted, ignore previous error" << lend;
+				return true;
+			}
+		}
 		return false;
 	}
 

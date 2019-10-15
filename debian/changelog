@@ -1,3 +1,9 @@
+opi-control (1.1.61) vili; urgency=medium
+
+  * Try catch and mitigate mount process error
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 15 Oct 2019 17:38:56 +0200
+
 opi-control (1.1.60) vili; urgency=medium
 
   * Add more error logging to device mount
