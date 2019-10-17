@@ -35,6 +35,9 @@
 
 #include "ControlApp.h"
 
+#include "Debug.h"
+
+
 // Convenience defines
 #define SCFG	(OPI::SysConfig())
 #define SAREA (SCFG.GetKeyAsString("filesystem","storagemount"))
@@ -67,6 +70,8 @@ void ControlApp::Startup()
 	Utils::SigHandler::Instance().AddHandler(SIGTERM, std::bind(&ControlApp::SigTerm, this, _1) );
 	Utils::SigHandler::Instance().AddHandler(SIGINT, std::bind(&ControlApp::SigTerm, this, _1) );
 	Utils::SigHandler::Instance().AddHandler(SIGHUP, std::bind(&ControlApp::SigHup, this, _1) );
+
+	sigignore(SIGUSR1);
 
 	this->options.AddOption( Option('D', "debug", Option::ArgNone,"0","Debug logging") );
 	this->options.AddOption( Option('r', "webroot", Option::ArgRequired, "/usr/share/opi-control/web", "webroot to use"));
@@ -573,8 +578,21 @@ bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 		if( ! ServiceHelper::Start("secop") )
 		{
 			logg << Logger::Notice << "Failed to start secop"<<lend;
-			this->global_error = "Failed to start password database";
-			return false;
+
+			// We have problems with exec waiting on child processes, try add some debug info
+			if( errno == ECHILD )
+			{
+				dump_signals();
+			}
+
+			sleep(1);
+
+			if( ! ServiceHelper::IsRunning("secop") )
+			{
+				this->global_error = "Failed to start password database";
+				return false;
+			}
+
 		}
 		else
 		{

@@ -1,3 +1,9 @@
+opi-control (1.1.62) vili; urgency=medium
+
+  * Add more debug to try narrow down popen issue
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 17 Oct 2019 15:23:56 +0200
+
 opi-control (1.1.61) vili; urgency=medium
 
   * Try catch and mitigate mount process error

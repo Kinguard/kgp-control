@@ -11,6 +11,8 @@
 #include <libopi/SysConfig.h>
 #include <libopi/DiskHelper.h>
 
+#include "Debug.h"
+
 using namespace Utils;
 using namespace OPI;
 
@@ -104,6 +106,7 @@ bool StorageManager::mountDevice(const string &destination)
 		// successful and we should not error out.
 		if( errno == ECHILD )
 		{
+			dump_signals();
 			if( DiskHelper::IsMounted( source ) != "" )
 			{
 				logg << Logger::Notice << "Storage is mounted, ignore previous error" << lend;
