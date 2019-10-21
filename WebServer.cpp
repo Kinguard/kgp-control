@@ -101,6 +101,9 @@ void WebServer::PreRun()
 	// This seems not supported any more. We patch mg_http_send_error to fix this for now.
 	WebServer::s_http_server_opts.enable_directory_listing = "no";
 
+	// Disable php as cgi since this result in a status 500 on faulty requests
+	WebServer::s_http_server_opts.cgi_file_pattern ="**.cgi$";
+
 	logg << Logger::Debug << "Using webroot " << WebServer::s_http_server_opts.document_root << lend;
 }
 

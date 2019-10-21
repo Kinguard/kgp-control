@@ -17,9 +17,7 @@ configure_file (
 
 add_definitions(
 		-DMG_ENABLE_SSL
-#		-DMONGOOSE_NO_CGI
-#		-DMONGOOSE_NO_DAV
-#		-DMONGOOSE_NO_AUTH
+#		-DMG_ENABLE_HTTP_CGI=0
 	 )
 
 aux_source_directory(. SRC_LIST)

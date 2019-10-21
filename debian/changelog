@@ -1,3 +1,9 @@
+opi-control (1.1.63) vili; urgency=medium
+
+  * Disable php as cgi extension to supress status 500 upon load
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 21 Oct 2019 16:58:00 +0200
+
 opi-control (1.1.62) vili; urgency=medium
 
   * Add more debug to try narrow down popen issue
