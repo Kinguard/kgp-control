@@ -1,3 +1,9 @@
+opi-control (1.1.64) vili; urgency=medium
+
+  * Leave child processes running when terminating.
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 20 Mar 2020 11:53:12 +0100
+
 opi-control (1.1.63) vili; urgency=medium
 
   * Disable php as cgi extension to supress status 500 upon load
