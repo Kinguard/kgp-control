@@ -281,10 +281,11 @@ bool StorageManager::DeviceExists()
 {
 	try
 	{
+		logg << Logger::Debug << "Resolving device: " << sysinfo.StorageDevice() <<lend;
+
 		string device = File::RealPath( sysinfo.StorageDevice() );
 
 		logg << Logger::Debug << "Checking device " << device << lend;
-
 
 		if( ! DiskHelper::DeviceExists( device ) )
 		{
@@ -298,7 +299,8 @@ bool StorageManager::DeviceExists()
 
 	}catch( std::exception& e)
 	{
-		logg << Logger::Notice << "Failed to check device: " << e.what() <<lend;
+		logg << Logger::Notice << "Failed to check device: " << sysinfo.StorageDevice()
+			 << "(" << e.what() <<")" <<lend;
 		return false;
 	}
 	return true;
