@@ -185,7 +185,7 @@ void ControlApp::Main()
 
 	logg << Logger::Info << "Running on: " << sysinfo.SysTypeText[sysinfo.Type()] << lend;
 
-	logg << Logger::Debug << "Checking device: "<< sysinfo.StorageDevicePath() <<lend;
+	logg << Logger::Debug << "Using storage device: "<< sysinfo.StorageDevicePath() <<lend;
 
 	this->state = ControlState::State::AskInitCheckRestore;
 	this->skiprestore = false;
