@@ -141,6 +141,15 @@ bool StorageManager::Initialize(const string& password)
 	if( ! this->initialized )
 	{
 		logg << Logger::Debug << "Device not initialized, starting initialization"<<lend;
+
+		logg << Logger::Debug << "Check if device is mounted"  << lend;
+
+		if( DiskHelper::IsMounted( StorageManager::DevicePath() ) != "" )
+		{
+			logg << Logger::Notice << "Device" << StorageManager::DevicePath() << " seems mounted, try umount" << lend;
+			DiskHelper::Umount( StorageManager::DevicePath() );
+		}
+
 		bool partition = true;
 		if( SysInfo::useLVM() )
 		{
