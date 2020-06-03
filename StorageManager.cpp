@@ -142,12 +142,12 @@ bool StorageManager::Initialize(const string& password)
 	{
 		logg << Logger::Debug << "Device not initialized, starting initialization"<<lend;
 
-		logg << Logger::Debug << "Check if device is mounted"  << lend;
+		logg << Logger::Debug << "Check if " << sysinfo.StorageDevicePath() <<  " is mounted"  << lend;
 
-		if( DiskHelper::IsMounted( StorageManager::DevicePath() ) != "" )
+		if( DiskHelper::IsMounted( sysinfo.StorageDevicePath() ) != "" )
 		{
-			logg << Logger::Notice << "Device" << StorageManager::DevicePath() << " seems mounted, try umount" << lend;
-			DiskHelper::Umount( StorageManager::DevicePath() );
+			logg << Logger::Notice << "Device" << sysinfo.StorageDevicePath() << " seems mounted, try umount" << lend;
+			DiskHelper::Umount( sysinfo.StorageDevicePath() );
 		}
 
 		bool partition = true;
