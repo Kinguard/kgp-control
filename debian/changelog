@@ -1,3 +1,15 @@
+opi-control (1.1.66~test3) vili; urgency=medium
+
+  * Don't fail if storage device partiton doesnt exist
+
+ -- Tor Krill <tor@openproducts.se>  Wed, 01 Jul 2020 15:48:34 +0200
+
+opi-control (1.1.66~test2) vili; urgency=medium
+
+  * If storagedevice mounted, try umount before proceed with init
+
+ -- Tor Krill <tor@openproducts.se>  Wed, 03 Jun 2020 09:25:09 +0200
+
 opi-control (1.1.65) vili; urgency=medium
 
   * Added some debug logging
