@@ -849,10 +849,10 @@ function checkname() {
 	}
 
 
-	var allowedChars = new RegExp("^[a-z-]*$");
+	var allowedChars = new RegExp("^([a-z0-9](?:[a-z0-9-]*[a-z0-9]))$");
 	if ( ! allowedChars.test($("#opiname").val()) ){
 		$("#opi_namestate").parent().addClass("has-error");
-		$("#opi_namestate").text("Use only 'a-z' and '-'.");
+		$("#opi_namestate").text("Use only 'a-z', 0-9 and '-'.");
 		console.log("Illegal character found.");
 		return;
 	}
