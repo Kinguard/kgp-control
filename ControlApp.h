@@ -5,6 +5,9 @@
 #include <libutils/Thread.h>
 
 #include <libopi/BackupHelper.h>
+
+#include <kinguard/StorageManager.h>
+
 #include "WebServer.h"
 #include "EventHandler.h"
 #include "ControlState.h"
@@ -47,13 +50,14 @@ private:
 	Json::Value WebCallback(Json::Value v);
 	bool DoUnlock(const string& pwd, bool savepass);
 	bool DoInit(bool savepassword );
-	bool AddUser(const std::string user, const std::string display, const std::string password);
+	bool AddUser(const std::string& user, const std::string& display, const std::string& password);
 	bool SetDNSName();
 	bool SetDNSName(const std::string& opiname, const string &domain);
 	bool SetHostName();
 	bool SecopUnlocked();
 
 	// Helper methods
+	void WorkOutInitialState();
 	bool InitializeStorage();
 	bool RegisterKeys();
 	bool GetPasswordUSB();
@@ -78,6 +82,8 @@ private:
 
 	WebServerPtr ws;
 	ControlStatePtr statemachine;
+
+	KGP::StorageManager& storagemanager;
 
 	EventHandler evhandler;
 

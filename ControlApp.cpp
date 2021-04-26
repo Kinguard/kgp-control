@@ -4,9 +4,10 @@
 #include "InboundTest.h"
 #include "ConnTest.h"
 #include "PasswordFile.h"
-#include "StorageManager.h"
 
 
+#include <libutils/HttpStatusCodes.h>
+#include <libutils/NetServices.h>
 #include <libutils/FileUtils.h>
 #include <libutils/ConfigFile.h>
 #include <libutils/UserGroups.h>
@@ -26,25 +27,27 @@
 #include <kinguard/MailManager.h>
 #include <kinguard/UserManager.h>
 #include <kinguard/BackupManager.h>
+#include <kinguard/SystemManager.h>
+#include <kinguard/StorageManager.h>
 #include <kinguard/IdentityManager.h>
 
 #include <functional>
+#include <memory>
 
 #include <syslog.h>
 #include <unistd.h>
 
 #include "ControlApp.h"
 
-#include "Debug.h"
-
 
 // Convenience defines
 #define SCFG	(OPI::SysConfig())
 #define SAREA (SCFG.GetKeyAsString("filesystem","storagemount"))
 
-#define IS_OP	(IdentityManager::Instance().HasDnsProvider())
+#define IS_OP()	(IdentityManager::Instance().HasDnsProvider())
 
 using namespace Utils;
+using namespace Utils::HTTP;
 using namespace std::placeholders;
 
 using namespace OPI;
@@ -54,7 +57,11 @@ using namespace KGP;
 
 //#define DEBUG (logg << Logger::Debug)
 
-ControlApp::ControlApp() : DaemonApplication("opi-control","/var/run","root","root")
+ControlApp::ControlApp() :
+	DaemonApplication("opi-control","/var/run","root","root"),
+	state(ControlState::State::AskInitCheckRestore),
+	skiprestore(false),
+	storagemanager(StorageManager::Instance())
 {
 }
 
@@ -82,19 +89,19 @@ bool ControlApp::DoLogin()
 {
 	logg << Logger::Debug << "Logging in to OP backend" << lend;
 	AuthServer s( this->unit_id);
-	int resultcode;
+	int resultcode = Status::Ok;
 	Json::Value ret;
 
 	tie(resultcode, ret) = s.Login();
 
-	if( resultcode != 200 && resultcode != 403 )
+	if( resultcode != Status::Ok && resultcode != Status::Forbidden )
 	{
 		logg << Logger::Error << "Unexpected reply from server "<< resultcode <<lend;
 		this->global_error ="Unexpected reply from OP server ("+ ret["desc"].asString()+")";
 		return false;
 	}
 
-	if( resultcode == 403 )
+	if( resultcode == Status::Forbidden )
 	{
 		logg << Logger::Debug << "Send Secret"<<lend;
 
@@ -116,9 +123,9 @@ bool ControlApp::DoLogin()
 		string cryptchal = Base64Encode( aes.Encrypt( challenge ) );
 
 		tie(resultcode, ret) = s.SendSecret(cryptchal, Base64Encode(c->PubKeyAsPEM()) );
-		if( resultcode != 200 )
+		if( resultcode != Status::Ok )
 		{
-			if( resultcode == 403)
+			if( resultcode == Status::Forbidden)
 			{
 				this->global_error ="Failed to authenticate with OP server. Wrong activation code or password.";
 			}
@@ -171,8 +178,70 @@ void ControlApp::StopWebserver()
 	}
 }
 
+void ControlApp::WorkOutInitialState()
+{
+	// Workout initial state
+
+	this->state = ControlState::State::AskInitCheckRestore;
+	this->skiprestore = false;
+
+	bool hasUnitId = false;
+	bool isOPDevice = IS_OP();
+
+	bool isConfigured = SystemManager::Instance().IsConfigured();
+	bool hasStorage = this->storagemanager.StorageAreaExists();
+
+	if( SCFG.HasKey("hostinfo", "unitid") )
+	{
+		this->state = ControlState::State::AskUnlock;
+		this->unit_id = SCFG.GetKeyAsString("hostinfo", "unitid");
+		hasUnitId = true;
+	}
+
+	using UnitID = bool;
+	using OPDevice = bool;
+	using StorageAvailable = bool;
+	using UnitConfigured = bool;
+	using StartCond = std::tuple<UnitConfigured, StorageAvailable, UnitID, OPDevice>;
+
+	static const map<StartCond, int> start =
+	{	//  conf	storage	Unitid	OPdev
+		{ { 0,	0,	0,	0 },	ControlState::State::AskInitCheckRestore },
+		{ { 0,	0,	0,	1 },	ControlState::State::AskInitCheckRestore },
+		{ { 0,	0,	1,	0 },	ControlState::State::AskReInitCheckRestore },
+		{ { 0,	0,	1,	1 },	ControlState::State::AskReInitCheckRestore },
+		{ { 0,	1,	0,	0 },	ControlState::State::AskInitCheckRestore },
+		{ { 0,	1,	0,	1 },	ControlState::State::AskInitCheckRestore },
+		{ { 0,	1,	1,	0 },	ControlState::State::AskReInitCheckRestore },
+		{ { 0,	1,	1,	1 },	ControlState::State::AskReInitCheckRestore },
+		{ { 1,	0,	0,	0 },	ControlState::State::AskInitCheckRestore },
+		{ { 1,	0,	0,	1 },	ControlState::State::AskInitCheckRestore },
+		{ { 1,	0,	1,	0 },	ControlState::State::AskReInitCheckRestore },
+		{ { 1,	0,	1,	1 },	ControlState::State::AskReInitCheckRestore },
+		{ { 1,	1,	0,	0 },	ControlState::State::AskUnlock },
+		{ { 1,	1,	0,	1 },	ControlState::State::Error },
+		{ { 1,	1,	1,	0 },	ControlState::State::AskUnlock },
+		{ { 1,	1,	1,	1 },	ControlState::State::AskUnlock },
+	};
+
+	logg << Logger::Debug << "Start conditions: " << isConfigured << "," << hasStorage<< "," << hasUnitId<< "," << isOPDevice << lend;
+
+	this->state = start.at( {isConfigured, hasStorage, hasUnitId, isOPDevice} );
+
+	// Check environment
+	if( SysInfo::fixedStorage() && ! this->storagemanager.DeviceExists() )
+	{
+		// We should have a fixed storage and that is not present!
+		logg << Logger::Error << "Device not present"<<lend;
+		this->state = ControlState::State::Error;
+	}
+
+	// Initial state determined
+}
+
 void ControlApp::Main()
 {
+
 	logg << Logger::Info << "------ !!!   TODO  !!!! ---------"<<lend;
 	logg << Logger::Info << "Wrap/test reading of sysconfig keys to not get unwanted exceptions."<<lend;
 	logg << Logger::Info << "------ !!!   End TODO  !!!! ---------"<<lend;
@@ -185,22 +254,8 @@ void ControlApp::Main()
 
 	logg << Logger::Info << "Running on: " << sysinfo.SysTypeText[sysinfo.Type()] << lend;
 
-	logg << Logger::Debug << "Using storage device: "<< sysinfo.StorageDevicePath() <<lend;
+	logg << Logger::Debug << "Using storage device: "<< this->storagemanager.DevicePath() <<lend;
 
-	this->state = ControlState::State::AskInitCheckRestore;
-	this->skiprestore = false;
-
-	if( SCFG.HasKey("hostinfo", "unitid") )
-	{
-		this->state = ControlState::State::AskUnlock;
-		this->unit_id = SCFG.GetKeyAsString("hostinfo", "unitid");
-	}
-
-	// None OP device, currently that is the same as not having a dns-provider
-	if( ! IdentityManager::Instance().HasDnsProvider() )
-	{
-		this->state = ControlState::State::AskUnlock;
-	}
 
 	// Preconditions
 	// Secop should not be running
@@ -219,36 +274,12 @@ void ControlApp::Main()
 	// Temp mountpoint must exist
 	if( !File::DirExists(TMP_MOUNT) )
 	{
-		File::MkPath(TMP_MOUNT, 0755);
+		File::MkPath(TMP_MOUNT, File::UserRWX | File::GroupRX | File::OtherRX );
 	}
 
-	// Check environment
-	if( ! StorageManager::DeviceExists() )
-	{
-		logg << Logger::Error << "Device not present"<<lend;
-		this->state = ControlState::State::Error;
-	}
+	this->WorkOutInitialState();
 
-	// We have a valid config, or none OP device, and a device but device is not a luks container
-	if( this->state == ControlState::State::AskUnlock )
-	{
-		if( StorageManager::UseLocking() && ! StorageManager::StorageAreaExists() )
-		{
-			logg << Logger::Debug << "Config correct but no luksdevice do initialization"<<lend;
-			if( IdentityManager::Instance().HasDnsProvider() )
-			{
-				this->state = ControlState::State::AskReInitCheckRestore;
-			}
-			else
-			{
-				// None OP device, we assume this is a new setup for now
-				// TODO: This should be revisited and refactored Mantis #516
-				this->state = ControlState::State::AskInitCheckRestore;
-			}
-		}
-	}
-
-	// Try use password from USB or cfg in /root if possible
+	// Try use password from USB or cfg in /root to unlock device if possible
 	if( this->state == ControlState::State::AskUnlock )
 	{
 		if( this->GetPasswordUSB() || this->GetPasswordRoot() )
@@ -260,14 +291,16 @@ void ControlApp::Main()
 		}
 	}
 
+	using namespace Utils::Net::Service;
+
 	InboundTestPtr ibt;
 	TcpServerPtr redirector;
 
 	if( this->state == ControlState::State::AskInitCheckRestore )
 	{
-
+		// Initial setup of clean device, start connection tests.
 		logg << Logger::Debug << "Starting inbound connection tests"<<lend;
-		ibt = InboundTestPtr(new InboundTest( {25,80,143, 587, 993, 2525 }));
+		ibt = make_shared<InboundTest>( vector<uint16_t>({SMTP,Service::HTTP,IMAP2, Submission, IMAPS, ALT_SMTP }) );
 		ibt->Start();
 
 		logg << Logger::Debug << "Doing connection tests"<<lend;
@@ -277,7 +310,7 @@ void ControlApp::Main()
 	else if ( this->state != ControlState::State::Completed )
 	{
 		logg << Logger::Debug << "Starting redirect service on port 80"<<lend;
-		redirector = TcpServerPtr( new TcpServer(80) );
+		redirector = make_shared<TcpServer>( Service::HTTP );
 
 		redirector->Start();
 	}
@@ -285,9 +318,9 @@ void ControlApp::Main()
 	if( this->state != ControlState::State::Completed )
 	{
 
-		this->statemachine = ControlStatePtr( new ControlState( this, static_cast<uint8_t>(this->state) ) );
+		this->statemachine = make_shared<ControlState>( this, static_cast<uint8_t>(this->state) );
 
-		this->ws = WebServerPtr( new WebServer( std::bind(&ControlApp::WebCallback,this, _1), this->options["webroot"]) );
+		this->ws = make_shared<WebServer>( std::bind(&ControlApp::WebCallback,this, _1), this->options["webroot"] );
 
 		if( this->state == ControlState::State::Error )
 		{
@@ -374,10 +407,7 @@ void ControlApp::SigHup(int signo)
 	(void) signo;
 }
 
-ControlApp::~ControlApp()
-{
-
-}
+ControlApp::~ControlApp() = default;
 
 Json::Value ControlApp::WebCallback(Json::Value v)
 {
@@ -466,7 +496,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 				if( idmgr.HasDnsProvider() )
 				{
 					list<string> domains = idmgr.DnsAvailableDomains();
-					for(auto domain: domains)
+					for(const auto &domain: domains)
 					{
 						ret["domains"].append(domain);
 					}
@@ -495,7 +525,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 					ret["cache"] = this->cache[state];
 				}
 
-				bool retval;
+				bool retval = false;
 				string strprog;
 
 				tie(retval,strprog) = Process::Exec( "/usr/share/opi-backup/progress.sh" );
@@ -558,7 +588,7 @@ bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 {
 	logg << Logger::Debug << "Unlock storage"<<lend;
 
-	if( ! StorageManager::Instance().Open(pwd) )
+	if( ! this->storagemanager.Open(pwd) )
 	{
 		this->global_error = "Unable to unlock crypto storage. (Wrong password?)";
 		return false;
@@ -566,7 +596,7 @@ bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 
 	logg << Logger::Debug << "Storage device opened"<< lend;
 
-	if( ! StorageManager::mountDevice( SCFG.GetKeyAsString("filesystem","storagemount") ) )
+	if( ! this->storagemanager.mountDevice( SCFG.GetKeyAsString("filesystem","storagemount") ) )
 	{
 		this->global_error = "Unable to access storage";
 		return false;
@@ -578,12 +608,6 @@ bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 		if( ! ServiceHelper::Start("secop") )
 		{
 			logg << Logger::Notice << "Failed to start secop"<<lend;
-
-			// We have problems with exec waiting on child processes, try add some debug info
-			if( errno == ECHILD )
-			{
-				dump_signals();
-			}
 
 			sleep(1);
 
@@ -612,7 +636,7 @@ bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 			}
 		}
 	}
-	catch(std::runtime_error err)
+	catch(std::runtime_error& err)
 	{
 		logg << Logger::Error << "Failed to unlock Secop:"<<err.what()<<lend;
 		this->global_error = "Failed to unlock password database ("+string(err.what() )+")";
@@ -673,7 +697,7 @@ bool ControlApp::DoInit( bool savepassword )
 			}
 		}
 	}
-	catch(std::runtime_error err)
+	catch(std::runtime_error& err)
 	{
 		logg << Logger::Error << "Failed to unlock Secop:"<<err.what()<<lend;
 		this->global_error = "Wrong password for password store";
@@ -689,7 +713,7 @@ bool ControlApp::DoInit( bool savepassword )
 
 	// We only try to login if we run an OP enabled device
 	bool loggedin = false;
-	if( IS_OP )
+	if( IS_OP() )
 	{
 		for( int i=0; i<3; i++ )
 		{
@@ -739,14 +763,14 @@ bool ControlApp::DoInit( bool savepassword )
 	BackupManager::Configure( backupcfg );
 
 	//Only on OP-enabled devices
-	if( IS_OP )
+	if( IS_OP() )
 	{
 		// TODO: THis have to go into IdManager somehow.
 		// Function exists in Manager but is private.
 		// Maybe integrate in AddDNSname or similar
 		logg << Logger::Debug << "Register public dnskey with backend"<< lend;
 		stringstream pk;
-		for( auto row: File::GetContent(SCFG.GetKeyAsString("dns","dnspubkey")) )
+		for( const auto &row: File::GetContent(SCFG.GetKeyAsString("dns","dnspubkey")) )
 		{
 			pk << row << "\n";
 		}
@@ -763,7 +787,7 @@ bool ControlApp::DoInit( bool savepassword )
 	return true;
 }
 
-bool ControlApp::AddUser(const string user, const string display, const string password)
+bool ControlApp::AddUser(const string& user, const string& display, const string& password)
 {
 	logg << "Add user "<<user<<" "<< display << lend;
 
@@ -938,7 +962,7 @@ bool ControlApp::InitializeStorage()
 {
 	logg << Logger::Debug << "Initialize storage device" << lend;
 
-	return StorageManager::Instance().Initialize(this->masterpassword);
+	return this->storagemanager.Initialize(this->masterpassword);
 }
 
 bool ControlApp::RegisterKeys( )
@@ -972,7 +996,7 @@ bool ControlApp::GetPasswordUSB()
 	{
 		if( ! File::DirExists("/mnt/usb") )
 		{
-			File::MkDir("/mnt/usb", 0755);
+			File::MkDir("/mnt/usb", File::UserRWX | File::GroupRX | File::OtherRX);
 		}
 
 		DiskHelper::Mount( sysinfo.PasswordDevice(), "/mnt/usb", false, false, "");
@@ -1043,7 +1067,7 @@ bool ControlApp::SetPasswordUSB()
 	{
 		if( ! File::DirExists("/mnt/usb") )
 		{
-			File::MkDir("/mnt/usb", 0755);
+			File::MkDir("/mnt/usb", File::UserRWX | File::GroupRX | File::OtherRX);
 		}
 
 		string mpath = DiskHelper::IsMounted( sysinfo.PasswordDevice());
@@ -1057,7 +1081,7 @@ bool ControlApp::SetPasswordUSB()
 
 		if( ! File::DirExists( mpath + "/opi" ) )
 		{
-			File::MkDir(mpath + "/opi", 0755);
+			File::MkDir(mpath + "/opi", File::UserRWX | File::GroupRX | File::OtherRX);
 		}
 
 		logg << Logger::Debug << "Storing password at " << mpath + "/opi/opicred.bin" << lend;
@@ -1173,7 +1197,7 @@ Json::Value ControlApp::CheckRestore()
 		return Json::nullValue;
 	}
 
-	if( StorageManager::UseLocking() && StorageManager::StorageAreaExists()  )
+	if( this->storagemanager.UseLocking() && this->storagemanager.StorageAreaExists()  )
 	{
 		// We never do a restore if we have a locked device
 		logg << Logger::Notice << "Found locked device, aborting"<<lend;

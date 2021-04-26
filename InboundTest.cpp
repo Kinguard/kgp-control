@@ -10,7 +10,7 @@
 using namespace std;
 using namespace Utils;
 
-void TcpServer::ParseRequest(Utils::Net::SocketPtr c)
+void TcpServer::ParseRequest(const Utils::Net::SocketPtr& c)
 {
 	this->headers.clear();
 	size_t r = c->Read(buf, sizeof(buf) );
@@ -18,7 +18,7 @@ void TcpServer::ParseRequest(Utils::Net::SocketPtr c)
 	{
 		buf[r]=0;
 		list<string> rows = String::Split(buf,"\r\n");
-		for( auto row: rows )
+		for( const auto& row: rows )
 		{
 			if( row.compare(0, 3, "GET") == 0)
 			{
@@ -35,7 +35,7 @@ void TcpServer::ParseRequest(Utils::Net::SocketPtr c)
 	}
 }
 
-void TcpServer::Redirect( Utils::Net::SocketPtr c )
+void TcpServer::Redirect( const Utils::Net::SocketPtr& c )
 {
 	ostringstream ss;
 	string url = this->headers["host"]+this->url;
@@ -122,7 +122,7 @@ InboundTest::InboundTest(const vector<uint16_t> &ports)
 
 void InboundTest::Start()
 {
-	for(TcpServerPtr server: this->servers)
+	for(const TcpServerPtr& server: this->servers)
 	{
 		try
 		{
@@ -138,13 +138,10 @@ void InboundTest::Start()
 
 void InboundTest::Stop()
 {
-	for(auto server: this->servers)
+	for(const auto& server: this->servers)
 	{
 		server->Stop();
 	}
 }
 
-InboundTest::~InboundTest()
-{
-
-}
+InboundTest::~InboundTest() = default;

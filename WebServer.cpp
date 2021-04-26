@@ -9,11 +9,14 @@
 #include <libutils/String.h>
 #include <libutils/Logger.h>
 #include <libutils/FileUtils.h>
+#include <libutils/HttpStatusCodes.h>
 
 #include <string>
 #include <map>
+#include <utility>
 
 using namespace Utils;
+using namespace Utils::HTTP;
 using namespace std;
 
 std::map<std::pair<std::string,std::string>, std::function<int(mg_connection *, struct http_message *)> > WebServer::routes;
@@ -26,7 +29,7 @@ WebServer::WebServer(std::function<Json::Value(Json::Value)> cb, const string &d
 	doRun(true),
 	port(port)
 {
-	WebServer::callback = cb;
+	WebServer::callback = std::move(cb);
 	documentroot = docroot;
 	this->portstring = to_string(this->port);
 	routes[std::make_pair("/configure","POST")] = WebServer::handle_init;
@@ -58,7 +61,7 @@ void WebServer::PreRun()
 	const string certpath = cfg.GetKeyAsString("webcertificate", "activecert");
 	const string keypath = cfg.GetKeyAsString("webcertificate", "activekey");
 
-	struct mg_bind_opts bind_opts;
+	struct mg_bind_opts bind_opts = {};
 
 	if( ! File::FileExists( certpath ) && ! File::LinkExists( certpath ) )
 	{
@@ -122,10 +125,7 @@ void WebServer::PostRun()
 	mg_mgr_free(&this->mgr);
 }
 
-WebServer::~WebServer()
-{
-
-}
+WebServer::~WebServer() = default;
 
 static void send_json_reply(mg_connection *conn, const Json::Value& val )
 {
@@ -136,16 +136,16 @@ static void send_json_reply(mg_connection *conn, const Json::Value& val )
 			<< "Content-Type: application/json\r\n\r\n";
 
 	string headers = headerstream.str();
-	mg_send_response_line( conn, 200, "");
+	mg_send_response_line( conn, Status::Ok, "");
 	mg_send( conn, headers.c_str(), static_cast<int>(headers.size()));
 	mg_send( conn, reply.c_str(), static_cast<int>(reply.size()) );
 }
 
-static void send_simple_reply(mg_connection *conn, int status, const string& msg, const list<string> headers={})
+static void send_simple_reply(mg_connection *conn, int status, const string& msg, const list<string>& headers={})
 {
 	stringstream hs;
 	hs << "Cache-Control: no-cache\r\n";
-	for(auto header: headers)
+	for(const auto &header: headers)
 	{
 		hs << header << "\r\n";
 	}
@@ -221,7 +221,7 @@ int WebServer::handle_init(mg_connection *conn, http_message *http)
 	}
 	else
 	{
-		send_simple_reply( conn, 400, "Missing argument!");
+		send_simple_reply( conn, Status::BadRequest, "Missing argument!");
 	}
 
 	return true;
@@ -276,7 +276,7 @@ int WebServer::handle_reinit(mg_connection *conn, http_message *http)
 	}
 	else
 	{
-		send_simple_reply(conn, 400, "Missing argument!");
+		send_simple_reply(conn, Status::BadRequest, "Missing argument!");
 	}
 
 	return true;
@@ -325,7 +325,7 @@ int WebServer::handle_restore(mg_connection *conn, http_message *http)
 	}
 	else
 	{
-		send_simple_reply(conn, 400, "Missing argument!");
+		send_simple_reply(conn, Status::BadRequest, "Missing argument!");
 	}
 
 	return true;
@@ -378,7 +378,7 @@ int WebServer::handle_unlock(mg_connection *conn, http_message *http)
 	}
 	else
 	{
-		send_simple_reply(conn, 400, "Missing argument!");
+		send_simple_reply(conn, Status::BadRequest, "Missing argument!");
 	}
 
 	return true;
@@ -460,7 +460,7 @@ int WebServer::handle_user(mg_connection *conn, http_message *http)
 	else
 	{
 		logg << Logger::Debug << "Request for add user had invalid arguments"<<lend;
-		send_simple_reply(conn, 400, "Missing argument!");
+		send_simple_reply(conn, Status::BadRequest, "Missing argument!");
 	}
 
 	return true;
@@ -490,7 +490,7 @@ int WebServer::handle_checkname(mg_connection *conn, http_message *http)
 		if( ! imgr.HasDnsProvider() )
 		{
 			logg << Logger::Info << "Request for dns check name when not supported"<<lend;
-			send_simple_reply( conn, 501, "Operation not supported");
+			send_simple_reply( conn, Status::NotImplemented, "Operation not supported");
 			return true;
 		}
 
@@ -505,7 +505,7 @@ int WebServer::handle_checkname(mg_connection *conn, http_message *http)
 	else
 	{
 		logg << Logger::Debug << "Request for check opiname arguments"<<lend;
-		send_simple_reply(conn, 400, "Missing argument!");
+		send_simple_reply(conn, Status::BadRequest, "Missing argument!");
 	}
 
 	return true;
@@ -542,7 +542,7 @@ int WebServer::handle_selectname(mg_connection *conn, http_message *http)
 	else
 	{
 		logg << Logger::Debug << "Request for select opiname had invalid arguments"<<lend;
-		send_simple_reply(conn, 400, "Missing argument!");
+		send_simple_reply(conn, Status::BadRequest, "Missing argument!");
 	}
 
 	return true;
@@ -591,7 +591,7 @@ int WebServer::handle_terminate(mg_connection *conn, http_message *http)
 	}
 	else
 	{
-		send_simple_reply(conn, 400, "Missing argument!");
+		send_simple_reply(conn, Status::BadRequest, "Missing argument!");
 	}
 
 	return true;
@@ -622,7 +622,7 @@ int WebServer::handle_shutdown(mg_connection *conn, http_message *http)
 	}
 	else
 	{
-		send_simple_reply(conn, 400, "Missing argument!");
+		send_simple_reply(conn, Status::BadRequest, "Missing argument!");
 	}
 
 	return true;
@@ -690,7 +690,7 @@ int WebServer::handle_theme(mg_connection *conn, http_message *http)
 			themefile="/themes/" + theme + "/" + uri[1];
 			if( File::FileExists(WebServer::documentroot + themefile))
 			{
-				send_simple_reply( conn, 307, "Redirect to theme file",
+				send_simple_reply( conn, Status::TemporaryRedirect, "Redirect to theme file",
 									{
 									   "Content-Type: text/html",
 									   string("Location: ")+themefile
@@ -709,7 +709,7 @@ int WebServer::handle_theme(mg_connection *conn, http_message *http)
 		logg << Logger::Debug << "No theme set (" << e.what() << ")"<<lend;
 	}
 
-	send_simple_reply(conn, 404, "<h1>Not Found</h1><br>The requested URL was not found on this server.", {"Content-Type: text/html"});
+	send_simple_reply(conn, Status::NotFound, "<h1>Not Found</h1><br>The requested URL was not found on this server.", {"Content-Type: text/html"});
 	return true;
 }
 
@@ -776,7 +776,7 @@ bool WebServer::parse_json(mg_connection *conn, struct http_message *hm, Json::V
 	if( ! Json::Reader().parse(postdata, val) )
 	{
 		logg << Logger::Info << "Failed to parse input"<<lend;
-		send_simple_reply(conn, 400, "Unable to parse input");
+		send_simple_reply(conn, Status::BadRequest, "Unable to parse input");
 
 		return false;
 	}

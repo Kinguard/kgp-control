@@ -15,31 +15,33 @@ using namespace OPI;
 using namespace KGP;
 using namespace Utils;
 
-ControlState::ControlState(ControlApp *app, uint8_t state): app(app)
+ControlState::ControlState(ControlApp *app, uint8_t state): status(true), app(app)
 {
 	this->statemap =
 	{
-		{ State::Idle,					std::bind( &ControlState::StIdle, this, std::placeholders::_1 )},
-		{ State::Error,					std::bind( &ControlState::StError, this, std::placeholders::_1 )},
-		{ State::InitCheckRestore,		std::bind( &ControlState::StInitCheckRestore, this, std::placeholders::_1 )},
-		{ State::Init,					std::bind( &ControlState::StInit, this, std::placeholders::_1 )},
-		{ State::ReInitCheckrestore,	std::bind( &ControlState::StReInitCheckrestore, this, std::placeholders::_1 )},
-		{ State::ReInit,				std::bind( &ControlState::StReInit, this, std::placeholders::_1 )},
-		{ State::AskRestore,			std::bind( &ControlState::StAskRestore, this, std::placeholders::_1 )},
-		{ State::Restore,				std::bind( &ControlState::StRestore, this, std::placeholders::_1 )},
-		{ State::AskUnlock,				std::bind( &ControlState::StAskUnlock, this, std::placeholders::_1 )},
-		{ State::Unlock,				std::bind( &ControlState::StDoUnlock, this, std::placeholders::_1 )},
-		{ State::Terminate,				std::bind( &ControlState::StTerminate, this, std::placeholders::_1 )},
-		{ State::ShutDown,				std::bind( &ControlState::StShutDown, this, std::placeholders::_1 )},
-		{ State::Reboot,				std::bind( &ControlState::StReboot, this, std::placeholders::_1 )},
-		{ State::Completed,				std::bind( &ControlState::StCompleted, this, std::placeholders::_1 )},
-		{ State::AskAddUser,			std::bind( &ControlState::StAskAddUser, this, std::placeholders::_1 )},
-		{ State::AddUser,				std::bind( &ControlState::StAddUser, this, std::placeholders::_1 )},
-		{ State::AskOpiName,			std::bind( &ControlState::StAskOpiName, this, std::placeholders::_1 )},
-		{ State::OpiName,				std::bind( &ControlState::StOpiName, this, std::placeholders::_1 )},
-		{ State::Hostname,				std::bind( &ControlState::StHostName, this, std::placeholders::_1 )},
-		{ State::AskInitCheckRestore,	std::bind( &ControlState::StAskInitCheckRestore, this, std::placeholders::_1 )},
-		{ State::AskReInitCheckRestore,	std::bind( &ControlState::StAskReInitCheckRestore, this, std::placeholders::_1 )},
+		{ State::Idle,					[this](EventData* data){this->StIdle(data);}},
+		{ State::Error,					[this](EventData* data){this->StError(data);}},
+		{ State::InitCheckRestore,		[this](EventData* data){this->StInitCheckRestore(data);}},
+		{ State::Init,					[this](EventData* data){this->StInit(data);}},
+		{ State::ReInitCheckrestore,	[this](EventData* data){this->StReInitCheckrestore(data);}},
+		{ State::ReInit,				[this](EventData* data){this->StReInit(data);}},
+		{ State::AskRestore,			[this](EventData* data){this->StAskRestore(data);}},
+		{ State::Restore,				[this](EventData* data){this->StRestore(data);}},
+		{ State::AskUnlock,				[this](EventData* data){this->StAskUnlock(data);}},
+		{ State::Unlock,				[this](EventData* data){this->StDoUnlock(data);}},
+		{ State::Terminate,				[this](EventData* data){this->StTerminate(data);}},
+		{ State::ShutDown,				[this](EventData* data){this->StShutDown(data);}},
+		{ State::Reboot,				[this](EventData* data){this->StReboot(data);}},
+		{ State::Completed,				[this](EventData* data){this->StCompleted(data);}},
+		{ State::AskAddUser,			[this](EventData* data){this->StAskAddUser(data);}},
+		{ State::AddUser,				[this](EventData* data){this->StAddUser(data);}},
+		{ State::AskOpiName,			[this](EventData* data){this->StAskOpiName(data);}},
+		{ State::OpiName,				[this](EventData* data){this->StOpiName(data);}},
+		{ State::Hostname,				[this](EventData* data){this->StHostName(data);}},
+		{ State::AskInitCheckRestore,	[this](EventData* data){this->StAskInitCheckRestore(data);}},
+		{ State::AskReInitCheckRestore,	[this](EventData* data){this->StAskReInitCheckRestore(data);}},
+		{ State::AskDevice,				[this](EventData* data){this->StAskDevice(data);}},
+		{ State::SelectDevices,			[this](EventData* data){this->StDevice(data);}},
 	};
 
 	this->TriggerEvent( state, nullptr);
@@ -57,7 +59,8 @@ void ControlState::Init(bool savepassword)
 		this->TriggerEvent( StateMachine::EVENT_ERROR, nullptr );
 		return;
 	}
-	ControlData *data = new ControlData;
+
+	ControlData* data = new ControlData;
 	data->data["savepassword"] = savepassword;
 
 	this->TriggerEvent( ControlState::State::InitCheckRestore, data );
@@ -203,10 +206,7 @@ tuple<bool, Json::Value> ControlState::RetValue()
 	return make_tuple(this->status, this->retvalue);
 }
 
-ControlState::~ControlState()
-{
-
-}
+ControlState::~ControlState() = default;
 
 /*
  * State handlers
@@ -228,7 +228,7 @@ void ControlState::StInitCheckRestore(EventData *data)
 {
 	ScopedLog l("StInitCheckrestore");
 
-	ControlData *arg = dynamic_cast<ControlData*>(data);
+	auto *arg = dynamic_cast<ControlData*>(data);
 
 	Json::Value ret = this->app->CheckRestore();
 
@@ -248,7 +248,16 @@ void ControlState::StInit(EventData *data)
 {
 	ScopedLog l("StInit");
 
-	ControlData *arg = dynamic_cast<ControlData*>(data);
+	auto *arg = dynamic_cast<ControlData*>(data);
+
+	if( arg == nullptr )
+	{
+		logg << Logger::Emerg << "Missing arguments to reinit!"<<lend;
+		logg.flush();
+
+		this->RegisterEvent( State::Error, nullptr );
+		return;
+	}
 
 	if( this->app->DoInit( arg->data["savepassword"].asBool() ) )
 	{
@@ -273,7 +282,7 @@ void ControlState::StReInitCheckrestore(EventData *data)
 {
 	ScopedLog l("StReInitCheckrestore");
 
-	ControlData *arg = dynamic_cast<ControlData*>(data);
+	auto *arg = dynamic_cast<ControlData*>(data);
 
 	Json::Value ret = this->app->CheckRestore();
 
@@ -293,12 +302,15 @@ void ControlState::StReInit(EventData *data)
 {
 	ScopedLog l("StReInit");
 
-	ControlData *arg = dynamic_cast<ControlData*>(data);
+	auto *arg = dynamic_cast<ControlData*>(data);
 
 	if( arg == nullptr )
 	{
 		logg << Logger::Emerg << "Missing arguments to reinit!"<<lend;
 		logg.flush();
+
+		this->RegisterEvent( State::Error, nullptr );
+		return;
 	}
 
 	if( this->app->DoInit(arg->data["save"].asBool() ) )
@@ -320,7 +332,7 @@ void ControlState::StRestore(EventData *data)
 {
 	ScopedLog l("StRestore");
 
-	ControlData *arg = dynamic_cast<ControlData*>(data);
+	auto *arg = dynamic_cast<ControlData*>(data);
 
 	if( arg->data["restore"].asBool() )
 	{
@@ -334,7 +346,7 @@ void ControlState::StRestore(EventData *data)
 		this->app->skiprestore = true;
 
 		// Figure out what state to return to
-		if( ! StorageManager::StorageAreaExists() )
+		if( ! StorageManager::Instance().StorageAreaExists() )
 		{
 			this->RegisterEvent( State::ReInit, new ControlData( arg->data ) );
 		}
@@ -361,7 +373,7 @@ void ControlState::StAddUser(EventData *data)
 {
 	ScopedLog l("StAddUser");
 
-	ControlData *arg = dynamic_cast<ControlData*>(data);
+	auto *arg = dynamic_cast<ControlData*>(data);
 
 	if( this->app->AddUser(arg->data["username"].asString(), arg->data["displayname"].asString(), arg->data["password"].asString()) )
 	{
@@ -391,7 +403,7 @@ void ControlState::StOpiName(EventData *data)
 	}
 	else
 	{
-		ControlData *arg = dynamic_cast<ControlData*>(data);
+		auto *arg = dynamic_cast<ControlData*>(data);
 		logg << Logger::Info << "StOpiName 2" << lend;
 
 		list<string> fqdn = String::Split(arg->data["opiname"].asString(), ".",2);
@@ -442,7 +454,7 @@ void ControlState::StDoUnlock(EventData *data)
 {
 	ScopedLog l("StDoUnlock");
 
-	ControlData *arg = dynamic_cast<ControlData*>(data);
+	auto *arg = dynamic_cast<ControlData*>(data);
 
 	if( this->app->DoUnlock(arg->data["password"].asString(), arg->data["save"].asBool() ) )
 	{
@@ -494,6 +506,19 @@ void ControlState::StCompleted(EventData *data)
 void ControlState::StError(EventData *data)
 {
 	ScopedLog l("StError");
+	(void)data;
+}
+
+void ControlState::StAskDevice(EventData *data)
+{
+	ScopedLog l("StAskDevice");
+	(void)data;
+
+}
+
+void ControlState::StDevice(EventData *data)
+{
+	ScopedLog l("StDevice");
 	(void)data;
 }
 
@@ -561,7 +586,7 @@ void ControlState::DoRestore(const string &path)
 		//status = false;
 
 		// Figure out what state to return to
-		if( ! StorageManager::StorageAreaExists() )
+		if( ! StorageManager::Instance().StorageAreaExists() )
 		{
 			this->TriggerEvent( State::ReInit, nullptr);
 		}
@@ -573,7 +598,7 @@ void ControlState::DoRestore(const string &path)
 
 }
 
-bool ControlState::ValidState(vector<uint8_t> vals)
+bool ControlState::ValidState(const vector<uint8_t>& vals)
 {
 	for( uint8_t val: vals)
 	{

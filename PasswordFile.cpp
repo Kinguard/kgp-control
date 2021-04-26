@@ -6,7 +6,7 @@
 #include <crypto++/filters.h>
 #include <crypto++/osrng.h>
 
-#include <stdio.h>
+#include <cstdio>
 #include <strings.h>
 #include <arpa/inet.h>
 
@@ -15,7 +15,7 @@
 using namespace Utils;
 using namespace CryptoPP;
 
-#define OPI_KEY_VERSION 0x01
+static constexpr uint8_t OPI_KEY_VERSION = 0x01;
 
 typedef struct _opi_key{
 	uint16_t	version;

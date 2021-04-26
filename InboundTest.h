@@ -21,10 +21,10 @@ private:
 
 	map<string,string> headers;
 	string url;
-	char buf[8192];
+	char buf[8192]{};
 
-	void ParseRequest(Utils::Net::SocketPtr c);
-	void Redirect( Utils::Net::SocketPtr c );
+	void ParseRequest(const Utils::Net::SocketPtr& c);
+	void Redirect( const Utils::Net::SocketPtr& c );
 public:
 
 	TcpServer(uint16_t port);

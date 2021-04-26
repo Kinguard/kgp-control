@@ -49,7 +49,9 @@ public:
 			AskOpiName,				// 18
 			AskReInitCheckRestore,	// 19
 			AskInitCheckRestore,	// 20
-			Hostname,			// 21
+			Hostname,				// 21
+			AskDevice,				// 22
+			SelectDevices,			// 23
 		};
 	};
 
@@ -93,12 +95,14 @@ protected:
 	void StReboot(EventData* data);
 	void StCompleted(EventData* data);
 	void StError(EventData* data);
+	void StAskDevice(EventData* data);
+	void StDevice(EventData* data);
 
 private:
 
 	void DoRestore(const string& path);
 
-	bool ValidState(vector<uint8_t> vals);
+	bool ValidState(const vector<uint8_t>& vals);
 	bool status;
 	Json::Value retvalue;
 	ControlApp* app;

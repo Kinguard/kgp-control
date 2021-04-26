@@ -1,19 +1,20 @@
 #include "ConnTest.h"
 
 #include <libutils/Logger.h>
-
+#include <libutils/NetServices.h>
 #include <sstream>
 #include <vector>
 
 using namespace Utils;
-
 ConnTest::ConnTest(const string &host): HttpClient(host)
 {
 }
 
 Json::Value ConnTest::DoTest()
 {
-	vector<long> ports( { 25, 80, 143, 443, 993, 2525 });
+	using namespace Utils::Net::Service;
+
+	vector<long> ports( { SMTP, HTTP, IMAP2, HTTPS, IMAPS, ALT_SMTP });
 	Json::Value ret;
 
 	for( long port: ports )
@@ -26,10 +27,7 @@ Json::Value ConnTest::DoTest()
 	return ret;
 }
 
-ConnTest::~ConnTest()
-{
-
-}
+ConnTest::~ConnTest() = default;
 
 bool ConnTest::TestPort(long port)
 {
