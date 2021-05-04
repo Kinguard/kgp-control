@@ -32,6 +32,7 @@
     <button type="button" class="navbutton" opi-page="18" id="b18" title="">Device Name</button>
     <button type="button" class="navbutton" opi-page="19" id="b19" title="">Known Unit-id</button>
     <button type="button" class="navbutton" opi-page="20" id="b20" title="">Master pwd / Unlock</button>
+    <button type="button" class="navbutton" opi-page="22" id="b20" title="">Select storage device</button>
     <button type="button" class="navbutton" opi-page="99" id="b99" title="">Init in progress</button>
 </div>
 
@@ -148,6 +149,75 @@
 		<h1>Unit reboot in progress</h1>
 		<p>System is rebooting, please wait ...</p>
 	</div>
+<!--
+
+
+
+
+		*************************
+		* SELECT DEVICE IS HERE *
+		*************************
+
+
+
+
+
+
+
+-->
+	<div id="page_selectdevice" class="page hidden">
+		<h1>Select storage device</h1>
+		<p>Please select which storage device to use</p>
+		<form id="deviceform">
+			<div>
+				<p class="form-group">
+				<select name="physical">
+					<option value="none">None</option>
+					<option value="partition">Local partition</option>
+					<option value="block" selected="true">Physical disk</option>
+				</select>
+				</p>
+			</div>
+
+			<div id="storage_container">
+				<p class="form-group">
+				<label for="sel_devices">Select storage devices</label>
+				<select name="devices" id="sel_devices" required="true" multiple="multiple">
+				<option value="/dev/null">Big hole (0 B)</option>
+				<option value="/dev/zero">Endless steam (inf B)</option>
+				</select>
+				</p>
+			</div>
+			<div>
+				<p class="form-group">
+				<label for="sel_logical">Select logical storage model</label>
+				<select name="logical" id="sel_logical">
+					<option value="none">None</option>
+					<option value="lvm">LVM</option>
+				</select>
+				</p>
+			</div>
+			<div>
+				<p class="form-group">
+				<label for="sel_encrypt">Select storage encryption</label>
+				<select name="encryption" id="sel_encrypt">
+					<option value="none">None</option>
+					<option value="luks">LUKS</option>
+				</select>
+				</p>
+			</div>
+			<div>
+				<button
+					type="submit"
+					id="btnPwd"
+					href="/devices">
+				Continue
+				</button>
+			</div>
+		</form>
+	</div>
+
+
 
 	<div id="page_password" class="page hidden">
 		<h1>Select Master Password</h1>
@@ -550,6 +620,7 @@ var pages = {
 	18:"page_opiname",
 	19:"page_knownunit_id",
 	20:"page_password",
+	22:"page_selectdevice",
 	99:"page_initprogress", // Local state not used on server side
 }
 
@@ -791,6 +862,34 @@ function getDomains() {
 	return domains;
 }
 
+function makeDevice(dev)
+{
+	console.log("Create device: "+dev["devname"]);
+
+	$("#sel_devices").append(
+	`<option value="${dev['devpath']}">${dev['model']} (${dev['size']})</option>`
+	 );
+}
+
+function getStorageDevices()
+{
+	console.log("Retrieving possible storage devices");
+	let devices = false;
+	$.get("/storagedevices", function(data) {
+		devices = data.storagedevices;
+		for (i = 0; i < devices.length; i++) {
+			if ( devices[i] ) {
+				console.log("Append "+devices[i]+" to devices");
+				makeDevice( devices[i] );
+			}
+		}
+	}, "json" )
+	.fail(function() {
+		console.log("Request storage devices failed");
+	});
+	return devices;
+}
+
 function getStatus() {
 	$.get("/status",function(data) {
 		
@@ -949,6 +1048,7 @@ $(document).ready( function() {
 
 	type=getType();
 	domains=getDomains();
+	devices=getStorageDevices();
 
 	$("input[type='text']").addClass("form-control");
 	$("input[type='password']").addClass("form-control");
@@ -1027,9 +1127,22 @@ $(document).ready( function() {
 			var data = {};
 			for (var i = 0, ii = formdata.length; i < ii; ++i) {
 				var input = formdata[i];
+
 				if (input.name) {
 					if( input.type == "checkbox" ) {
 						data[input.name] = input.checked;
+					} else if ( input.type == "select-multiple" ) {
+
+						data[input.name] = [];
+
+						for(var s=0; s< input.options.length; s++)
+						{
+							if( input.options.item(s).selected )
+							{
+								data[input.name].push( input.options.item(s).value);
+							}
+						}
+
 					} else {
 						data[input.name] = input.value;
 					}
