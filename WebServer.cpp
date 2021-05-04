@@ -47,6 +47,8 @@ WebServer::WebServer(std::function<Json::Value(Json::Value)> cb, const string &d
 	routes[std::make_pair("/gettype","GET")] = WebServer::handle_type;
 	routes[std::make_pair("/getdomains","GET")] = WebServer::handle_domains;
 	routes[std::make_pair("/activetheme","GET")] = WebServer::handle_theme;
+	routes[std::make_pair("/storagedevices","GET")] = WebServer::handle_storagedevices;
+	routes[std::make_pair("/devices","POST")] = WebServer::handle_devices;
 
 }
 
@@ -713,6 +715,91 @@ int WebServer::handle_theme(mg_connection *conn, http_message *http)
 	return true;
 }
 
+int WebServer::handle_storagedevices(mg_connection *conn, http_message *http)
+{
+	(void) http;
+	logg << Logger::Debug << "Got request for storage devices"<<lend;
+
+	Json::Value ret;
+	if( WebServer::callback != nullptr )
+	{
+		Json::Value cmd;
+
+		cmd["cmd"]= "getstoragedevices";
+		ret = WebServer::callback( cmd );
+	}
+
+	send_json_reply(conn, ret);
+
+	return true;
+
+}
+
+
+static bool validate_devicedata(const Json::Value& v)
+{
+	if( ! v.isMember("devices") || !v["devices"].isArray() )
+	{
+		return false;
+	}
+
+	if( ! v.isMember("encryption") || !v["encryption"].isString() )
+	{
+		return false;
+	}
+
+	if( ! v.isMember("logical") || !v["logical"].isString() )
+	{
+		return false;
+	}
+
+	if( ! v.isMember("physical") || !v["physical"].isString() )
+	{
+		return false;
+	}
+
+
+	return true;
+}
+
+
+int WebServer::handle_devices(mg_connection *conn, http_message *http)
+{
+	logg << Logger::Debug << "Got request select storage config"<<lend;
+
+	Json::Value req;
+
+	if( ! WebServer::parse_json(conn, http, req) )
+	{
+		// True in the sense that we handled the req.
+		return true;
+	}
+
+	cout << req.toStyledString() << endl;
+
+	if( validate_devicedata( req ) )
+	{
+		Json::Value ret;
+		if( WebServer::callback != nullptr ){
+			Json::Value cmd;
+			cmd["cmd"] = "deviceconfig";
+			cmd["devices"] = req["devices"];
+			cmd["encryption"] = req["encryption"];
+			cmd["logical"] = req["logical"];
+			cmd["physical"] = req["physical"];
+			ret = WebServer::callback( cmd );
+		}
+		send_json_reply(conn, ret);
+	}
+	else
+	{
+		send_simple_reply(conn, Status::BadRequest, "Missing argument!");
+	}
+
+	return true;
+}
+
+
 
 void WebServer::ev_handler(struct mg_connection *conn, int ev, void *p)
 {
@@ -772,6 +859,8 @@ void WebServer::ev_handler(struct mg_connection *conn, int ev, void *p)
 bool WebServer::parse_json(mg_connection *conn, struct http_message *hm, Json::Value &val)
 {
 	string postdata(hm->body.p, hm->body.len);
+
+	//cout << "Got data: [" << postdata << "]" << endl;
 
 	if( ! Json::Reader().parse(postdata, val) )
 	{

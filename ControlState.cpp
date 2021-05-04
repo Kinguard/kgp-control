@@ -8,6 +8,8 @@
 #include <kinguard/StorageManager.h>
 #include <kinguard/UserManager.h>
 
+#include <libopi/JsonHelper.h>
+
 #include "ControlApp.h"
 #include "Config.h"
 
@@ -188,6 +190,25 @@ void ControlState::ShutDown(const string &action)
 	{
 		this->TriggerEvent( StateMachine::EVENT_ERROR, nullptr );
 	}
+}
+
+void ControlState::StorageConfig(const string &phys, const string &log, const string &enc, list<string> &devices)
+{
+	ScopedLog l("StorageConfig");
+
+	if( ! this->ValidState( {State::AskDevice} ) )
+	{
+		this->TriggerEvent( StateMachine::EVENT_ERROR, nullptr );
+		return;
+	}
+
+	ControlData *data = new ControlData;
+	data->data["physical"] = phys;
+	data->data["logical"] = log;
+	data->data["encryption"] = enc;
+	data->data["devices"] = OPI::JsonHelper::ToJsonArray(devices);
+
+	this->TriggerEvent( State::SelectDevices, data );
 }
 
 void ControlState::ResetReturnData()
@@ -519,7 +540,31 @@ void ControlState::StAskDevice(EventData *data)
 void ControlState::StDevice(EventData *data)
 {
 	ScopedLog l("StDevice");
-	(void)data;
+
+	auto *arg = dynamic_cast<ControlData*>(data);
+
+	if( this->app->SetupStorageConfig(
+				arg->data["physical"].asString(),
+				arg->data["logical"].asString(),
+				arg->data["encryption"].asString(),
+				JsonHelper::FromJsonArray(arg->data["devices"])
+				) )
+	{
+		if(OPI::SysConfig().HasKey("hostinfo", "unitid") )
+		{
+			this->RegisterEvent( State::AskReInitCheckRestore, nullptr);
+		}
+		else
+		{
+			this->RegisterEvent( State::AskInitCheckRestore, nullptr);
+		}
+	}
+	else
+	{
+		this->status = false;
+		this->RegisterEvent( State::AskDevice, nullptr);
+	}
+
 }
 
 // Todo: We really should have more internal states here

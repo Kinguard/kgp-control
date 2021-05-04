@@ -65,6 +65,7 @@ private:
 	bool SetPasswordUSB();
 	bool SetPasswordRoot();
 	bool GuessOPIName();
+	bool SetupStorageConfig(const std::string& phys, const string& log, const string& enc, const list<string>& devs);
 	void WriteConfig();
 
 	// Helpers for restore backup

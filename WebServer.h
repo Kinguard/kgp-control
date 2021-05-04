@@ -40,6 +40,8 @@ private:
 	static int handle_type(struct mg_connection *conn, struct http_message *http);
 	static int handle_domains(struct mg_connection *conn, struct http_message *http);
 	static int handle_theme(struct mg_connection *conn, struct http_message *http);
+	static int handle_storagedevices(struct mg_connection *conn, struct http_message *http);
+	static int handle_devices(struct mg_connection *conn, struct http_message *http);
 
 	static void ev_handler(struct mg_connection *conn, int ev, void *p);
 	static bool parse_json(struct mg_connection *conn, http_message *hm, Json::Value& val);

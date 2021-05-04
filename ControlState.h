@@ -66,6 +66,7 @@ public:
 	void Unlock(const string& password, bool save);
 	void Terminate();
 	void ShutDown(const string& action);
+	void StorageConfig(const string& phys, const string& log, const string& enc, list<string>& devices);
 
 	void ResetReturnData();
 
@@ -103,7 +104,11 @@ private:
 	void DoRestore(const string& path);
 
 	bool ValidState(const vector<uint8_t>& vals);
+
+	//! \brief Status of current operation. Reset to true before each state invocation
 	bool status;
+
+	//! \brief Json value to return to caller
 	Json::Value retvalue;
 	ControlApp* app;
 };

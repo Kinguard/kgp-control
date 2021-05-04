@@ -19,6 +19,7 @@
 #include <libopi/SysInfo.h>
 #include <libopi/SysConfig.h>
 #include <libopi/DnsServer.h>
+#include <libopi/JsonHelper.h>
 #include <libopi/DiskHelper.h>
 #include <libopi/AuthServer.h>
 #include <libopi/Notification.h>
@@ -206,27 +207,29 @@ void ControlApp::WorkOutInitialState()
 
 	static const map<StartCond, int> start =
 	{	//  conf	storage	Unitid	OPdev
-		{ { 0,	0,	0,	0 },	ControlState::State::AskInitCheckRestore },
-		{ { 0,	0,	0,	1 },	ControlState::State::AskInitCheckRestore },
-		{ { 0,	0,	1,	0 },	ControlState::State::AskReInitCheckRestore },
-		{ { 0,	0,	1,	1 },	ControlState::State::AskReInitCheckRestore },
-		{ { 0,	1,	0,	0 },	ControlState::State::AskInitCheckRestore },
-		{ { 0,	1,	0,	1 },	ControlState::State::AskInitCheckRestore },
-		{ { 0,	1,	1,	0 },	ControlState::State::AskReInitCheckRestore },
-		{ { 0,	1,	1,	1 },	ControlState::State::AskReInitCheckRestore },
-		{ { 1,	0,	0,	0 },	ControlState::State::AskInitCheckRestore },
-		{ { 1,	0,	0,	1 },	ControlState::State::AskInitCheckRestore },
-		{ { 1,	0,	1,	0 },	ControlState::State::AskReInitCheckRestore },
-		{ { 1,	0,	1,	1 },	ControlState::State::AskReInitCheckRestore },
-		{ { 1,	1,	0,	0 },	ControlState::State::AskUnlock },
-		{ { 1,	1,	0,	1 },	ControlState::State::Error },
-		{ { 1,	1,	1,	0 },	ControlState::State::AskUnlock },
-		{ { 1,	1,	1,	1 },	ControlState::State::AskUnlock },
+		{ { 0,		0,		0,		0 },	ControlState::State::AskDevice },
+		{ { 0,		0,		0,		1 },	ControlState::State::AskInitCheckRestore },
+		{ { 0,		0,		1,		0 },	ControlState::State::AskReInitCheckRestore },
+		{ { 0,		0,		1,		1 },	ControlState::State::AskReInitCheckRestore },
+		{ { 0,		1,		0,		0 },	ControlState::State::AskInitCheckRestore },
+		{ { 0,		1,		0,		1 },	ControlState::State::AskInitCheckRestore },
+		{ { 0,		1,		1,		0 },	ControlState::State::AskReInitCheckRestore },
+		{ { 0,		1,		1,		1 },	ControlState::State::AskReInitCheckRestore },
+		{ { 1,		0,		0,		0 },	ControlState::State::AskInitCheckRestore },
+		{ { 1,		0,		0,		1 },	ControlState::State::AskInitCheckRestore },
+		{ { 1,		0,		1,		0 },	ControlState::State::AskReInitCheckRestore },
+		{ { 1,		0,		1,		1 },	ControlState::State::AskReInitCheckRestore },
+		{ { 1,		1,		0,		0 },	ControlState::State::AskUnlock },
+		{ { 1,		1,		0,		1 },	ControlState::State::Error },
+		{ { 1,		1,		1,		0 },	ControlState::State::AskUnlock },
+		{ { 1,		1,		1,		1 },	ControlState::State::AskUnlock },
 	};
 
 	logg << Logger::Debug << "Start conditions: " << isConfigured << "," << hasStorage<< "," << hasUnitId<< "," << isOPDevice << lend;
 
 	this->state = start.at( {isConfigured, hasStorage, hasUnitId, isOPDevice} );
+
+	logg << Logger::Debug << "Seleced start state " << this->state << lend;
 
 	// Check environment
 	if( SysInfo::fixedStorage() && ! this->storagemanager.DeviceExists() )
@@ -511,6 +514,40 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 					}
 				}
 				return ret;
+			}
+			else if( cmd == "getstoragedevices")
+			{
+				Json::Value ret(Json::objectValue);
+				ret["storagedevices"] = Json::arrayValue;
+
+				list<StorageDevice> disks = StorageDevice::Devices();
+
+				for(const auto& disk: disks)
+				{
+
+					if( disk.Is(StorageDevice::Physical) && ! disk.Is(StorageDevice::BootDevice) )
+					{
+						Json::Value d(Json::objectValue);
+						d["devname"]=disk.DeviceName();
+						d["devpath"]=disk.DevicePath();
+						d["model"] = disk.Model();
+						d["size"] =  Utils::String::ToHuman( (Json::UInt64) disk.Size());
+						ret["storagedevices"].append(d);
+					}
+
+				}
+
+				return ret;
+			}
+			else if( cmd == "deviceconfig" )
+			{
+				list<string> devices = JsonHelper::FromJsonArray(v["devices"]);
+				this->statemachine->StorageConfig(
+							v["physical"].asString(),
+							v["logical"].asString(),
+							v["encryption"].asString(),
+							devices
+							);
 			}
 			else if( cmd == "status" )
 			{
@@ -1175,6 +1212,52 @@ bool ControlApp::GuessOPIName()
 		return false;
 	}
 }
+
+bool ControlApp::SetupStorageConfig(const string &phys, const string &log, const string &enc, const list<string>& devs)
+{
+	logg << Logger::Debug << "Setup storage config with phys: " << phys << " logical: " << log << " encryption: " << enc << lend;
+	try {
+		StorageConfig cfg;
+
+		cfg.PhysicalStorage( Storage::Physical::asType(phys.c_str()) );
+		cfg.LogicalStorage( Storage::Logical::asType( log.c_str() ));
+		cfg.EncryptionStorage( Storage::Encryption::asType( enc.c_str() ));
+
+
+
+		if( cfg.PhysicalStorage() == Storage::Physical::Block )
+		{
+			cfg.PhysicalStorage(devs);
+		}
+		else if( cfg.PhysicalStorage() == Storage::Physical::Partition )
+		{
+			if( devs.size() == 1 )
+			{
+				cfg.PhysicalStorage( devs.front() );
+			}
+			else
+			{
+				logg << Logger::Notice << "Partition storage requested but no device provided" << lend;
+			}
+		}
+
+		bool isValid = cfg.isValid();
+
+		if( ! isValid )
+		{
+			logg << Logger::Notice << "Storage config is NOT valid" << lend;
+		}
+
+		return isValid;
+
+	}
+	catch (std::exception& e)
+	{
+		logg << Logger::Error << "Failed set storage configuration" << e.what() << lend;
+	}
+	return false;
+}
+
 void ControlApp::WriteConfig()
 {
 	logg << Logger::Notice << "Uppdating sysconfig" <<lend;
