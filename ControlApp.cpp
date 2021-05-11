@@ -192,6 +192,14 @@ void ControlApp::WorkOutInitialState()
 	bool isConfigured = SystemManager::Instance().IsConfigured();
 	bool hasStorage = this->storagemanager.StorageAreaExists();
 
+	StorageConfig scfg;
+
+	if ( ! hasStorage && scfg.isValid() && scfg.UsePhysicalStorage(Storage::Physical::None) )
+	{
+		// Device uses same physical device as OS, thus no separate storage
+		hasStorage = true;
+	}
+
 	if( SCFG.HasKey("hostinfo", "unitid") )
 	{
 		this->state = ControlState::State::AskUnlock;
