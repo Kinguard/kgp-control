@@ -641,10 +641,15 @@ bool ControlApp::DoUnlock(const string &pwd, bool savepass)
 
 	logg << Logger::Debug << "Storage device opened"<< lend;
 
-	if( ! this->storagemanager.mountDevice( SCFG.GetKeyAsString("filesystem","storagemount") ) )
+	StorageConfig scfg;
+
+	if( ! scfg.UsePhysicalStorage(Storage::Physical::None) )
 	{
-		this->global_error = "Unable to access storage";
-		return false;
+		if( ! this->storagemanager.mountDevice( SCFG.GetKeyAsString("filesystem","storagemount") ) )
+		{
+			this->global_error = "Unable to access storage";
+			return false;
+		}
 	}
 
 	if( ! ServiceHelper::IsRunning("secop") )
