@@ -526,23 +526,57 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			else if( cmd == "getstoragedevices")
 			{
 				Json::Value ret(Json::objectValue);
-				ret["storagedevices"] = Json::arrayValue;
 
-				list<StorageDevice> disks = StorageDevice::Devices();
+				StorageManager& mgr = StorageManager::Instance();
 
-				for(const auto& disk: disks)
+				list<Storage::Physical::Type> pts = mgr.QueryPhysical();
+
+				logg << Logger::Debug << "Got " << pts.size() << " phys types" << lend;
+
+				ret["storagephysical"] = Json::arrayValue;
+				ret["storagelogical"] = Json::arrayValue;
+				ret["storageencryption"] = Json::arrayValue;
+				for(const auto& pt : pts)
 				{
+					logg << Logger::Debug << "Add " << pt << " " << Storage::Physical::asString(pt) << lend;
+					ret["storagephysical"].append( Storage::Physical::asString(pt));
 
-					if( disk.Is(StorageDevice::Physical) && ! disk.Is(StorageDevice::BootDevice) )
+					list<Storage::Logical::Type> lts = mgr.QueryLogical(pt);
+					for(const auto& lt : lts)
 					{
-						Json::Value d(Json::objectValue);
-						d["devname"]=disk.DeviceName();
-						d["devpath"]=disk.DevicePath();
-						d["model"] = disk.Model();
-						d["size"] =  Utils::String::ToHuman( (Json::UInt64) disk.Size());
-						ret["storagedevices"].append(d);
+						ret["storagelogical"].append( Storage::Logical::asString(lt));
+
+						list<Storage::Encryption::Type> encs = mgr.QueryEncryption(pt, lt);
+						for( const auto& enc : encs)
+						{
+							ret["storageencryption"].append( Storage::Encryption::asString(enc));
+						}
 					}
 
+				}
+
+				list<StorageDevice> partitions = mgr.QueryStoragePartitions();
+				ret["storagepartitions"] = Json::arrayValue;
+				for(const auto& part: partitions)
+				{
+					Json::Value d(Json::objectValue);
+					d["devname"]=part.DeviceName();
+					d["devpath"]=part.DevicePath();
+					d["model"] = part.Model();
+					d["size"] =  Utils::String::ToHuman( (Json::UInt64) part.Size());
+					ret["storagepartitions"].append(d);
+				}
+
+				list<StorageDevice> disks = mgr.QueryStorageDevices();
+				ret["storagedevices"] = Json::arrayValue;
+				for(const auto& disk: disks)
+				{
+					Json::Value d(Json::objectValue);
+					d["devname"]=disk.DeviceName();
+					d["devpath"]=disk.DevicePath();
+					d["model"] = disk.Model();
+					d["size"] =  Utils::String::ToHuman( (Json::UInt64) disk.Size());
+					ret["storagedevices"].append(d);
 				}
 
 				return ret;
