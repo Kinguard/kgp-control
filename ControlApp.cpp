@@ -533,27 +533,38 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 
 				logg << Logger::Debug << "Got " << pts.size() << " phys types" << lend;
 
-				ret["storagephysical"] = Json::arrayValue;
-				ret["storagelogical"] = Json::arrayValue;
-				ret["storageencryption"] = Json::arrayValue;
+
+				list<string> phys;
+				list<string> logical;
+				list<string> encrypt;
+
 				for(const auto& pt : pts)
 				{
 					logg << Logger::Debug << "Add " << pt << " " << Storage::Physical::asString(pt) << lend;
-					ret["storagephysical"].append( Storage::Physical::asString(pt));
+					phys.emplace_back( Storage::Physical::asString(pt));
 
 					list<Storage::Logical::Type> lts = mgr.QueryLogical(pt);
 					for(const auto& lt : lts)
 					{
-						ret["storagelogical"].append( Storage::Logical::asString(lt));
+						logical.emplace_back( Storage::Logical::asString(lt));
 
 						list<Storage::Encryption::Type> encs = mgr.QueryEncryption(pt, lt);
 						for( const auto& enc : encs)
 						{
-							ret["storageencryption"].append( Storage::Encryption::asString(enc));
+							encrypt.emplace_back( Storage::Encryption::asString(enc));
 						}
 					}
 
 				}
+				phys.sort();
+				phys.unique();
+				logical.sort();
+				logical.unique();
+				encrypt.sort();
+				encrypt.unique();
+				ret["storagephysical"] = JsonHelper::ToJsonArray(phys);
+				ret["storagelogical"] = JsonHelper::ToJsonArray(logical);
+				ret["storageencryption"] = JsonHelper::ToJsonArray(encrypt);
 
 				list<StorageDevice> partitions = mgr.QueryStoragePartitions();
 				ret["storagepartitions"] = Json::arrayValue;
