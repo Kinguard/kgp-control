@@ -1269,6 +1269,9 @@ $(document).ready( function() {
 				stor_sel["physical"]=method
 				if( method == "none" )
 				{
+					stor_sel["devices"] = [];
+					stor_sel["logical"] = "none";
+					stor_sel["encryption"] = "none";
 					url = "/devices"
 				}
 				else if( method == "partition" )
