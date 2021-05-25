@@ -529,42 +529,52 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 
 				StorageManager& mgr = StorageManager::Instance();
 
-				list<Storage::Physical::Type> pts = mgr.QueryPhysical();
+				list<Storage::Physical::Physical> pts = mgr.QueryPhysical();
 
-				logg << Logger::Debug << "Got " << pts.size() << " phys types" << lend;
-
-
-				list<string> phys;
-				list<string> logical;
-				list<string> encrypt;
+				list<Storage::Physical::Physical> phys;
+				list<Storage::Logical::Logical> logical;
+				list<Storage::Encryption::Encryption> encrypt;
 
 				for(const auto& pt : pts)
 				{
-					logg << Logger::Debug << "Add " << pt << " " << Storage::Physical::asString(pt) << lend;
-					phys.emplace_back( Storage::Physical::asString(pt));
+					phys.emplace_back( pt);
 
-					list<Storage::Logical::Type> lts = mgr.QueryLogical(pt);
+					list<Storage::Logical::Logical> lts = mgr.QueryLogical(pt.Type());
 					for(const auto& lt : lts)
 					{
-						logical.emplace_back( Storage::Logical::asString(lt));
+						logical.emplace_back( lt);
 
-						list<Storage::Encryption::Type> encs = mgr.QueryEncryption(pt, lt);
+						list<Storage::Encryption::Encryption> encs = mgr.QueryEncryption(pt.Type(), lt.Type());
 						for( const auto& enc : encs)
 						{
-							encrypt.emplace_back( Storage::Encryption::asString(enc));
+							encrypt.emplace_back( enc);
 						}
 					}
 
 				}
 				phys.sort();
 				phys.unique();
+				for(const auto& ph: phys)
+				{
+					ret["storagephysical"]["name"] = ph.Name();
+					ret["storagephysical"]["description"] = ph.Description();
+				}
+
 				logical.sort();
 				logical.unique();
+				for(const auto& log: logical)
+				{
+					ret["storagelogical"]["name"] = log.Name();
+					ret["storagelogical"]["description"] = log.Description();
+				}
+
 				encrypt.sort();
 				encrypt.unique();
-				ret["storagephysical"] = JsonHelper::ToJsonArray(phys);
-				ret["storagelogical"] = JsonHelper::ToJsonArray(logical);
-				ret["storageencryption"] = JsonHelper::ToJsonArray(encrypt);
+				for(const auto& enc: encrypt)
+				{
+					ret["storageencryption"]["name"] = enc.Name();
+					ret["storageencryption"]["description"] = enc.Description();
+				}
 
 				list<StorageDevice> partitions = mgr.QueryStoragePartitions();
 				ret["storagepartitions"] = Json::arrayValue;
@@ -1277,17 +1287,17 @@ bool ControlApp::SetupStorageConfig(const string &phys, const string &log, const
 	try {
 		StorageConfig cfg;
 
-		cfg.PhysicalStorage( Storage::Physical::asType(phys.c_str()) );
-		cfg.LogicalStorage( Storage::Logical::asType( log.c_str() ));
-		cfg.EncryptionStorage( Storage::Encryption::asType( enc.c_str() ));
+		cfg.PhysicalStorage( Storage::Physical::Physical::toType(phys.c_str()) );
+		cfg.LogicalStorage( Storage::Logical::Logical::toType( log.c_str() ));
+		cfg.EncryptionStorage( Storage::Encryption::Encryption::toType( enc.c_str() ));
 
 
 
-		if( cfg.PhysicalStorage() == Storage::Physical::Block )
+		if( cfg.PhysicalStorage().Type() == Storage::Physical::Block )
 		{
 			cfg.PhysicalStorage(devs);
 		}
-		else if( cfg.PhysicalStorage() == Storage::Physical::Partition )
+		else if( cfg.PhysicalStorage().Type() == Storage::Physical::Partition )
 		{
 			if( devs.size() == 1 )
 			{
