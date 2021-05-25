@@ -554,26 +554,38 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 				}
 				phys.sort();
 				phys.unique();
+				ret["storagephysical"] = Json::arrayValue;
 				for(const auto& ph: phys)
 				{
-					ret["storagephysical"]["name"] = ph.Name();
-					ret["storagephysical"]["description"] = ph.Description();
+					Json::Value p;
+					p["name"] = ph.Name();
+					p["description"] = ph.Description();
+
+					ret["storagephysical"].append(p);
 				}
 
 				logical.sort();
 				logical.unique();
+				ret["storagelogical"] = Json::arrayValue;
 				for(const auto& log: logical)
 				{
-					ret["storagelogical"]["name"] = log.Name();
-					ret["storagelogical"]["description"] = log.Description();
+					Json::Value p;
+					p["name"] = log.Name();
+					p["description"] = log.Description();
+
+					ret["storagelogical"].append(p);
 				}
 
 				encrypt.sort();
 				encrypt.unique();
+				ret["storageencryption"]= Json::arrayValue;
 				for(const auto& enc: encrypt)
 				{
-					ret["storageencryption"]["name"] = enc.Name();
-					ret["storageencryption"]["description"] = enc.Description();
+					Json::Value p;
+					p["name"] = enc.Name();
+					p["description"] = enc.Description();
+
+					ret["storageencryption"].append(p);
 				}
 
 				list<StorageDevice> partitions = mgr.QueryStoragePartitions();
