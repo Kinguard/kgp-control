@@ -922,7 +922,7 @@ function setPhysical(list)
 		{
 			console.log("Append "+list[i]+" to physical");
 			$("#sel_physical").append(
-				`<option value="${list[i]}">${list[i]}</option>`
+				`<option value="${list[i].name}">${list[i].description}</option>`
 			);
 		}
 	}
@@ -965,11 +965,11 @@ function setLogical(list)
 			console.log("Append "+list[i]+" to logical");
 
 			$("#sel_device_logical").append(
-				`<option value="${list[i]}">${list[i]}</option>`
+				`<option value="${list[i].name}">${list[i].description}</option>`
 			);
 
 			$("#sel_part_logical").append(
-				`<option value="${list[i]}">${list[i]}</option>`
+				`<option value="${list[i].name}">${list[i].description}</option>`
 			);
 		}
 	}
@@ -983,11 +983,11 @@ function setEncryption(list)
 		{
 			console.log("Append "+list[i]+" to encryption");
 			$("#sel_device_encrypt").append(
-				`<option value="${list[i]}">${list[i]}</option>`
+				`<option value="${list[i].name}">${list[i].description}</option>`
 			);
 
 			$("#sel_part_encrypt").append(
-				`<option value="${list[i]}">${list[i]}</option>`
+				`<option value="${list[i].name}">${list[i].description}</option>`
 			);
 
 		}
