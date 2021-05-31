@@ -5,7 +5,7 @@ After=network-online.target opi-access.service opi-postsetup.service
 
 [Service]
 Type=forking
-PIDFile=/var/run/opi-control.pid
+PIDFile=/run/opi-control.pid
 ExecStart=/usr/sbin/opi-control -d
 KillMode=process
 Restart=on-failure
