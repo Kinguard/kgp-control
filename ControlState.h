@@ -62,7 +62,7 @@ public:
 	void ReInit(bool savepassword);
 	void Restore(bool dorestore, const string& path);
 	void AddUser(const string& username, const string& displayname, const string& password);
-	void OpiName(const string& opiname);
+	void OpiName(const string& hostname, const string &domain);
 	void Unlock(const string& password, bool save);
 	void Terminate();
 	void ShutDown(const string& action);

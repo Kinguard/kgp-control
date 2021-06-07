@@ -52,7 +52,7 @@ private:
 	bool DoInit(bool savepassword );
 	bool AddUser(const std::string& user, const std::string& display, const std::string& password);
 	bool SetDNSName();
-	bool SetDNSName(const std::string& opiname, const string &domain);
+	bool SetDNSName(const std::string& hostname, const string &domain);
 	bool SetHostName();
 	bool SecopUnlocked();
 
@@ -67,6 +67,8 @@ private:
 	bool GuessOPIName();
 	bool SetupStorageConfig(const std::string& phys, const string& log, const string& enc, const list<string>& devs);
 	void WriteConfig();
+
+	bool hasUnitID();	// Do unit have an OP unit id.
 
 	// Helpers for restore backup
 	Json::Value CheckRestore();

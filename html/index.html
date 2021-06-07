@@ -402,6 +402,7 @@
 						name="opiname"
 						title="OPI name"
 						class="lowercase"
+						data-validation="required"
 					/>
 					<span id="opi_namestate" class="help-block form-nameerror"></span>
 					</p>
@@ -1058,24 +1059,33 @@ function getStatus() {
 var opiname_check = false;
 function checkname() {
 	// Do not check with server for custom domains.
-	if(opiname_check) opiname_check.abort(); // abort any ongoing checks
+	if(opiname_check)
+	{
+		// console.log("Abort opiname check");
+		opiname_check.abort(); // abort any ongoing checks
+	}
 
+	hostname = $("#opiname").val();
 
-	if ($("#opiname").val() == "") {
+	if ( hostname == "" ) {
 			$("#opi_namestate").parent().removeClass("has-success");
 			$("#opi_namestate").parent().removeClass("has-error");
 			$("#opi_namestate").text("");
 			return;
 	}
 
-
-	var allowedChars = new RegExp("^([a-z0-9](?:[a-z0-9-]*[a-z0-9]))$");
-	if ( ! allowedChars.test($("#opiname").val()) ){
+	console.log("Check " + hostname);
+	var allowedChars = new RegExp("^([a-z0-9](?:[a-z0-9-]*[a-z0-9])*)$");
+	if ( ! allowedChars.test( hostname ) ){
 		$("#opi_namestate").parent().addClass("has-error");
 		$("#opi_namestate").text("Use only 'a-z', 0-9 and '-'.");
 		console.log("Illegal character found.");
 		return;
 	}
+
+	// Passed check, input should be valid
+	$("#opi_namestate").parent().removeClass("has-error");
+	$("#opi_namestate").text("");
 
 	// set the active domain value to domain containder id
 	if (! $("#select_domain").is(":enabled")) {
@@ -1085,18 +1095,17 @@ function checkname() {
 	} else {
 		domain = $("#select_domain").val();
 		$("#domaincontainer").val( domain );
-		console.log("Setting domain to: " + $("#domaincontainer").val());
+		console.log("Setting domain to: [" + $("#domaincontainer").val()+"]");
 	}
-	/*
-	} else if ($("#customdomain").is(":enabled") && ($("#customdomain").val() != "") ) {
-		domain = $("#customdomain").val();
-	} else {
-		domain = "";
+
+	if( domain === null || domain === "" )
+	{
+		return;
 	}
-	*/
+
 	opiname_check = $.ajax({
 		url : "/checkname",
-		data : JSON.stringify({ opiname : $("#opiname").val(), domain : domain}),
+		data : JSON.stringify({ opiname : hostname, domain : domain}),
 		contentType : "application/json",
 		type : "POST",
 	}).done(function(data) {
@@ -1122,9 +1131,12 @@ $("#opiname").keyup( function() {
 $("#customdomain").keyup( function() {
 	checkname();
 });
+
 $("#select_domain").change( function() {
 	checkname();
 });
+
+$("#btnOpiname").click( checkname );
 
 $("#checkbox-customdomain").change( function() {
 	if ( $(this).prop("checked") ) {

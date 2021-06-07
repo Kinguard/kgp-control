@@ -3,6 +3,7 @@
 #include "mongoose.h"
 #include <libopi/DnsServer.h>
 #include <libopi/SysConfig.h>
+#include <libopi/SysInfo.h>
 
 #include <kinguard/IdentityManager.h>
 
@@ -171,8 +172,7 @@ static bool validate_initdata(const Json::Value& v)
 		return false;
 	}
 
-	KGP::IdentityManager& imgr = KGP::IdentityManager::Instance();
-	if( imgr.HasDnsProvider() ) {
+	if( OPI::SysInfo::isOP() ) {
 		if (! v.isMember("unit_id") || !v["unit_id"].isString() )
 		{
 			return false;
@@ -489,7 +489,7 @@ int WebServer::handle_checkname(mg_connection *conn, http_message *http)
 
 		KGP::IdentityManager& imgr = KGP::IdentityManager::Instance();
 
-		if( ! imgr.HasDnsProvider() )
+		if( ! OPI::SysInfo::isOP() )
 		{
 			logg << Logger::Info << "Request for dns check name when not supported"<<lend;
 			send_simple_reply( conn, Status::NotImplemented, "Operation not supported");
@@ -513,6 +513,29 @@ int WebServer::handle_checkname(mg_connection *conn, http_message *http)
 	return true;
 }
 
+
+static bool validate_selectname(const Json::Value& v)
+{
+
+	if( ! v.isMember("opiname") || !v["opiname"].isString() )
+	{
+		return false;
+	}
+
+	if( String::Trimmed( v["opiname"].asString(), "\t " ) == "" )
+	{
+		return false;
+	}
+
+	if( ! v.isMember("domain") || !v["domain"].isString() )
+	{
+		return false;
+	}
+
+	return true;
+}
+
+
 int WebServer::handle_selectname(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Got request for update dnsname"<<lend;
@@ -524,28 +547,30 @@ int WebServer::handle_selectname(mg_connection *conn, http_message *http)
 		// True in the sense that we handled the req.
 		return true;
 	}
-	if( req.isMember("opiname") && req["opiname"].isString() && String::Trimmed( req["opiname"].asString(), "\t " ) != ""  &&
-		req.isMember("domain") && req["domain"].isString() && String::Trimmed( req["domain"].asString(), "\t " ) != ""
-	)
-	{
-		Json::Value ret;
-		string fqdn;
 
-		fqdn = String::Trimmed( req["opiname"].asString(), "\t " )+"."+String::Trimmed( req["domain"].asString(), "\t " );
-
-		if( WebServer::callback != nullptr ){
-			Json::Value cmd;
-			cmd["cmd"] = "opiname";
-			cmd["opiname"] = fqdn;
-			ret = WebServer::callback( cmd );
-		}
-		send_json_reply(conn, ret);
-	}
-	else
+	if( ! validate_selectname(req) )
 	{
 		logg << Logger::Debug << "Request for select opiname had invalid arguments"<<lend;
 		send_simple_reply(conn, Status::BadRequest, "Missing argument!");
+		return true;
 	}
+
+	string hostname = String::Trimmed( req["opiname"].asString(), "\t " );
+	string domainname = String::Trimmed( req["domain"].asString(), "\t " );
+
+	logg << Logger::Debug << "Hostname " << hostname << " domain " << domainname << lend;
+
+	Json::Value ret;
+	string fqdn;
+
+	if( WebServer::callback != nullptr ){
+		Json::Value cmd;
+		cmd["cmd"] = "opiname";
+		cmd["hostname"] = hostname;
+		cmd["domain"] = domainname;
+		ret = WebServer::callback( cmd );
+	}
+	send_json_reply(conn, ret);
 
 	return true;
 }

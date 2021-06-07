@@ -45,8 +45,6 @@
 #define SCFG	(OPI::SysConfig())
 #define SAREA (SCFG.GetKeyAsString("filesystem","storagemount"))
 
-#define IS_OP()	(IdentityManager::Instance().HasDnsProvider())
-
 using namespace Utils;
 using namespace Utils::HTTP;
 using namespace std::placeholders;
@@ -187,7 +185,7 @@ void ControlApp::WorkOutInitialState()
 	this->skiprestore = false;
 
 	bool hasUnitId = false;
-	bool isOPDevice = IS_OP();
+	bool isOPDevice = SysInfo::isOP();
 
 	bool isConfigured = SystemManager::Instance().IsConfigured();
 	bool hasStorage = this->storagemanager.StorageAreaExists();
@@ -462,7 +460,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			}
 			else if( cmd == "opiname" )
 			{
-				this->statemachine->OpiName( v["opiname"].asString() );
+				this->statemachine->OpiName( v["hostname"].asString(), v["domain"].asString() );
 			}
 			else if( cmd == "unlock" )
 			{
@@ -487,7 +485,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 
 				// Short circuit for now
 				// Todo: revisit and refactor when we have better method
-				if ( IdentityManager::Instance().HasDnsProvider() )
+				if ( OPI::SysInfo::isOP() )
 				{
 					ret["provider"] = "openproducts";
 				}
@@ -830,7 +828,7 @@ bool ControlApp::DoInit( bool savepassword )
 
 	// We only try to login if we run an OP enabled device
 	bool loggedin = false;
-	if( IS_OP() )
+	if( this->hasUnitID() )
 	{
 		for( int i=0; i<3; i++ )
 		{
@@ -880,7 +878,7 @@ bool ControlApp::DoInit( bool savepassword )
 	BackupManager::Configure( backupcfg );
 
 	//Only on OP-enabled devices
-	if( IS_OP() )
+	if( this->hasUnitID() )
 	{
 		// TODO: THis have to go into IdManager somehow.
 		// Function exists in Manager but is private.
@@ -930,14 +928,18 @@ bool ControlApp::SetDNSName()
 {
 	return this->SetDNSName(this->opi_name,this->domain);
 }
-bool ControlApp::SetDNSName(const string &opiname,const string &domain)
+bool ControlApp::SetDNSName(const string &hostname,const string &domain)
 {
-	logg << Logger::Debug << "Set dns, hostname: " << opiname << " domain: " << domain << lend;
+
+	// Allow empty domain by setting it to default localdomain
+	string fixdomain = (domain.length()==0)?"localdomain":domain;
+
+	logg << Logger::Debug << "Set dns, hostname: " << hostname << " domain: " << fixdomain << lend;
 
 	IdentityManager& idmgr = IdentityManager::Instance();
 
 
-	if( ! idmgr.SetFqdn(opiname, domain) )
+	if( ! idmgr.SetFqdn(hostname, fixdomain) )
 	{
 		this->global_error = idmgr.StrError();
 		logg << Logger::Error << this->global_error<< lend;
@@ -947,7 +949,7 @@ bool ControlApp::SetDNSName(const string &opiname,const string &domain)
 	/* If the domain is in the list of available domains, check with provider.
 	*  if the domain is "custom", there is no DNS provider to check with...
 	*/
-	if (idmgr.DnsDomainAvailable(domain) )
+	if (idmgr.DnsDomainAvailable(fixdomain) )
 	{
 		logg << Logger::Debug << "Domain is managed" << lend;
 		if( ! idmgr.HasDnsProvider() )
@@ -957,7 +959,7 @@ bool ControlApp::SetDNSName(const string &opiname,const string &domain)
 			return false;
 		}
 
-		if( ! idmgr.AddDnsName(opiname, domain ) )
+		if( ! idmgr.AddDnsName(hostname, fixdomain ) )
 		{
 			this->global_error = idmgr.StrError();
 			logg << Logger::Error << this->global_error << lend;
@@ -991,7 +993,7 @@ bool ControlApp::SetDNSName(const string &opiname,const string &domain)
 		try
 		{
 			// Add first user email on opidomain
-			string fqdn = opiname +"."+domain;
+			string fqdn = hostname +"."+fixdomain;
 
 			MailManager& mmgr = MailManager::Instance();
 			mmgr.SetAddress(fqdn,this->first_user,this->first_user);
@@ -1347,6 +1349,11 @@ void ControlApp::WriteConfig()
 	{
 		sysconfig.PutKey("hostinfo","unitid",this->unit_id);
 	}
+}
+
+bool ControlApp::hasUnitID()
+{
+	return this->unit_id != "";
 }
 
 

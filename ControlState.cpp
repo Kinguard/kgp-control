@@ -120,7 +120,7 @@ void ControlState::AddUser(const string &username, const string &displayname, co
 	this->TriggerEvent( State::AddUser, data );
 }
 
-void ControlState::OpiName(const string &opiname)
+void ControlState::OpiName(const string &hostname, const string& domain)
 {
 	ScopedLog l("OpiName");
 
@@ -131,7 +131,8 @@ void ControlState::OpiName(const string &opiname)
 	}
 
 	ControlData *data = new ControlData;
-	data->data["opiname"] = opiname;
+	data->data["hostname"] = hostname;
+	data->data["domain"] = domain;
 
 	this->TriggerEvent( State::OpiName, data );
 }
@@ -425,11 +426,12 @@ void ControlState::StOpiName(EventData *data)
 	else
 	{
 		auto *arg = dynamic_cast<ControlData*>(data);
-		logg << Logger::Info << "StOpiName 2" << lend;
 
-		list<string> fqdn = String::Split(arg->data["opiname"].asString(), ".",2);
-		logg << Logger::Info << "Got fqdn: " << fqdn.front() << "." << fqdn.back() << lend;
-		if( this->app->SetDNSName(fqdn.front(),fqdn.back() ) )
+		string host = arg->data["hostname"].asString();
+		string domain = arg->data["domain"].asString();
+
+		logg << Logger::Info << "Got name: [" << host << "] [" << domain << "]" << lend;
+		if( this->app->SetDNSName(host , domain ) )
 		{
 			list<UserPtr> users = UserManager::Instance()->GetUsers();
 			if( users.size() > 0 )
@@ -550,14 +552,7 @@ void ControlState::StDevice(EventData *data)
 				JsonHelper::FromJsonArray(arg->data["devices"])
 				) )
 	{
-		if(OPI::SysConfig().HasKey("hostinfo", "unitid") )
-		{
-			this->RegisterEvent( State::AskReInitCheckRestore, nullptr);
-		}
-		else
-		{
-			this->RegisterEvent( State::AskInitCheckRestore, nullptr);
-		}
+		this->RegisterEvent( State::AskInitCheckRestore, nullptr);
 	}
 	else
 	{
