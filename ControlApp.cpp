@@ -1414,7 +1414,7 @@ bool ControlApp::DoRestore(const string &path)
 	// Setup SD-card
 	if( ! this->InitializeStorage() )
 	{
-		this->global_error ="Restore backup - failed to initialize SD card";
+		this->global_error ="Restore backup - failed to initialize storage device";
 		return false;
 	}
 
