@@ -36,7 +36,7 @@ private:
 	string unit_id;
 	string masterpassword;
 	string token;
-	string opi_name;
+	string hostname;
 	string domain;
 	string first_user;
 

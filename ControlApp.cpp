@@ -926,7 +926,7 @@ bool ControlApp::AddUser(const string& user, const string& display, const string
 }
 bool ControlApp::SetDNSName()
 {
-	return this->SetDNSName(this->opi_name,this->domain);
+	return this->SetDNSName(this->hostname,this->domain);
 }
 bool ControlApp::SetDNSName(const string &hostname,const string &domain)
 {
@@ -1245,10 +1245,10 @@ bool ControlApp::GuessOPIName()
 
 		if( name != "" && domain != "" )
 		{
-			this->opi_name = name;
+			this->hostname = name;
 			this->domain = domain;
 
-			logg << Logger::Debug << "OPI-name, " << this->opi_name << "domain: " << this->domain << ", sucessfully read from sysconfig"<<lend;
+			logg << Logger::Debug << "OPI-name, " << this->hostname << " domain: " << this->domain << ", sucessfully read from sysconfig"<<lend;
 			return true;
 		}
 		logg << Logger::Notice << "OPI-name not found in sysconfig ("<<name<<")"<<", ("<<domain<<")"<<lend;
@@ -1283,7 +1283,7 @@ bool ControlApp::GuessOPIName()
 			return false;
 		}
 		list<string> fqdn = String::Split(names.front(),".",2);
-		this->opi_name = fqdn.front();
+		this->hostname = fqdn.front();
 		this->domain = fqdn.back();
 
 		return true;
@@ -1423,6 +1423,12 @@ bool ControlApp::DoRestore(const string &path)
 	{
 		this->global_error = BackupManager::Instance().StrError();
 		return false;
+	}
+
+	// Reload state that could have changed
+	if( SCFG.HasKey("hostinfo", "unitid") )
+	{
+		this->unit_id = SCFG.GetKeyAsString("hostinfo", "unitid");
 	}
 
 	return true;

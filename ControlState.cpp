@@ -571,7 +571,9 @@ void ControlState::DoRestore(const string &path)
 	if( this->app->DoRestore( path ) )
 	{
 
-		this->app->evhandler.AddEvent( 50, bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/restore") );
+		// Reinit
+
+		this->app->evhandler.AddEvent( 50, [](){ Process::Exec( "/bin/run-parts --lsbsysinit  -- /etc/opi-control/restore");} );
 
 		if( this->app->DoInit( false ) )
 		{
@@ -591,7 +593,7 @@ void ControlState::DoRestore(const string &path)
 					else
 					{
 						logg << Logger::Error << "Failed to set DNS-name ("
-							<< this->app->opi_name << "): "
+							<< this->app->hostname << "): "
 							<< this->app->global_error
 							<< lend;
 						this->TriggerEvent( State::AskOpiName, nullptr);
