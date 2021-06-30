@@ -571,8 +571,6 @@ void ControlState::DoRestore(const string &path)
 	if( this->app->DoRestore( path ) )
 	{
 
-		// Reinit
-
 		this->app->evhandler.AddEvent( 50, [](){ Process::Exec( "/bin/run-parts --lsbsysinit  -- /etc/opi-control/restore");} );
 
 		if( this->app->DoInit( false ) )

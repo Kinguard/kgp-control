@@ -874,9 +874,11 @@ function getType() {
 		systype = data.type;
 		if (data.type=="Armada") {
 			$("span.typename").text("KEEP");
-		} else {
+		} else if (data.type=="Opi"){
 			$("span.typename").text("OPI");
 			redirect_timeout = 20;
+		}else{
+			$("span.typename").text("device");
 		}
 		setHelp(systype);
 	}, "json" )

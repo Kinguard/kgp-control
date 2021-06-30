@@ -1429,7 +1429,11 @@ bool ControlApp::DoRestore(const string &path)
 	if( SCFG.HasKey("hostinfo", "unitid") )
 	{
 		this->unit_id = SCFG.GetKeyAsString("hostinfo", "unitid");
+		logg << Logger::Debug << "Setting unit-id: [" << this->unit_id << "]" << lend;
 	}
-
+	else
+	{
+		logg << Logger::Debug << "No unitid available after restore." << lend;
+	}
 	return true;
 }
