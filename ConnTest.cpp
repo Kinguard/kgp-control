@@ -10,12 +10,12 @@ ConnTest::ConnTest(const string &host): HttpClient(host)
 {
 }
 
-Json::Value ConnTest::DoTest()
+json ConnTest::DoTest()
 {
 	using namespace Utils::Net::Service;
 
 	vector<long> ports( { SMTP, HTTP, IMAP2, HTTPS, IMAPS, ALT_SMTP });
-	Json::Value ret;
+	json ret;
 
 	for( long port: ports )
 	{
@@ -42,17 +42,13 @@ bool ConnTest::TestPort(long port)
 		this->setTimeout(10);
 		string body = this->DoGet("/", arg);
 
-		Json::Value res;
-		if( this->reader.parse(body, res) )
+		json res = json::parse(body);
+		if( res.contains("connection") && res["connection"].is_string() )
 		{
-			if( res.isMember("connection") && res["connection"].isString() )
-			{
-				ret = (res["connection"].asString() == "success");
-			}
+			ret = (res["connection"].get<string>() == "success");
 		}
-
 	}
-	catch( runtime_error& err)
+	catch( exception& err)
 	{
 		logg << Logger::Debug << "Failed to contact server on port "<<port<<" ("<<err.what()<<")"<<lend;
 		ret = false;

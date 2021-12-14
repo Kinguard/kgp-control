@@ -21,11 +21,12 @@ using namespace Utils::HTTP;
 using namespace std;
 
 std::map<std::pair<std::string,std::string>, std::function<int(mg_connection *, struct http_message *)> > WebServer::routes;
-std::function<Json::Value(Json::Value)> WebServer::callback;
+std::function<json(json)> WebServer::callback;
 struct mg_serve_http_opts WebServer::s_http_server_opts;
 string WebServer::documentroot;
 
-WebServer::WebServer(std::function<Json::Value(Json::Value)> cb, const string &docroot, uint16_t port):
+
+WebServer::WebServer(std::function<json(json)> cb, const string &docroot, uint16_t port):
 	Utils::Thread(false),
 	doRun(true),
 	port(port)
@@ -130,9 +131,9 @@ void WebServer::PostRun()
 
 WebServer::~WebServer() = default;
 
-static void send_json_reply(mg_connection *conn, const Json::Value& val )
+static void send_json_reply(mg_connection *conn, const json& val )
 {
-	string reply = val.toStyledString();
+	string reply = val.dump();
 	stringstream headerstream;
 	headerstream << "Cache-Control: no-cache\r\n"
 			<< "Content-Length: " << reply.size()<<"\r\n"
@@ -160,25 +161,25 @@ static void send_simple_reply(mg_connection *conn, int status, const string& msg
 	conn->flags |= MG_F_SEND_AND_CLOSE;
 }
 
-static bool validate_initdata(const Json::Value& v)
+static bool validate_initdata(const json& v)
 {
-	if( ! v.isMember("masterpassword") || !v["masterpassword"].isString() )
+	if( ! v.contains("masterpassword") || !v["masterpassword"].is_string() )
 	{
 		return false;
 	}
 
-	if( String::Trimmed( v["masterpassword"].asString(), "\t ") == "" )
+	if( String::Trimmed( v["masterpassword"].get<string>(), "\t ") == "" )
 	{
 		return false;
 	}
 
 	if( OPI::SysInfo::isOP() ) {
-		if (! v.isMember("unit_id") || !v["unit_id"].isString() )
+		if (! v.contains("unit_id") || !v["unit_id"].is_string() )
 		{
 			return false;
 		}
 
-		if( String::Trimmed( v["unit_id"].asString(), "\t ") == "" )
+		if( String::Trimmed( v["unit_id"].get<string>(), "\t ") == "" )
 		{
 			return false;
 		}
@@ -188,7 +189,7 @@ static bool validate_initdata(const Json::Value& v)
 		logg << Logger::Debug << "Skip requirement for unitid" << lend;
 	}
 
-	if( ! v.isMember("save") || !v["save"].isBool() )
+	if( ! v.contains("save") || !v["save"].is_boolean() )
 	{
 		return false;
 	}
@@ -200,7 +201,7 @@ int WebServer::handle_init(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Got request for init"<<lend;
 
-	Json::Value req;
+	json req;
 
 	if( ! WebServer::parse_json(conn, http, req) )
 	{
@@ -210,12 +211,12 @@ int WebServer::handle_init(mg_connection *conn, http_message *http)
 
 	if(  validate_initdata( req ) )
 	{
-		Json::Value ret;
+		json ret;
 		if( WebServer::callback != nullptr ){
-			Json::Value cmd;
+			json cmd;
 			cmd["cmd"] = "init";
-			cmd["password"] = String::Trimmed( req["masterpassword"].asString(), "\t " );
-			cmd["unit_id"] = String::Trimmed( req["unit_id"].asString(), "\t ");
+			cmd["password"] = String::Trimmed( req["masterpassword"].get<string>(), "\t " );
+			cmd["unit_id"] = String::Trimmed( req["unit_id"].get<string>(), "\t ");
 			cmd["save"] = req["save"];
 			ret = WebServer::callback( cmd );
 		}
@@ -230,19 +231,19 @@ int WebServer::handle_init(mg_connection *conn, http_message *http)
 }
 
 
-static bool validate_reinitdata(const Json::Value& v)
+static bool validate_reinitdata(const json& v)
 {
-	if( ! v.isMember("masterpassword") || !v["masterpassword"].isString() )
+	if( ! v.contains("masterpassword") || !v["masterpassword"].is_string() )
 	{
 		return false;
 	}
 
-	if( String::Trimmed( v["masterpassword"].asString(), "\t ") == "" )
+	if( String::Trimmed( v["masterpassword"].get<string>(), "\t ") == "" )
 	{
 		return false;
 	}
 
-	if( ! v.isMember("save") || !v["save"].isBool() )
+	if( ! v.contains("save") || !v["save"].is_boolean() )
 	{
 		return false;
 	}
@@ -256,7 +257,7 @@ int WebServer::handle_reinit(mg_connection *conn, http_message *http)
 	// Almost like init but from an initialized unit
 	logg << Logger::Debug << "Got request for reinit"<<lend;
 
-	Json::Value req;
+	json req;
 
 	if( ! WebServer::parse_json(conn, http, req) )
 	{
@@ -266,11 +267,11 @@ int WebServer::handle_reinit(mg_connection *conn, http_message *http)
 
 	if(   validate_reinitdata( req )  )
 	{
-		Json::Value ret;
+		json ret;
 		if( WebServer::callback != nullptr ){
-			Json::Value cmd;
+			json cmd;
 			cmd["cmd"] = "reinit";
-			cmd["password"] = String::Trimmed( req["masterpassword"].asString(), "\t ");
+			cmd["password"] = String::Trimmed( req["masterpassword"].get<string>(), "\t ");
 			cmd["save"] = req["save"];
 			ret = WebServer::callback( cmd );
 		}
@@ -285,14 +286,14 @@ int WebServer::handle_reinit(mg_connection *conn, http_message *http)
 }
 
 
-static bool validate_restoredata(const Json::Value& v)
+static bool validate_restoredata(const json& v)
 {
-	if( ! v.isMember("path") || !v["path"].isString() )
+	if( ! v.contains("path") || !v["path"].is_string() )
 	{
 		return false;
 	}
 
-	if( ! v.isMember("restore") || !v["restore"].isString() )
+	if( ! v.contains("restore") || !v["restore"].is_string() )
 	{
 		return false;
 	}
@@ -305,7 +306,7 @@ int WebServer::handle_restore(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Got request for restore"<<lend;
 
-	Json::Value req;
+	json req;
 
 	if( ! WebServer::parse_json(conn, http, req) )
 	{
@@ -315,12 +316,12 @@ int WebServer::handle_restore(mg_connection *conn, http_message *http)
 
 	if(   validate_restoredata( req )  )
 	{
-		Json::Value ret;
+		json ret;
 		if( WebServer::callback != nullptr ){
-			Json::Value cmd;
+			json cmd;
 			cmd["cmd"] = "restore";
-			cmd["path"] = req["path"].asString();
-			cmd["restore"] = req["restore"].asString() == "1";
+			cmd["path"] = req["path"].get<string>();
+			cmd["restore"] = req["restore"].get<string>() == "1";
 			ret = WebServer::callback( cmd );
 		}
 		send_json_reply(conn, ret);
@@ -333,19 +334,19 @@ int WebServer::handle_restore(mg_connection *conn, http_message *http)
 	return true;
 }
 
-static bool validate_unlockdata(const Json::Value& v)
+static bool validate_unlockdata(const json& v)
 {
-	if( ! v.isMember("masterpassword") || !v["masterpassword"].isString() )
+	if( ! v.contains("masterpassword") || !v["masterpassword"].is_string() )
 	{
 		return false;
 	}
 
-	if( String::Trimmed( v["masterpassword"].asString(), "\t ") == "" )
+	if( String::Trimmed( v["masterpassword"].get<string>(), "\t ") == "" )
 	{
 		return false;
 	}
 
-	if( ! v.isMember("save") || !v["save"].isBool() )
+	if( ! v.contains("save") || !v["save"].is_boolean() )
 	{
 		return false;
 	}
@@ -358,7 +359,7 @@ int WebServer::handle_unlock(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Got request for unlock"<<lend;
 
-	Json::Value req;
+	json req;
 
 	if( ! WebServer::parse_json(conn, http, req) )
 	{
@@ -368,11 +369,11 @@ int WebServer::handle_unlock(mg_connection *conn, http_message *http)
 
 	if( validate_unlockdata( req ) )
 	{
-		Json::Value ret;
+		json ret;
 		if( WebServer::callback != nullptr ){
-			Json::Value cmd;
+			json cmd;
 			cmd["cmd"] = "unlock";
-			cmd["password"] = String::Trimmed( req["masterpassword"].asString(), "\t " );
+			cmd["password"] = String::Trimmed( req["masterpassword"].get<string>(), "\t " );
 			cmd["save"] = req["save"];
 			ret = WebServer::callback( cmd );
 		}
@@ -390,10 +391,10 @@ int WebServer::handle_status(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Handle status"<<lend;
 	(void) http;
-	Json::Value ret;
+	json ret;
 	if( WebServer::callback != nullptr )
 	{
-		Json::Value cmd;
+		json cmd;
 		cmd["cmd"]="status";
 		ret = WebServer::callback( cmd );
 	}
@@ -403,30 +404,30 @@ int WebServer::handle_status(mg_connection *conn, http_message *http)
 	return true;
 }
 
-static bool validate_user(const Json::Value& v)
+static bool validate_user(const json& v)
 {
 
-	if( ! v.isMember("username") || !v["username"].isString() )
+	if( ! v.contains("username") || !v["username"].is_string() )
 	{
 		return false;
 	}
 
-	if( String::Trimmed( v["username"].asString(), "\t " ) == "" )
+	if( String::Trimmed( v["username"].get<string>(), "\t " ) == "" )
 	{
 		return false;
 	}
 
-	if( ! v.isMember("displayname") || !v["displayname"].isString() )
+	if( ! v.contains("displayname") || !v["displayname"].is_string() )
 	{
 		return false;
 	}
 
-	if( ! v.isMember("password") || !v["password"].isString() )
+	if( ! v.contains("password") || !v["password"].is_string() )
 	{
 		return false;
 	}
 
-	if( String::Trimmed( v["password"].asString(), "\t " ) == "" )
+	if( String::Trimmed( v["password"].get<string>(), "\t " ) == "" )
 	{
 		return false;
 	}
@@ -438,7 +439,7 @@ int WebServer::handle_user(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Got request for adduser"<<lend;
 
-	Json::Value req;
+	json req;
 
 	if( ! WebServer::parse_json(conn, http, req) )
 	{
@@ -448,13 +449,13 @@ int WebServer::handle_user(mg_connection *conn, http_message *http)
 
 	if( validate_user(req) )
 	{
-		Json::Value ret;
+		json ret;
 		if( WebServer::callback != nullptr ){
-			Json::Value cmd;
+			json cmd;
 			cmd["cmd"] = "adduser";
-			cmd["username"] = String::Trimmed( req["username"].asString(), "\t " );
-			cmd["displayname"] = String::Trimmed( req["displayname"].asString(), "\t " );
-			cmd["password"] = String::Trimmed( req["password"].asString(), "\t " );
+			cmd["username"] = String::Trimmed( req["username"].get<string>(), "\t " );
+			cmd["displayname"] = String::Trimmed( req["displayname"].get<string>(), "\t " );
+			cmd["password"] = String::Trimmed( req["password"].get<string>(), "\t " );
 			ret = WebServer::callback( cmd );
 		}
 		send_json_reply( conn, ret );
@@ -472,7 +473,7 @@ int WebServer::handle_checkname(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Got request for checkname"<<lend;
 
-	Json::Value req;
+	json req;
 	string fqdn;
 
 	if( ! WebServer::parse_json(conn, http, req) )
@@ -481,11 +482,11 @@ int WebServer::handle_checkname(mg_connection *conn, http_message *http)
 		return true;
 	}
 
-	if( req.isMember("opiname") && req["opiname"].isString() && String::Trimmed( req["opiname"].asString(), "\t " ) != ""  &&
-		req.isMember("domain") && req["domain"].isString() && String::Trimmed( req["domain"].asString(), "\t " ) != ""
+	if( req.contains("opiname") && req["opiname"].is_string() && String::Trimmed( req["opiname"].get<string>(), "\t " ) != ""  &&
+		req.contains("domain") && req["domain"].is_string() && String::Trimmed( req["domain"].get<string>(), "\t " ) != ""
 	)
 	{
-		fqdn = String::Trimmed( req["opiname"].asString(), "\t " )+"."+String::Trimmed( req["domain"].asString(), "\t " );
+		fqdn = String::Trimmed( req["opiname"].get<string>(), "\t " )+"."+String::Trimmed( req["domain"].get<string>(), "\t " );
 
 		KGP::IdentityManager& imgr = KGP::IdentityManager::Instance();
 
@@ -497,10 +498,10 @@ int WebServer::handle_checkname(mg_connection *conn, http_message *http)
 		}
 
 		bool available = imgr.DnsNameAvailable(
-				String::Trimmed( req["opiname"].asString(), "\t " ),
-				String::Trimmed( req["domain"].asString(), "\t " ));
+				String::Trimmed( req["opiname"].get<string>(), "\t " ),
+				String::Trimmed( req["domain"].get<string>(), "\t " ));
 
-		Json::Value ret;
+		json ret;
 		ret["available"]=available;
 		send_json_reply(conn, ret);
 	}
@@ -514,20 +515,20 @@ int WebServer::handle_checkname(mg_connection *conn, http_message *http)
 }
 
 
-static bool validate_selectname(const Json::Value& v)
+static bool validate_selectname(const json& v)
 {
 
-	if( ! v.isMember("opiname") || !v["opiname"].isString() )
+	if( ! v.contains("opiname") || !v["opiname"].is_string() )
 	{
 		return false;
 	}
 
-	if( String::Trimmed( v["opiname"].asString(), "\t " ) == "" )
+	if( String::Trimmed( v["opiname"].get<string>(), "\t " ) == "" )
 	{
 		return false;
 	}
 
-	if( ! v.isMember("domain") || !v["domain"].isString() )
+	if( ! v.contains("domain") || !v["domain"].is_string() )
 	{
 		return false;
 	}
@@ -540,7 +541,7 @@ int WebServer::handle_selectname(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Got request for update dnsname"<<lend;
 
-	Json::Value req;
+	json req;
 
 	if( ! WebServer::parse_json(conn, http, req) )
 	{
@@ -555,16 +556,16 @@ int WebServer::handle_selectname(mg_connection *conn, http_message *http)
 		return true;
 	}
 
-	string hostname = String::Trimmed( req["opiname"].asString(), "\t " );
-	string domainname = String::Trimmed( req["domain"].asString(), "\t " );
+	string hostname = String::Trimmed( req["opiname"].get<string>(), "\t " );
+	string domainname = String::Trimmed( req["domain"].get<string>(), "\t " );
 
 	logg << Logger::Debug << "Hostname " << hostname << " domain " << domainname << lend;
 
-	Json::Value ret;
+	json ret;
 	string fqdn;
 
 	if( WebServer::callback != nullptr ){
-		Json::Value cmd;
+		json cmd;
 		cmd["cmd"] = "opiname";
 		cmd["hostname"] = hostname;
 		cmd["domain"] = domainname;
@@ -581,10 +582,10 @@ int WebServer::handle_portstatus(mg_connection *conn, http_message *http)
 
 	logg << Logger::Debug << "Got request for portstatus"<<lend;
 
-	Json::Value ret;
+	json ret;
 	if( WebServer::callback != nullptr )
 	{
-		Json::Value cmd;
+		json cmd;
 		cmd["cmd"]="portstatus";
 		ret = WebServer::callback( cmd );
 	}
@@ -597,7 +598,7 @@ int WebServer::handle_terminate(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Got request for terminate"<<lend;
 
-	Json::Value req;
+	json req;
 
 	if( ! WebServer::parse_json(conn, http, req) )
 	{
@@ -605,11 +606,11 @@ int WebServer::handle_terminate(mg_connection *conn, http_message *http)
 		return true;
 	}
 
-	if( req.isMember("shutdown") && req["shutdown"].isBool() )
+	if( req.contains("shutdown") && req["shutdown"].is_boolean() )
 	{
-		Json::Value ret;
+		json ret;
 		if( WebServer::callback != nullptr ){
-			Json::Value cmd;
+			json cmd;
 			cmd["cmd"] = "terminate";
 			cmd["shutdown"] = req["shutdown"];
 			ret = WebServer::callback( cmd );
@@ -628,7 +629,7 @@ int WebServer::handle_shutdown(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Got request for shutdown"<<lend;
 
-	Json::Value req;
+	json req;
 
 	if( ! WebServer::parse_json(conn, http, req) )
 	{
@@ -636,11 +637,11 @@ int WebServer::handle_shutdown(mg_connection *conn, http_message *http)
 		return true;
 	}
 
-	if( req.isMember("action") && req["action"].isString() )
+	if( req.contains("action") && req["action"].is_string() )
 	{
-		Json::Value ret;
+		json ret;
 		if( WebServer::callback != nullptr ){
-			Json::Value cmd;
+			json cmd;
 			cmd["cmd"] = "shutdown";
 			cmd["action"] = req["action"];
 			ret = WebServer::callback( cmd );
@@ -660,10 +661,10 @@ int WebServer::handle_type(mg_connection *conn, http_message *http)
 	(void) http;
 	logg << Logger::Debug << "Got request for type"<<lend;
 
-	Json::Value ret;
+	json ret;
 	if( WebServer::callback != nullptr )
 	{
-		Json::Value cmd;
+		json cmd;
 
 		cmd["cmd"]= "gettype";
 		ret = WebServer::callback( cmd );
@@ -680,10 +681,10 @@ int WebServer::handle_domains(mg_connection *conn, http_message *http)
 	logg << Logger::Debug << "Got request for domains"<<lend;
 
 
-	Json::Value ret;
+	json ret;
 	if( WebServer::callback != nullptr )
 	{
-		Json::Value cmd;
+		json cmd;
 
 		cmd["cmd"]= "getdomains";
 		ret = WebServer::callback( cmd );
@@ -745,10 +746,10 @@ int WebServer::handle_storagedevices(mg_connection *conn, http_message *http)
 	(void) http;
 	logg << Logger::Debug << "Got request for storage devices"<<lend;
 
-	Json::Value ret;
+	json ret;
 	if( WebServer::callback != nullptr )
 	{
-		Json::Value cmd;
+		json cmd;
 
 		cmd["cmd"]= "getstoragedevices";
 		ret = WebServer::callback( cmd );
@@ -761,24 +762,24 @@ int WebServer::handle_storagedevices(mg_connection *conn, http_message *http)
 }
 
 
-static bool validate_devicedata(const Json::Value& v)
+static bool validate_devicedata(const json& v)
 {
-	if( ! v.isMember("devices") || !v["devices"].isArray() )
+	if( ! v.contains("devices") || !v["devices"].is_array() )
 	{
 		return false;
 	}
 
-	if( ! v.isMember("encryption") || !v["encryption"].isString() )
+	if( ! v.contains("encryption") || !v["encryption"].is_string() )
 	{
 		return false;
 	}
 
-	if( ! v.isMember("logical") || !v["logical"].isString() )
+	if( ! v.contains("logical") || !v["logical"].is_string() )
 	{
 		return false;
 	}
 
-	if( ! v.isMember("physical") || !v["physical"].isString() )
+	if( ! v.contains("physical") || !v["physical"].is_string() )
 	{
 		return false;
 	}
@@ -792,7 +793,7 @@ int WebServer::handle_devices(mg_connection *conn, http_message *http)
 {
 	logg << Logger::Debug << "Got request select storage config"<<lend;
 
-	Json::Value req;
+	json req;
 
 	if( ! WebServer::parse_json(conn, http, req) )
 	{
@@ -800,13 +801,13 @@ int WebServer::handle_devices(mg_connection *conn, http_message *http)
 		return true;
 	}
 
-	cout << req.toStyledString() << endl;
+	cout << req.dump(4)<< endl;
 
 	if( validate_devicedata( req ) )
 	{
-		Json::Value ret;
+		json ret;
 		if( WebServer::callback != nullptr ){
-			Json::Value cmd;
+			json cmd;
 			cmd["cmd"] = "deviceconfig";
 			cmd["devices"] = req["devices"];
 			cmd["encryption"] = req["encryption"];
@@ -855,7 +856,7 @@ void WebServer::ev_handler(struct mg_connection *conn, int ev, void *p)
 		mg_printf(conn, "version  [%s]\n", conn->http_version);
 #endif
 
-		struct http_message *hm = static_cast<struct http_message*>(p);
+		auto *hm = static_cast<struct http_message*>(p);
 		string uri(hm->uri.p, hm->uri.len);
 		string cmd;
 		if ( uri.length() > 1 )
@@ -881,15 +882,19 @@ void WebServer::ev_handler(struct mg_connection *conn, int ev, void *p)
 	}
 }
 
-bool WebServer::parse_json(mg_connection *conn, struct http_message *hm, Json::Value &val)
+bool WebServer::parse_json(mg_connection *conn, struct http_message *hm, json &val)
 {
 	string postdata(hm->body.p, hm->body.len);
 
 	//cout << "Got data: [" << postdata << "]" << endl;
 
-	if( ! Json::Reader().parse(postdata, val) )
+	try
 	{
-		logg << Logger::Info << "Failed to parse input"<<lend;
+		val = json::parse(postdata);
+	}
+	catch(json::parse_error& err)
+	{
+		logg << Logger::Info << "Failed to parse input ("<< err.what()<<")"<<lend;
 		send_simple_reply(conn, Status::BadRequest, "Unable to parse input");
 
 		return false;

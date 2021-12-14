@@ -2,21 +2,22 @@
 #define CONTROLSTATE_H
 
 #include <libutils/StateMachine.h>
-#include <json/json.h>
+#include <nlohmann/json.hpp>
 
 #include <memory>
 
 using namespace Utils;
+using json = nlohmann::json;
 
 class ControlApp;
 
 class ControlData: public EventData
 {
 public:
-	ControlData(Json::Value data): EventData(), data(data) {}
-	ControlData(): ControlData(Json::nullValue) {}
+	ControlData(json data): EventData(), data(data) {}
+	ControlData(): ControlData(json()) {}
 
-	Json::Value data;
+	json data;
 
 	virtual ~ControlData(){}
 };
@@ -71,7 +72,7 @@ public:
 	void ResetReturnData();
 
 	uint8_t State();
-	tuple<bool, Json::Value> RetValue();
+	tuple<bool, json> RetValue();
 
 	virtual ~ControlState();
 protected:
@@ -109,7 +110,7 @@ private:
 	bool status;
 
 	//! \brief Json value to return to caller
-	Json::Value retvalue;
+	json retvalue;
 	ControlApp* app;
 };
 

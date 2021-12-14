@@ -8,14 +8,15 @@
 #include <string>
 #include <libutils/Thread.h>
 #include <libutils/ClassTools.h>
-#include <json/json.h>
+#include <nlohmann/json.hpp>
 #include "mongoose.h"
 
+using json = nlohmann::json;
 
 class WebServer : public Utils::Thread, Utils::NoCopy
 {
 public:
-	WebServer(std::function<Json::Value(Json::Value)> cb, const std::string &docroot, uint16_t port=443);
+	WebServer(std::function<json(json)> cb, const std::string &docroot, uint16_t port=443);
 
 	void Stop();
 
@@ -44,9 +45,9 @@ private:
 	static int handle_devices(struct mg_connection *conn, struct http_message *http);
 
 	static void ev_handler(struct mg_connection *conn, int ev, void *p);
-	static bool parse_json(struct mg_connection *conn, http_message *hm, Json::Value& val);
+	static bool parse_json(struct mg_connection *conn, http_message *hm, json& val);
 	static 	std::map<std::pair<std::string,std::string>, std::function<int(mg_connection *, struct http_message *)> > routes;
-	static std::function<Json::Value(Json::Value)> callback;
+	static std::function<json(json)> callback;
 	bool doRun;
 	struct mg_mgr mgr;
 	struct mg_connection *conn;

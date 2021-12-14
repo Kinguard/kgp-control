@@ -215,7 +215,7 @@ void ControlState::StorageConfig(const string &phys, const string &log, const st
 void ControlState::ResetReturnData()
 {
 	this->status = true;
-	this->retvalue = Json::objectValue;
+	this->retvalue = json::object();
 }
 
 uint8_t ControlState::State()
@@ -223,7 +223,7 @@ uint8_t ControlState::State()
 	return this->state;
 }
 
-tuple<bool, Json::Value> ControlState::RetValue()
+tuple<bool, json> ControlState::RetValue()
 {
 	return make_tuple(this->status, this->retvalue);
 }
@@ -252,9 +252,9 @@ void ControlState::StInitCheckRestore(EventData *data)
 
 	auto *arg = dynamic_cast<ControlData*>(data);
 
-	Json::Value ret = this->app->CheckRestore();
+	json ret = this->app->CheckRestore();
 
-	if( ret != Json::nullValue )
+	if( ! ret.is_null() )
 	{
 		this->retvalue = ret;
 		this->RegisterEvent( State::AskRestore, nullptr );
@@ -281,7 +281,7 @@ void ControlState::StInit(EventData *data)
 		return;
 	}
 
-	if( this->app->DoInit( arg->data["savepassword"].asBool() ) )
+	if( this->app->DoInit( arg->data["savepassword"].get<bool>() ) )
 	{
 		this->app->evhandler.AddEvent( 50, std::bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinstall"));
 		this->RegisterEvent( State::AskOpiName, nullptr);
@@ -306,9 +306,9 @@ void ControlState::StReInitCheckrestore(EventData *data)
 
 	auto *arg = dynamic_cast<ControlData*>(data);
 
-	Json::Value ret = this->app->CheckRestore();
+	json ret = this->app->CheckRestore();
 
-	if( ret != Json::nullValue )
+	if( ! ret.is_null() )
 	{
 		this->retvalue = ret;
 		this->RegisterEvent( State::AskRestore, nullptr );
@@ -335,7 +335,10 @@ void ControlState::StReInit(EventData *data)
 		return;
 	}
 
-	if( this->app->DoInit(arg->data["save"].asBool() ) )
+	// Somehow whe end up here with a null value in save since swapping json-library. Validate better to mitigate :|
+	bool save = arg->data.contains("save") && arg->data["save"].is_boolean() && arg->data["save"].get<bool>();
+
+	if( this->app->DoInit( save ) )
 	{
 		this->app->evhandler.AddEvent( 50, bind( Process::Exec, "/bin/run-parts --lsbsysinit  -- /etc/opi-control/reinit") );
 		this->RegisterEvent( State::AskOpiName, nullptr);
@@ -356,9 +359,9 @@ void ControlState::StRestore(EventData *data)
 
 	auto *arg = dynamic_cast<ControlData*>(data);
 
-	if( arg->data["restore"].asBool() )
+	if( arg->data["restore"].get<bool>() )
 	{
-		f = std::bind(&ControlState::DoRestore, this, arg->data["path"].asString());
+		f = std::bind(&ControlState::DoRestore, this, arg->data["path"].get<string>());
 
 		Thread::Async( &f );
 	}
@@ -397,7 +400,7 @@ void ControlState::StAddUser(EventData *data)
 
 	auto *arg = dynamic_cast<ControlData*>(data);
 
-	if( this->app->AddUser(arg->data["username"].asString(), arg->data["displayname"].asString(), arg->data["password"].asString()) )
+	if( this->app->AddUser(arg->data["username"].get<string>(), arg->data["displayname"].get<string>(), arg->data["password"].get<string>()) )
 	{
 		this->RegisterEvent( State::Completed, nullptr);
 	}
@@ -427,8 +430,8 @@ void ControlState::StOpiName(EventData *data)
 	{
 		auto *arg = dynamic_cast<ControlData*>(data);
 
-		string host = arg->data["hostname"].asString();
-		string domain = arg->data["domain"].asString();
+		string host = arg->data["hostname"].get<string>();
+		string domain = arg->data["domain"].get<string>();
 
 		logg << Logger::Info << "Got name: [" << host << "] [" << domain << "]" << lend;
 		if( this->app->SetDNSName(host , domain ) )
@@ -479,7 +482,7 @@ void ControlState::StDoUnlock(EventData *data)
 
 	auto *arg = dynamic_cast<ControlData*>(data);
 
-	if( this->app->DoUnlock(arg->data["password"].asString(), arg->data["save"].asBool() ) )
+	if( this->app->DoUnlock(arg->data["password"].get<string>(), arg->data["save"].get<bool>() ) )
 	{
 		this->RegisterEvent( State::Completed, nullptr);
 	}
@@ -546,9 +549,9 @@ void ControlState::StDevice(EventData *data)
 	auto *arg = dynamic_cast<ControlData*>(data);
 
 	if( this->app->SetupStorageConfig(
-				arg->data["physical"].asString(),
-				arg->data["logical"].asString(),
-				arg->data["encryption"].asString(),
+				arg->data["physical"].get<string>(),
+				arg->data["logical"].get<string>(),
+				arg->data["encryption"].get<string>(),
 				JsonHelper::FromJsonArray(arg->data["devices"])
 				) )
 	{

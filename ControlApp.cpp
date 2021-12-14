@@ -89,14 +89,14 @@ bool ControlApp::DoLogin()
 	logg << Logger::Debug << "Logging in to OP backend" << lend;
 	AuthServer s( this->unit_id);
 	int resultcode = Status::Ok;
-	Json::Value ret;
+	json ret;
 
 	tie(resultcode, ret) = s.Login();
 
 	if( resultcode != Status::Ok && resultcode != Status::Forbidden )
 	{
 		logg << Logger::Error << "Unexpected reply from server "<< resultcode <<lend;
-		this->global_error ="Unexpected reply from OP server ("+ ret["desc"].asString()+")";
+		this->global_error ="Unexpected reply from OP server ("+ ret["desc"].get<string>()+")";
 		return false;
 	}
 
@@ -104,7 +104,7 @@ bool ControlApp::DoLogin()
 	{
 		logg << Logger::Debug << "Send Secret"<<lend;
 
-		if( ! ret.isMember("reply") || ! ret["reply"].isMember("challange")  )
+		if( ! ret.contains("reply") || ! ret["reply"].contains("challange")  )
 		{
 			logg << Logger::Error << "Missing argument from server "<< resultcode <<lend;
 			this->global_error ="Missing argument in reply from server";
@@ -112,7 +112,7 @@ bool ControlApp::DoLogin()
 		}
 
 		// Got new challenge to encrypt with master
-		string challenge = ret["reply"]["challange"].asString();
+		string challenge = ret["reply"]["challange"].get<string>();
 
 		RSAWrapperPtr c = AuthServer::GetKeysFromSecop();
 
@@ -135,9 +135,9 @@ bool ControlApp::DoLogin()
 			return false;
 		}
 
-		if( ret.isMember("token") && ret["token"].isString() )
+		if( ret.contains("token") && ret["token"].is_string() )
 		{
-			this->token = ret["token"].asString();
+			this->token = ret["token"].get<string>();
 		}
 		else
 		{
@@ -149,9 +149,9 @@ bool ControlApp::DoLogin()
 	}
 	else
 	{
-		if( ret.isMember("token") && ret["token"].isString() )
+		if( ret.contains("token") && ret["token"].is_string() )
 		{
-			this->token = ret["token"].asString();
+			this->token = ret["token"].get<string>();
 		}
 		else
 		{
@@ -418,53 +418,53 @@ void ControlApp::SigHup(int signo)
 
 ControlApp::~ControlApp() = default;
 
-Json::Value ControlApp::WebCallback(Json::Value v)
+json ControlApp::WebCallback(json v)
 {
 
 #if 0
 	logg << Logger::Debug << "Got call from webserver\n"<<v.toStyledString()<<lend;
 #endif
 
-	Json::Value ret;
+	json ret;
 	bool status = true;
 
 	this->statemachine->ResetReturnData();
 
-	if( v.isMember("cmd") )
+	if( v.contains("cmd") )
 	{
-		string cmd = v["cmd"].asString();
+		string cmd = v["cmd"].get<string>();
 
 		try
 		{
 			if( cmd == "init" )
 			{
-				this->masterpassword = v["password"].asString();
-				this->unit_id = v["unit_id"].asString();
+				this->masterpassword = v["password"].get<string>();
+				this->unit_id = v["unit_id"].get<string>();
 				this->WriteConfig();
 
-				this->statemachine->Init( v["save"].asBool() );
+				this->statemachine->Init( v["save"].get<bool>() );
 			}
 			else if( cmd == "reinit" )
 			{
-				this->masterpassword = v["password"].asString();
+				this->masterpassword = v["password"].get<string>();
 
-				this->statemachine->ReInit( v["save"].asBool() );
+				this->statemachine->ReInit( v["save"].get<bool>() );
 			}
 			else if( cmd == "restore" )
 			{
-				this->statemachine->Restore(v["restore"].asBool(), v["path"].asString() );
+				this->statemachine->Restore(v["restore"].get<bool>(), v["path"].get<string>() );
 			}
 			else if( cmd == "adduser" )
 			{
-				this->statemachine->AddUser( v["username"].asString(), v["displayname"].asString(), v["password"].asString());
+				this->statemachine->AddUser( v["username"].get<string>(), v["displayname"].get<string>(), v["password"].get<string>());
 			}
 			else if( cmd == "opiname" )
 			{
-				this->statemachine->OpiName( v["hostname"].asString(), v["domain"].asString() );
+				this->statemachine->OpiName( v["hostname"].get<string>(), v["domain"].get<string>() );
 			}
 			else if( cmd == "unlock" )
 			{
-				this->statemachine->Unlock( v["password"].asString(), v["save"].asBool()  );
+				this->statemachine->Unlock( v["password"].get<string>(), v["save"].get<bool>()  );
 			}
 			else if( cmd == "terminate" )
 			{
@@ -472,7 +472,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			}
 			else if( cmd == "shutdown" )
 			{
-				this->statemachine->ShutDown( v["action"].asString() );
+				this->statemachine->ShutDown( v["action"].get<string>() );
 			}
 			else if( cmd == "portstatus" )
 			{
@@ -480,7 +480,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			}
 			else if( cmd == "gettype" )
 			{
-				Json::Value ret;
+				json ret;
 				ret["type"] = sysinfo.SysTypeText[sysinfo.Type()];
 
 				// Short circuit for now
@@ -497,8 +497,8 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			}
 			else if( cmd == "getdomains" )
 			{
-				Json::Value ret(Json::objectValue);
-				ret["domains"]=Json::arrayValue;
+				json ret = json::object();
+				ret["domains"]=json::array();
 				list<string> domains;
 				IdentityManager& idmgr = IdentityManager::Instance();
 
@@ -507,7 +507,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 					list<string> domains = idmgr.DnsAvailableDomains();
 					for(const auto &domain: domains)
 					{
-						ret["domains"].append(domain);
+						ret["domains"].push_back(domain);
 					}
 					if( domains.size() > 0 )
 					{
@@ -523,7 +523,7 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			}
 			else if( cmd == "getstoragedevices")
 			{
-				Json::Value ret(Json::objectValue);
+				json ret;
 
 				StorageManager& mgr = StorageManager::Instance();
 
@@ -552,62 +552,62 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 				}
 				phys.sort();
 				phys.unique();
-				ret["storagephysical"] = Json::arrayValue;
+				ret["storagephysical"] = json::array();
 				for(const auto& ph: phys)
 				{
-					Json::Value p;
+					json p;
 					p["name"] = ph.Name();
 					p["description"] = ph.Description();
 
-					ret["storagephysical"].append(p);
+					ret["storagephysical"].push_back(p);
 				}
 
 				logical.sort();
 				logical.unique();
-				ret["storagelogical"] = Json::arrayValue;
+				ret["storagelogical"] = json::array();
 				for(const auto& log: logical)
 				{
-					Json::Value p;
+					json p;
 					p["name"] = log.Name();
 					p["description"] = log.Description();
 
-					ret["storagelogical"].append(p);
+					ret["storagelogical"].push_back(p);
 				}
 
 				encrypt.sort();
 				encrypt.unique();
-				ret["storageencryption"]= Json::arrayValue;
+				ret["storageencryption"]= json::array();
 				for(const auto& enc: encrypt)
 				{
-					Json::Value p;
+					json p;
 					p["name"] = enc.Name();
 					p["description"] = enc.Description();
 
-					ret["storageencryption"].append(p);
+					ret["storageencryption"].push_back(p);
 				}
 
 				list<StorageDevice> partitions = mgr.QueryStoragePartitions();
-				ret["storagepartitions"] = Json::arrayValue;
+				ret["storagepartitions"] = json::array();
 				for(const auto& part: partitions)
 				{
-					Json::Value d(Json::objectValue);
+					json d;
 					d["devname"]=part.DeviceName();
 					d["devpath"]=part.DevicePath();
 					d["model"] = part.Model();
-					d["size"] =  Utils::String::ToHuman( (Json::UInt64) part.Size());
-					ret["storagepartitions"].append(d);
+					d["size"] =  Utils::String::ToHuman( part.Size() );
+					ret["storagepartitions"].push_back(d);
 				}
 
 				list<StorageDevice> disks = mgr.QueryStorageDevices();
-				ret["storagedevices"] = Json::arrayValue;
+				ret["storagedevices"] = json::array();
 				for(const auto& disk: disks)
 				{
-					Json::Value d(Json::objectValue);
+					json d;
 					d["devname"]=disk.DeviceName();
 					d["devpath"]=disk.DevicePath();
 					d["model"] = disk.Model();
-					d["size"] =  Utils::String::ToHuman( (Json::UInt64) disk.Size());
-					ret["storagedevices"].append(d);
+					d["size"] =  Utils::String::ToHuman( disk.Size());
+					ret["storagedevices"].push_back(d);
 				}
 
 				return ret;
@@ -616,17 +616,16 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 			{
 				list<string> devices = JsonHelper::FromJsonArray(v["devices"]);
 				this->statemachine->StorageConfig(
-							v["physical"].asString(),
-							v["logical"].asString(),
-							v["encryption"].asString(),
+							v["physical"].get<string>(),
+							v["logical"].get<string>(),
+							v["encryption"].get<string>(),
 							devices
 							);
 			}
 			else if( cmd == "status" )
 			{
-				Json::Value ret;
-				Json::Value progress;
-				Json::Reader reader;
+				json ret;
+				json progress;
 
 				uint8_t state = this->statemachine->State();
 				ret["state"] = state;
@@ -641,14 +640,16 @@ Json::Value ControlApp::WebCallback(Json::Value v)
 				tie(retval,strprog) = Process::Exec( "/usr/share/opi-backup/progress.sh" );
 				if ( retval )
 				{
-					retval = reader.parse(strprog,progress);
-					if ( retval )
+					try
 					{
+						progress = json::parse(strprog);
 						ret["progress"] = progress;
+						retval = true;
 					}
-					else
+					catch (json::parse_error& err)
 					{
-						logg << Logger::Error << "Failed to parse restore progress." << lend;
+						logg << Logger::Error << "Failed to parse restore progress (" << err.what()<< ")" << lend;
+						retval = false;
 					}
 				}
 				else
@@ -873,7 +874,7 @@ bool ControlApp::DoInit( bool savepassword )
 
 	// Setup backup config
 	logg << Logger::Debug << "Save backup config"<<lend;
-	Json::Value backupcfg;
+	json backupcfg;
 	backupcfg["password"] = this->masterpassword;
 	BackupManager::Configure( backupcfg );
 
@@ -1357,21 +1358,21 @@ bool ControlApp::hasUnitID()
 }
 
 
-Json::Value ControlApp::CheckRestore()
+json ControlApp::CheckRestore()
 {
 	logg << Logger::Debug << "Check if restore should be performed"<<lend;
 
 	if( this->skiprestore )
 	{
 		logg << Logger::Debug << "Restore manually cancelled"<<lend;
-		return Json::nullValue;
+		return json();
 	}
 
 	if( this->storagemanager.UseLocking() && this->storagemanager.StorageAreaExists()  )
 	{
 		// We never do a restore if we have a locked device
 		logg << Logger::Notice << "Found locked device, aborting"<<lend;
-		return Json::nullValue;
+		return json();
 	}
 
 	if( this->masterpassword == "" )
@@ -1379,27 +1380,27 @@ Json::Value ControlApp::CheckRestore()
 		// Need password to be able to get backups
 		logg << Logger::Notice << "Missing password, restore impossible" << lend;
 
-		return Json::nullValue;
+		return json();
 	}
 
 	logg << Logger::Debug << "Initializing backup manager" << lend;
 	// Setup backup config
-	Json::Value backupcfg;
+	json backupcfg;
 	backupcfg["password"] = this->masterpassword;
 	BackupManager::Configure( backupcfg );
 
 	// Call backupmanager get backups
-	Json::Value retval = BackupManager::Instance().GetBackups();
+	json retval = BackupManager::Instance().GetBackups();
 
-	if( retval != Json::nullValue )
+	if( ! retval.is_null() )
 	{
 		//Update cache with backups
-		if( retval.isMember("local") )
+		if( retval.contains("local") )
 		{
 			this->cache[ControlState::State::AskRestore]["local"] = retval["local"];
 		}
 
-		if( retval.isMember("remote") )
+		if( retval.contains("remote") )
 		{
 			this->cache[ControlState::State::AskRestore]["remote"] = retval["remote"];
 		}

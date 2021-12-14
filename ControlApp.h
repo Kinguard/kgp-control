@@ -40,14 +40,14 @@ private:
 	string domain;
 	string first_user;
 
-	Json::Value connstatus;
+	json connstatus;
 	string global_error;
 
 	// User value cache for state
-	map<uint16_t, Json::Value> cache;
+	map<uint16_t, json> cache;
 
 	// Web communication
-	Json::Value WebCallback(Json::Value v);
+	json WebCallback(json v);
 	bool DoUnlock(const string& pwd, bool savepass);
 	bool DoInit(bool savepassword );
 	bool AddUser(const std::string& user, const std::string& display, const std::string& password);
@@ -71,7 +71,7 @@ private:
 	bool hasUnitID();	// Do unit have an OP unit id.
 
 	// Helpers for restore backup
-	Json::Value CheckRestore();
+	json CheckRestore();
 	bool DoRestore(const string& path);
 	bool skiprestore; // User opted to not do restore
 
