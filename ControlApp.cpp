@@ -939,14 +939,6 @@ bool ControlApp::SetDNSName(const string &hostname,const string &domain)
 
 	IdentityManager& idmgr = IdentityManager::Instance();
 
-
-	if( ! idmgr.SetFqdn(hostname, fixdomain) )
-	{
-		this->global_error = idmgr.StrError();
-		logg << Logger::Error << this->global_error<< lend;
-		return false;
-	}
-
 	/* If the domain is in the list of available domains, check with provider.
 	*  if the domain is "custom", there is no DNS provider to check with...
 	*/
@@ -957,6 +949,13 @@ bool ControlApp::SetDNSName(const string &hostname,const string &domain)
 		{
 			logg << Logger::Error << "No DNS provider available" << lend;
 			this->global_error = "No DNS provider available";
+			return false;
+		}
+
+		if( ! idmgr.DnsNameAvailable(hostname, domain))
+		{
+			this->global_error = "Hostname not available";
+			logg << Logger::Notice << "Set dns name: " << this->global_error << lend;
 			return false;
 		}
 
@@ -971,6 +970,14 @@ bool ControlApp::SetDNSName(const string &hostname,const string &domain)
 	{
 		SysConfig sysconfig(true);
 		sysconfig.PutKey("dns","enabled",false);
+	}
+
+	logg << Logger::Debug << "Setting new hostname and domain to: " << hostname << "." << domain << lend;
+	if( ! idmgr.SetFqdn(hostname, fixdomain) )
+	{
+		this->global_error = idmgr.StrError();
+		logg << Logger::Error << this->global_error<< lend;
+		return false;
 	}
 
 	logg << Logger::Info << "Generate certificate for unit" << lend;
