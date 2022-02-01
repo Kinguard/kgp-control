@@ -1,3 +1,13 @@
+opi-control (1.1.67) vigrid; urgency=medium
+
+  * Only set system host/domain after passed possible dns-update
+  * Check host/domain with op-backend before trying to set it
+  * Fix detecting nullvalue in save parameter
+  * Drop dep on jsoncpp, change to nlohmans lib
+  * Updates to build for Bullseye
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 01 Feb 2022 13:41:47 +0100
+
 opi-control (1.1.66) vili; urgency=medium
 
   * Buster release
