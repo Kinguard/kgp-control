@@ -1,3 +1,9 @@
+opi-control (1.1.68) vigrid; urgency=medium
+
+  * Rebuild for bullseye
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 01 Feb 2022 16:13:23 +0100
+
 opi-control (1.1.67) vigrid; urgency=medium
 
   * Only set system host/domain after passed possible dns-update
